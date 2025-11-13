@@ -8,6 +8,7 @@ import History from './pages/History';
 import EvaluateTeachers from './pages/EvaluateTeachers'
 import Swal from 'sweetalert2';
 import Listteacher from "./pages/Listteacher";
+import ManageUsers from "./pages/ManageUsers";
 
 const verify = async () => {
     try {
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
             { path: "history", element: <History /> },
             { path: "listteacher", element: <Listteacher /> },
             { path: "evaluateteachers", element: <EvaluateTeachers /> },
+            { path: "manage", element: <ManageUsers /> },
         ]
     }
 ]);
