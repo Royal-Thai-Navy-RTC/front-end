@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
+import { Users, RefreshCw, Search } from "lucide-react";
 
 const ROLE_FILTERS = [
     { label: "ทั้งหมด", value: "ALL" },
@@ -133,25 +134,40 @@ export default function ManageUsers() {
     }
 
     return (
-        <div className="w-full flex flex-col gap-5">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold text-blue-900">จัดการผู้ใช้</h1>
-                <p className="text-gray-600">ดูภาพรวมและค้นหาผู้ใช้ทั้งหมดภายในระบบ</p>
-            </div>
+        <div className="w-full flex flex-col gap-6">
+            <header className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <p className="text-sm text-gray-500">ระบบจัดการผู้ใช้</p>
+                        <h1 className="text-3xl font-bold text-blue-900">Admin Control Center</h1>
+                    </div>
+                    <div className="flex items-center gap-2 text-blue-900">
+                        <Users />
+                        <span className="text-sm">อัปเดตล่าสุด: {new Date().toLocaleDateString("th-TH")}</span>
+                    </div>
+                </div>
+                <p className="text-gray-600 text-sm">
+                    จัดการผู้ใช้ทุกบทบาทด้วยเครื่องมือค้นหาและตรวจสอบสถานะอย่างมืออาชีพ พร้อมข้อมูลสถิติที่อัปเดตแบบเรียลไทม์
+                </p>
+            </header>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <SummaryCard label="ผู้ใช้ทั้งหมด" value={stats.total} accent="bg-blue-100 text-blue-700" />
-                <SummaryCard label="ผู้ดูแลระบบ" value={stats.admin} accent="bg-purple-100 text-purple-700" />
-                <SummaryCard label="ครูผู้สอน" value={stats.teacher} accent="bg-green-100 text-green-700" />
-                <SummaryCard label="นักเรียน" value={stats.student} accent="bg-yellow-100 text-yellow-700" />
-            </div>
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <SummaryCard label="ผู้ใช้ทั้งหมด" value={stats.total} accent="from-blue-500 to-blue-700" />
+                <SummaryCard label="ผู้ดูแลระบบ" value={stats.admin} accent="from-purple-500 to-purple-700" />
+                <SummaryCard label="ครูผู้สอน" value={stats.teacher} accent="from-green-500 to-emerald-600" />
+                <SummaryCard label="นักเรียน" value={stats.student} accent="from-amber-500 to-yellow-500" />
+            </section>
 
-            <div className="bg-white rounded-xl p-4 shadow w-full">
-                <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            <section className="bg-white rounded-2xl p-5 shadow flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                    <p className="text-lg font-semibold text-gray-800">ค้นหาและกรองผู้ใช้</p>
+                    <p className="text-sm text-gray-500">เลือกบทบาทที่ต้องการและค้นหาผู้ใช้ตามชื่อ Username หรืออีเมล</p>
+                </div>
+                <div className="grid lg:grid-cols-4 gap-3">
                     <select
                         value={roleFilter}
                         onChange={(e) => setRoleFilter(e.target.value)}
-                        className="border rounded-lg px-3 py-2 text-base w-full lg:w-56 focus:outline-none focus:ring focus:ring-blue-200"
+                        className="border rounded-xl px-3 py-3 text-base w-full focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
                     >
                         {ROLE_FILTERS.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -159,7 +175,8 @@ export default function ManageUsers() {
                             </option>
                         ))}
                     </select>
-                    <div className="flex flex-1 gap-2">
+                    <div className="lg:col-span-2 flex items-center border rounded-xl px-3 py-1 focus-within:ring-2 focus-within:ring-blue-200 transition">
+                        <Search className="text-gray-400" size={20} />
                         <input
                             type="text"
                             placeholder="ค้นหาชื่อ, username หรืออีเมล..."
@@ -168,120 +185,133 @@ export default function ManageUsers() {
                                 setSearch(e.target.value);
                                 setPage(1);
                             }}
-                            className="border rounded-lg px-3 py-2 flex-1 focus:outline-none focus:ring focus:ring-blue-200"
+                            className="px-2 py-2 flex-1 focus:outline-none"
                         />
+                    </div>
+                    <div className="flex gap-2">
                         <button
                             onClick={() => setSearch("")}
-                            className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+                            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 transition w-full"
                         >
                             ล้าง
                         </button>
+                        <button
+                            onClick={() => setReloadKey((prev) => prev + 1)}
+                            disabled={loading}
+                            className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2 transition w-full"
+                        >
+                            <RefreshCw size={18} />
+                            รีเฟรช
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setReloadKey((prev) => prev + 1)}
-                        disabled={loading}
-                        className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
-                    >
-                        รีเฟรช
-                    </button>
                 </div>
-            </div>
+            </section>
 
-            <div className="bg-white rounded-xl p-4 shadow w-full overflow-x-auto">
-                <table className="min-w-full border-collapse text-left text-gray-700">
-                    <thead className="bg-blue-50 text-blue-700 font-semibold">
-                        <tr>
-                            <th className="p-3 border-b">ชื่อ - นามสกุล</th>
-                            <th className="p-3 border-b">Username</th>
-                            <th className="p-3 border-b">อีเมล</th>
-                            <th className="p-3 border-b text-center">Role</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading && (
+            <section className="bg-white rounded-2xl p-5 shadow">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <p className="text-lg font-semibold text-gray-800">รายชื่อผู้ใช้</p>
+                        <p className="text-sm text-gray-500">แสดงผล {paginated.length} รายการจากทั้งหมด {filteredUsers.length} รายการ</p>
+                    </div>
+                    <span className="text-sm text-gray-400">
+                        Page {page} / {totalPages}
+                    </span>
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                    <table className="min-w-full text-left text-gray-700 text-sm">
+                        <thead className="bg-gray-50 text-gray-600 uppercase tracking-wide text-xs">
                             <tr>
-                                <td colSpan="4" className="text-center p-4 text-blue-600">
-                                    กำลังโหลดข้อมูล...
-                                </td>
+                                <th className="p-4">ชื่อ - นามสกุล</th>
+                                <th className="p-4">Username</th>
+                                <th className="p-4">อีเมล</th>
+                                <th className="p-4 text-center">บทบาท</th>
                             </tr>
-                        )}
-                        {!loading && error && (
-                            <tr>
-                                <td colSpan="4" className="text-center p-4 text-red-500">
-                                    {error}
-                                </td>
-                            </tr>
-                        )}
-                        {!loading && !error && paginated.map((user) => {
-                            const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "-";
-                            return (
-                                <tr key={user.id || user.username} className="hover:bg-blue-50">
-                                    <td className="p-3 border-b">{fullName}</td>
-                                    <td className="p-3 border-b">{user.username || "-"}</td>
-                                    <td className="p-3 border-b">{user.email || "-"}</td>
-                                    <td className="p-3 border-b text-center">
-                                        <span className="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
-                                            {(user.role || "-").toString().toUpperCase()}
-                                        </span>
+                        </thead>
+                        <tbody>
+                            {loading && (
+                                <tr>
+                                    <td colSpan="4" className="text-center p-6 text-blue-600">
+                                        กำลังโหลดข้อมูล...
                                     </td>
                                 </tr>
-                            );
-                        })}
-                        {!loading && !error && paginated.length === 0 && (
-                            <tr>
-                                <td colSpan="4" className="text-center p-4 text-gray-400">
-                                    ไม่พบข้อมูลผู้ใช้
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-
-                <div className="flex flex-wrap justify-center sm:justify-end items-center mt-4 gap-2 text-sm">
+                            )}
+                            {!loading && error && (
+                                <tr>
+                                    <td colSpan="4" className="text-center p-6 text-red-500">
+                                        {error}
+                                    </td>
+                                </tr>
+                            )}
+                            {!loading && !error && paginated.map((user) => {
+                                const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "-";
+                                return (
+                                    <tr key={user.id || user.username} className="border-t border-gray-100 hover:bg-blue-50/40 transition">
+                                        <td className="p-4">
+                                            <p className="font-semibold">{fullName}</p>
+                                            <p className="text-xs text-gray-500">{user.department || "ไม่ระบุแผนก"}</p>
+                                        </td>
+                                        <td className="p-4">{user.username || "-"}</td>
+                                        <td className="p-4">{user.email || "-"}</td>
+                                        <td className="p-4 text-center">
+                                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                                                {(user.role || "-").toString().toUpperCase()}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            {!loading && !error && paginated.length === 0 && (
+                                <tr>
+                                    <td colSpan="4" className="text-center p-6 text-gray-400">
+                                        ไม่พบข้อมูลผู้ใช้
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="flex flex-wrap justify-center sm:justify-between items-center mt-6 gap-2 text-sm">
                     <button
                         onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                         disabled={page === 1}
-                        className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-blue-50"
+                        className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
                     >
                         ก่อนหน้า
                     </button>
-
-                    {getPaginationNumbers().map((num, idx) =>
-                        num === "..." ? (
-                            <span key={`${num}-${idx}`} className="px-2">
-                                ...
-                            </span>
-                        ) : (
-                            <button
-                                key={idx}
-                                onClick={() => setPage(num)}
-                                className={`px-3 py-1 border rounded hover:bg-blue-50 ${page === num
-                                    ? "bg-blue-600 text-white border-blue-600"
-                                    : "text-gray-700"
-                                    }`}
-                            >
-                                {num}
-                            </button>
-                        )
-                    )}
-
+                    <div className="flex items-center gap-2">
+                        {getPaginationNumbers().map((num, idx) =>
+                            num === "..." ? (
+                                <span key={`${num}-${idx}`} className="px-2 text-gray-500">
+                                    ...
+                                </span>
+                            ) : (
+                                <button
+                                    key={idx}
+                                    onClick={() => setPage(num)}
+                                    className={`px-3 py-1 rounded-lg ${page === num ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-100"}`}
+                                >
+                                    {num}
+                                </button>
+                            )
+                        )}
+                    </div>
                     <button
                         onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                         disabled={page === totalPages}
-                        className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-blue-50"
+                        className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
                     >
                         ถัดไป
                     </button>
                 </div>
-            </div>
+            </section>
         </div>
     );
 }
 
 function SummaryCard({ label, value, accent }) {
     return (
-        <div className={`rounded-2xl p-4 shadow border border-gray-100 ${accent}`}>
-            <p className="text-sm">{label}</p>
+        <div className={`rounded-2xl p-4 text-white shadow-lg bg-gradient-to-br ${accent}`}>
+            <p className="text-sm text-white/80">{label}</p>
             <p className="text-3xl font-bold">{value}</p>
         </div>
     );
