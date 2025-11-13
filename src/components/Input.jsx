@@ -1,33 +1,34 @@
-import React, { useState, forwardRef } from 'react';
+import React, { useState, forwardRef } from "react";
 import { IoMdEye, IoIosEyeOff } from "react-icons/io";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 export const Input = forwardRef((props, ref) => {
-    const [values, setValue] = useState({}); 
+  const [values, setValue] = useState({});
 
-    const handleValue = (e) => {
-        const { name, value } = e.target;
-        setValue((prevValues) => ({ ...prevValues, [name]: value }));
-    };
+  const handleValue = (e) => {
+    const { name, value } = e.target;
+    setValue((prevValues) => ({ ...prevValues, [name]: value }));
+  };
 
-    return (
-        <div className='flex flex-col gap-2 w-full'>
-            <label className='flex flex-col w-full gap-1'>
-                <p>Username</p>
-                <input {...props}  
-                    ref={ref}    
-                    onChange={handleValue} 
-                    value={values.username || ""}
-                    type="text" 
-                    name='username' 
-                    className='w-full border p-2 text-lg rounded border-gray-500' 
-                />
-            </label>
-        </div>
-    );
+  return (
+    <div className="flex flex-col gap-2 w-full">
+      <label className="flex flex-col w-full gap-1">
+        <p>Username</p>
+        <input
+          {...props}
+          ref={ref}
+          onChange={handleValue}
+          value={values.username || ""}
+          type="text"
+          name="username"
+          className="w-full border p-2 text-lg rounded border-gray-500"
+        />
+      </label>
+    </div>
+  );
 });
 
 export function AvatarUpload() {

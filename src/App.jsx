@@ -8,6 +8,7 @@ import History from './pages/History';
 import EvaluateTeachers from './pages/EvaluateTeachers'
 import Listteacher from "./pages/Listteacher";
 import ManageUsers from "./pages/ManageUsers";
+import UserDetail from "./pages/UserDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const router = createBrowserRouter([
@@ -41,6 +42,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN"]}>
                         <ManageUsers />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "users/:id",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN"]}>
+                        <UserDetail />
                     </ProtectedRoute>
                 )
             },

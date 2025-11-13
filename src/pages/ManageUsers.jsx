@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { Users, RefreshCw, Search, Pencil } from "lucide-react";
+import { Link } from "react-router-dom";
+import navy from "../assets/navy.png";
 
 const ROLE_FILTERS = [
     { label: "ทั้งหมด", value: "ALL" },
@@ -9,6 +11,33 @@ const ROLE_FILTERS = [
     { label: "ครูผู้สอน", value: "TEACHER" },
     { label: "นักเรียน", value: "STUDENT" },
 ];
+
+const RANK_OPTIONS = [
+    { value: "ADMIRAL", label: "พลเรือเอก" },
+    { value: "VICE_ADMIRAL", label: "พลเรือโท" },
+    { value: "REAR_ADMIRAL", label: "พลเรือตรี" },
+    { value: "CAPTAIN", label: "นาวาเอก" },
+    { value: "COMMANDER", label: "นาวาโท" },
+    { value: "LIEUTENANT_COMMANDER", label: "นาวาตรี" },
+    { value: "LIEUTENANT", label: "เรือเอก" },
+    { value: "SUB_LIEUTENANT", label: "เรือโท" },
+    { value: "ENSIGN", label: "เรือตรี" },
+    { value: "PETTY_OFFICER_1", label: "พันจ่าเอก" },
+    { value: "PETTY_OFFICER_2", label: "พันจ่าโท" },
+    { value: "PETTY_OFFICER_3", label: "พันจ่าตรี" },
+    { value: "PETTY_OFFICER", label: "จ่าเอก" },
+    { value: "LEADING_RATING", label: "จ่าโท" },
+    { value: "ABLE_SEAMAN", label: "จ่าตรี" },
+    { value: "SEAMAN_RECRUIT", label: "พลฯ" },
+];
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
+const resolveAvatarUrl = (value) => {
+    if (!value) return "";
+    if (value.startsWith("http://") || value.startsWith("https://")) return value;
+    const path = value.startsWith("/") ? value : `/${value}`;
+    return `${API_BASE_URL}${path}`;
+};
 
 const getStoredUser = () => {
     try {
@@ -37,6 +66,7 @@ export default function ManageUsers() {
     const [editOriginal, setEditOriginal] = useState(null);
     const [editLoading, setEditLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const pageSize = 10;
     const currentUser = getStoredUser();
     const currentUserId = currentUser?.id;
@@ -199,10 +229,11 @@ export default function ManageUsers() {
         username: data.username || "",
         email: data.email || "",
         phone: data.phone || "",
-        rank: data.rank || "",
+        rank: (data.rank || "SEAMAN_RECRUIT").toUpperCase(),
         role: (data.role || "STUDENT").toUpperCase(),
         isActive: data.isActive ?? true,
         fullAddress: data.fullAddress || "",
+        avatar: data.avatar || "",
         password: "",
     });
 
@@ -312,6 +343,52 @@ export default function ManageUsers() {
         }
     };
 
+    const handleAvatarUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file || !editUserId) return;
+
+        const formData = new FormData();
+        formData.append("avatar", file);
+
+        setUploadingAvatar(true);
+        try {
+            const token = localStorage.getItem("token");
+            const response = await axios.post(`/api/admin/users/${editUserId}/avatar`, formData, {
+                headers: {
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+
+            const updatedUser = response.data?.data ?? response.data;
+
+            setUsers((prev) =>
+                prev.map((user) =>
+                    (user.id ?? user._id) === editUserId ? { ...user, ...updatedUser } : user
+                )
+            );
+            setEditForm((prev) => (prev ? { ...prev, avatar: updatedUser.avatar || prev.avatar || "" } : prev));
+            setEditOriginal((prev) => (prev ? { ...prev, avatar: updatedUser.avatar || prev.avatar || "" } : prev));
+
+            Swal.fire({
+                icon: "success",
+                title: "อัปโหลดรูปโปรไฟล์สำเร็จ",
+                timer: 1500,
+                showConfirmButton: false,
+            });
+        } catch (err) {
+            const message = err.response?.data?.message || "ไม่สามารถอัปโหลดรูปโปรไฟล์ได้";
+            Swal.fire({
+                icon: "error",
+                title: "เกิดข้อผิดพลาด",
+                text: message,
+            });
+        } finally {
+            setUploadingAvatar(false);
+            event.target.value = "";
+        }
+    };
+
     if (!isAdmin) {
         return (
             <div className="bg-white rounded-2xl p-6 shadow-md w-full text-center">
@@ -409,34 +486,50 @@ export default function ManageUsers() {
                     <table className="min-w-full text-left text-gray-700 text-sm">
                         <thead className="bg-gray-50 text-gray-600 uppercase tracking-wide text-xs">
                             <tr>
+                                <th className="p-4 text-center">รูป</th>
+                                <th className="p-4 text-center">ยศ</th>
                                 <th className="p-4">ชื่อ - นามสกุล</th>
                                 <th className="p-4">Username</th>
                                 <th className="p-4">อีเมล</th>
                                 <th className="p-4 text-center">บทบาท</th>
                                 <th className="p-4 text-center">แก้ไข</th>
                                 <th className="p-4 text-center">สถานะ</th>
+                                <th className="p-4 text-center">รายละเอียด</th>
                             </tr>
                         </thead>
-                        <tbody>
+                    <tbody>
                             {loading && (
                                 <tr>
-                                    <td colSpan="6" className="text-center p-6 text-blue-600">
+                                    <td colSpan="9" className="text-center p-6 text-blue-600">
                                         กำลังโหลดข้อมูล...
                                     </td>
                                 </tr>
                             )}
                             {!loading && error && (
                                 <tr>
-                                    <td colSpan="6" className="text-center p-6 text-red-500">
+                                    <td colSpan="9" className="text-center p-6 text-red-500">
                                         {error}
                                     </td>
                                 </tr>
                             )}
                             {!loading && !error && paginated.map((user) => {
                                 const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "-";
+                                const rankLabel = RANK_OPTIONS.find((option) => option.value === (user.rank || "").toUpperCase())?.label || user.rank || "-";
                                 const isActive = user.isActive ?? true;
                                 return (
                                     <tr key={user.id || user.username} className="border-t border-gray-100 hover:bg-blue-50/40 transition">
+                                        <td className="p-4 text-center">
+                                            <img
+                                                src={resolveAvatarUrl(user.avatar) || navy}
+                                                alt={fullName}
+                                                className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                                            />
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
+                                                {rankLabel || "-"}
+                                            </span>
+                                        </td>
                                         <td className="p-4">
                                             <p className="font-semibold">{fullName}</p>
                                             <p className="text-xs text-gray-500">{user.department || "ไม่ระบุแผนก"}</p>
@@ -469,12 +562,20 @@ export default function ManageUsers() {
                                                 />
                                             </div>
                                         </td>
+                                        <td className="p-4 text-center">
+                                            <Link
+                                                to={`/users/${user.id ?? user._id}`}
+                                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition"
+                                            >
+                                                ดูข้อมูล
+                                            </Link>
+                                        </td>
                                     </tr>
                                 );
                             })}
                             {!loading && !error && paginated.length === 0 && (
                                 <tr>
-                                        <td colSpan="6" className="text-center p-6 text-gray-400">
+                                        <td colSpan="9" className="text-center p-6 text-gray-400">
                                         ไม่พบข้อมูลผู้ใช้
                                     </td>
                                 </tr>
@@ -538,6 +639,17 @@ export default function ManageUsers() {
                             <div className="text-center py-10 text-blue-600 font-semibold">กำลังโหลดข้อมูล...</div>
                         ) : (
                             <div className="grid sm:grid-cols-2 gap-4">
+                                <div className="flex flex-col items-center gap-3 sm:col-span-2">
+                                    <img
+                                        src={resolveAvatarUrl(editForm.avatar) || navy}
+                                        alt="avatar preview"
+                                        className="w-32 h-32 rounded-full object-cover border border-gray-200 shadow"
+                                    />
+                                    <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-gray-100 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-200 transition">
+                                        {uploadingAvatar ? "กำลังอัปโหลด..." : "เปลี่ยนรูปโปรไฟล์"}
+                                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                                    </label>
+                                </div>
                                 <label className="flex flex-col gap-1 text-sm">
                                     <span>ชื่อ</span>
                                     <input
@@ -580,13 +692,18 @@ export default function ManageUsers() {
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
                                     <span>ยศ / ตำแหน่ง</span>
-                                    <input
-                                        type="text"
+                                    <select
                                         name="rank"
                                         value={editForm.rank}
                                         onChange={handleEditChange}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    />
+                                    >
+                                        {RANK_OPTIONS.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
                                     <span>Role</span>
