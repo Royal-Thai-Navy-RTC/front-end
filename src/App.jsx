@@ -6,29 +6,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import History from './pages/History';
 import EvaluateTeachers from './pages/EvaluateTeachers'
-import Swal from 'sweetalert2';
 import Listteacher from "./pages/Listteacher";
 import ManageUsers from "./pages/ManageUsers";
-
-const verify = async () => {
-    try {
-        const token = localStorage.getItem("token");
-        const role = localStorage.getItem("role");
-        const accessData = localStorage.getItem("accessData") || "{}";
-        const { department } = JSON.parse(accessData);
-
-        if (!token || !role) throw new Error("Please login first");
-        return null;
-    } catch (error) {
-        Swal.fire({
-            icon: "error",
-            title: "Error",
-            timer: 2000,
-            text: error.message
-        });
-        return redirect('/login');
-    }
-};
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -40,9 +20,30 @@ const router = createBrowserRouter([
             { path: "register", element: <Register /> },
             { path: "home", element: <Home /> },
             { path: "history", element: <History /> },
-            { path: "listteacher", element: <Listteacher /> },
-            { path: "evaluateteachers", element: <EvaluateTeachers /> },
-            { path: "manage", element: <ManageUsers /> },
+            {
+                path: "listteacher",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "STUDENT"]}>
+                        <Listteacher />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "evaluateteachers",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "STUDENT"]}>
+                        <EvaluateTeachers />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "manage",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN"]}>
+                        <ManageUsers />
+                    </ProtectedRoute>
+                )
+            },
         ]
     }
 ]);

@@ -11,9 +11,9 @@ export default function Nav({ user = { role: "guest" } }) {
   const isAuthenticated = role !== "guest";
 
   const pages = [
-    { path: "/home", label: "home", roles: ["admin", "teacher", "student"] },
+    { path: "/home", label: "หน้าหลัก", roles: ["admin", "teacher", "student"] },
     { path: "/history", label: "ประวัติ", roles: ["admin", "teacher", "student"] },
-    { path: "/manage", label: "manage users", roles: ["admin"] },
+    { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin"] },
     { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "teacher", "student"] },
   ];
 

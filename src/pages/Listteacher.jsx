@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from "react-router-dom";
-import { Edit } from "lucide-react";
+import { Edit, Search } from "lucide-react";
 import axios from "axios";
 
 export default function Listteacher() {
@@ -54,7 +54,6 @@ export default function Listteacher() {
         });
     }, [users, search]);
 
-    // pagination logic
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
@@ -62,11 +61,10 @@ export default function Listteacher() {
         if (p >= 1 && p <= totalPages) setPage(p);
     };
 
-    // ฟังก์ชันสร้าง pagination แบบ dynamic (มี ... ตัดหน้า)
     const getPaginationNumbers = () => {
         if (totalPages <= 1) return [1];
 
-        const delta = 2; // จำนวนเพจรอบๆหน้าปัจจุบัน
+        const delta = 2;
         const range = [];
         const rangeWithDots = [];
 
@@ -86,34 +84,45 @@ export default function Listteacher() {
     };
 
     return (
-        <>
-            {/* Filter Section */}
-            <div className="bg-white rounded-xl p-4 shadow w-full">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <p className="text-xl sm:text-2xl text-blue-700 font-bold border-b-2 sm:border-0 border-gray-300 pb-1">
-                        ครูผู้สอน
-                    </p>
-                    <div className="flex flex-col sm:flex-row items-center gap-2">
-                        <input type="text" placeholder="ค้นหาชื่อหรือวิชา..." value={search}
-                            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                            className="border border-b-gray-600 rounded-lg px-3 py-2 text-base w-full sm:w-64 focus:outline-none focus:ring focus:ring-blue-200"
-                        />
-                        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" onClick={() => setSearch("")} >
-                            ค้นหา
+        <div className="flex flex-col w-full gap-6">
+            <section className="bg-white rounded-2xl shadow p-6">
+                <div className="flex flex-col gap-4">
+                    <div>
+                        <p className="text-sm text-gray-500">รายชื่อครูผู้สอน</p>
+                        <h1 className="text-3xl font-bold text-blue-900">Teacher Directory</h1>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex flex-1 items-center border rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-blue-200 transition">
+                            <Search className="text-gray-400" size={20} />
+                            <input
+                                type="text"
+                                placeholder="ค้นหาชื่อหรือวิชา..."
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="px-2 py-1 flex-1 focus:outline-none"
+                            />
+                        </div>
+                        <button
+                            onClick={() => setSearch("")}
+                            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+                        >
+                            ล้างการค้นหา
                         </button>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            {/* 📋 Table Section */}
-            <div className="bg-white rounded-xl p-4 mt-6 shadow w-full overflow-x-auto">
+            <section className="bg-white rounded-2xl shadow p-5 overflow-x-auto">
                 <table className="min-w-full border-collapse text-left text-gray-700">
                     <thead className="bg-blue-50 text-blue-700 font-semibold">
                         <tr>
-                            <th className="p-3 border-b text-center">ลำดับ</th>
-                            <th className="p-3 border-b text-center">ชื่อ-นามสกุล</th>
-                            <th className="p-3 border-b text-center">วิชา</th>
-                            <th className="p-3 border-b text-center">ประเมิน</th>
+                            <th className="p-3 border-b text-center w-16">ลำดับ</th>
+                            <th className="p-3 border-b">ชื่อ-นามสกุล</th>
+                            <th className="p-3 border-b">วิชาที่รับผิดชอบ / หน่วย</th>
+                            <th className="p-3 border-b text-center">แบบประเมิน</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -134,14 +143,27 @@ export default function Listteacher() {
                         {!loading && !error && paginated.map((user, i) => {
                             const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username || "-";
                             const subject = user.subject || user.department || "-";
+                            const teacherId = user.id ?? user._id ?? null;
                             return (
-                                <tr key={user.id ?? `${user.username}-${i}`} className="hover:bg-blue-50">
-                                    <td className="p-3 border-b text-center">{(page - 1) * pageSize + i + 1}</td>
-                                    <td className="p-3 border-b text-center">{fullName}</td>
-                                    <td className="p-3 border-b text-center">{subject}</td>
+                                <tr key={user.id ?? `${user.username}-${i}`} className="hover:bg-blue-50 transition">
+                                    <td className="p-3 border-b text-center font-semibold text-gray-500">{(page - 1) * pageSize + i + 1}</td>
+                                    <td className="p-3 border-b">
+                                        <p className="font-semibold text-gray-900">{fullName}</p>
+                                        <p className="text-xs text-gray-500">Username: {user.username || "-"}</p>
+                                    </td>
+                                    <td className="p-3 border-b">
+                                        <span className="inline-flex px-3 py-1 rounded-full bg-blue-50 text-sm text-blue-700">
+                                            {subject}
+                                        </span>
+                                    </td>
                                     <td className="p-3 border-b text-center">
-                                        <Link to="/evaluateteachers" state={user} className='flex items-center justify-center text-white p-2 border-blue-900 cursor-pointer hover:opacity-30'>
-                                            <Edit className="size-5 text-yellow-500 " />
+                                        <Link
+                                            to="/evaluateteachers"
+                                            state={{ userId: teacherId, fallback: user }}
+                                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+                                        >
+                                            <Edit size={16} />
+                                            ประเมิน
                                         </Link>
                                     </td>
                                 </tr>
@@ -157,44 +179,45 @@ export default function Listteacher() {
                     </tbody>
                 </table>
 
-                {/* 🔢 Pagination */}
-                <div className="flex flex-wrap justify-center sm:justify-end items-center mt-4 gap-2 text-sm">
+                <div className="flex flex-wrap justify-center sm:justify-between items-center mt-4 gap-2 text-sm">
                     <button
                         onClick={() => handlePageChange(page - 1)}
                         disabled={page === 1}
-                        className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-blue-50"
+                        className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
                     >
                         ก่อนหน้า
                     </button>
 
-                    {getPaginationNumbers().map((num, idx) =>
-                        num === "..." ? (
-                            <span key={idx} className="px-2">
-                                ...
-                            </span>
-                        ) : (
-                            <button
-                                key={idx}
-                                onClick={() => handlePageChange(num)}
-                                className={`px-3 py-1 border rounded hover:bg-blue-50 ${page === num
-                                    ? "bg-blue-600 text-white border-blue-600"
-                                    : "text-gray-700"
-                                    }`}
-                            >
-                                {num}
-                            </button>
-                        )
-                    )}
+                    <div className="flex items-center gap-2">
+                        {getPaginationNumbers().map((num, idx) =>
+                            num === "..." ? (
+                                <span key={idx} className="px-2 text-gray-500">
+                                    ...
+                                </span>
+                            ) : (
+                                <button
+                                    key={idx}
+                                    onClick={() => handlePageChange(num)}
+                                    className={`px-3 py-1 rounded-lg ${page === num
+                                        ? "bg-blue-600 text-white"
+                                        : "text-gray-700 hover:bg-gray-100"
+                                        }`}
+                                >
+                                    {num}
+                                </button>
+                            )
+                        )}
+                    </div>
 
                     <button
                         onClick={() => handlePageChange(page + 1)}
                         disabled={page === totalPages}
-                        className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-blue-50"
+                        className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
                     >
                         ถัดไป
                     </button>
                 </div>
-            </div>
-        </>
+            </section>
+        </div>
     );
 }

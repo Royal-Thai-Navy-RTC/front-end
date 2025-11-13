@@ -10,14 +10,17 @@ const ROLE_FILTERS = [
     { label: "นักเรียน", value: "STUDENT" },
 ];
 
-const getCurrentRole = () => {
+const getStoredUser = () => {
     try {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        const directRole = localStorage.getItem("role");
-        return (storedUser?.role || directRole || "guest").toString().toUpperCase();
+        return JSON.parse(localStorage.getItem("user"));
     } catch {
-        return "GUEST";
+        return null;
     }
+};
+
+const getCurrentRole = (storedUser) => {
+    const directRole = localStorage.getItem("role");
+    return (storedUser?.role || directRole || "guest").toString().toUpperCase();
 };
 
 export default function ManageUsers() {
@@ -28,8 +31,12 @@ export default function ManageUsers() {
     const [error, setError] = useState("");
     const [page, setPage] = useState(1);
     const [reloadKey, setReloadKey] = useState(0);
+    const [actionUserId, setActionUserId] = useState(null);
     const pageSize = 10;
-    const currentRole = getCurrentRole();
+    const currentUser = getStoredUser();
+    const currentUserId = currentUser?.id;
+    const currentUsername = currentUser?.username;
+    const currentRole = getCurrentRole(currentUser);
     const isAdmin = currentRole === "ADMIN";
 
     useEffect(() => {
@@ -75,14 +82,17 @@ export default function ManageUsers() {
             const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim().toLowerCase();
             const username = (user.username || "").toLowerCase();
             const email = (user.email || "").toLowerCase();
-            return (
+            const isSelf =
+                (currentUserId != null && user.id === currentUserId) ||
+                (!!currentUsername && username === currentUsername.toLowerCase());
+            const matchesKeyword =
                 !keyword ||
                 fullName.includes(keyword) ||
                 username.includes(keyword) ||
-                email.includes(keyword)
-            );
+                email.includes(keyword);
+            return !isSelf && matchesKeyword;
         });
-    }, [users, search]);
+    }, [users, search, currentUserId, currentUsername]);
 
     const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
     const paginated = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
@@ -122,6 +132,59 @@ export default function ManageUsers() {
         if (page + delta < totalPages - 1) rangeWithDots.push("...");
 
         return [1, ...rangeWithDots, totalPages];
+    };
+
+    const handleToggleStatus = async (user) => {
+        if (!user?.id) return;
+        const isActive = user.isActive ?? true;
+        const token = localStorage.getItem("token");
+        const url = isActive
+            ? `/api/admin/users/deactivate/${user.id}`
+            : `/api/admin/users/activate/${user.id}`;
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+        const confirmResult = await Swal.fire({
+            icon: "warning",
+            title: isActive ? "ต้องการปิดการใช้งานผู้ใช้นี้?" : "ต้องการเปิดใช้งานผู้ใช้นี้?",
+            text: isActive
+                ? "ผู้ใช้จะไม่สามารถเข้าสู่ระบบได้จนกว่าจะเปิดใช้งานอีกครั้ง"
+                : "ผู้ใช้จะกลับมาเข้าสู่ระบบได้ตามปกติ",
+            showCancelButton: true,
+            confirmButtonText: isActive ? "ปิดการใช้งาน" : "เปิดการใช้งาน",
+            cancelButtonText: "ยกเลิก",
+            confirmButtonColor: isActive ? "#dc2626" : "#059669",
+        });
+
+        if (!confirmResult.isConfirmed) return;
+
+        setActionUserId(user.id);
+        try {
+            if (isActive) {
+                await axios.delete(url, config);
+            } else {
+                await axios.patch(url, {}, config);
+            }
+            setUsers((prev) =>
+                prev.map((item) =>
+                    item.id === user.id ? { ...item, isActive: !isActive } : item
+                )
+            );
+            Swal.fire({
+                icon: "success",
+                title: isActive ? "ปิดการใช้งานสำเร็จ" : "เปิดการใช้งานสำเร็จ",
+                timer: 1500,
+                showConfirmButton: false,
+            });
+        } catch (err) {
+            const message = err.response?.data?.message || "ไม่สามารถอัปเดตสถานะผู้ใช้ได้";
+            Swal.fire({
+                icon: "error",
+                title: "เกิดข้อผิดพลาด",
+                text: message,
+            });
+        } finally {
+            setActionUserId(null);
+        }
     };
 
     if (!isAdmin) {
@@ -225,6 +288,7 @@ export default function ManageUsers() {
                                 <th className="p-4">Username</th>
                                 <th className="p-4">อีเมล</th>
                                 <th className="p-4 text-center">บทบาท</th>
+                                <th className="p-4 text-center">สถานะ</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -244,6 +308,7 @@ export default function ManageUsers() {
                             )}
                             {!loading && !error && paginated.map((user) => {
                                 const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "-";
+                                const isActive = user.isActive ?? true;
                                 return (
                                     <tr key={user.id || user.username} className="border-t border-gray-100 hover:bg-blue-50/40 transition">
                                         <td className="p-4">
@@ -256,6 +321,18 @@ export default function ManageUsers() {
                                             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
                                                 {(user.role || "-").toString().toUpperCase()}
                                             </span>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <span className={`text-xs font-semibold ${isActive ? "text-emerald-600" : "text-red-500"}`}>
+                                                    {isActive ? "เปิดใช้งานอยู่" : "ปิดการใช้งาน"}
+                                                </span>
+                                                <ToggleSwitch
+                                                    isActive={isActive}
+                                                    disabled={actionUserId === user.id}
+                                                    onToggle={() => handleToggleStatus(user)}
+                                                />
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -314,5 +391,21 @@ function SummaryCard({ label, value, accent }) {
             <p className="text-sm text-white/80">{label}</p>
             <p className="text-3xl font-bold">{value}</p>
         </div>
+    );
+}
+
+function ToggleSwitch({ isActive, disabled, onToggle }) {
+    return (
+        <label className={`relative inline-flex items-center cursor-pointer ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}>
+            <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={isActive}
+                disabled={disabled}
+                onChange={onToggle}
+            />
+            <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-emerald-500 transition-colors"></div>
+            <div className={`absolute left-1 top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${isActive ? "translate-x-7" : ""}`}></div>
+        </label>
     );
 }

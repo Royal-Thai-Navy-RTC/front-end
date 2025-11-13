@@ -1,36 +1,8 @@
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
 import navy from "../assets/navy.png";
 import ReactECharts from "echarts-for-react";
-
-const teacherProfile = {
-  name: "พลเรือตรี พงษ์พัฒน์ รัตนากูล",
-  rank: "ครูฝึกหลักสูตรพิเศษ",
-  qualification: "ครูเชี่ยวชาญพิเศษ",
-  subject: "กลยุทธ์การรบพิเศษ",
-  experience: "12 ปี",
-  cycle: "Q1 / 2568",
-  email: "ponpat.navy@gov.th",
-  phone: "081-111-2222",
-  photo: navy,
-};
-
-const summaryStats = [
-  { label: "คะแนนรวม", value: "89", trend: "+4.3%", color: "from-blue-500 to-blue-700" },
-  { label: "ความพึงพอใจผู้เรียน", value: "92%", trend: "+2.1%", color: "from-emerald-500 to-emerald-600" },
-  { label: "ความพร้อมด้านเอกสาร", value: "95%", trend: "100% ส่งตรงเวลา", color: "from-violet-500 to-violet-600" },
-  { label: "ชั่วโมงสอน", value: "128 ชม.", trend: "เพิ่มขึ้น 16%", color: "from-amber-500 to-orange-500" },
-];
-
-const evaluations = [
-  { label: "การสื่อสาร", score: 9, comment: "ชัดเจน เข้าใจง่าย" },
-  { label: "การบริหารเวลา", score: 8, comment: "ตรงเวลา มีแผนสำรอง" },
-  { label: "ทักษะการสอน", score: 9, comment: "มีเทคนิคการสอนที่น่าสนใจ" },
-  { label: "ความรับผิดชอบ", score: 10, comment: "เอาใจใส่ผู้เรียนอย่างดี" },
-];
-
-const files = [
-  { name: "แบบประเมินครูผู้สอน.xlsx", date: "12 ม.ค. 2568" },
-  { name: "บันทึกข้อเสนอแนะ.pdf", date: "10 ม.ค. 2568" },
-];
 
 const performanceTrendOptions = {
   textStyle: { fontFamily: "kanit, sans-serif" },
@@ -83,12 +55,96 @@ const criteriaOptions = {
   ],
 };
 
+const evaluations = [
+  { label: "การสื่อสาร", score: 9, comment: "ชัดเจน เข้าใจง่าย" },
+  { label: "การบริหารเวลา", score: 8, comment: "ตรงเวลา มีแผนสำรอง" },
+  { label: "ทักษะการสอน", score: 9, comment: "มีเทคนิคการสอนที่น่าสนใจ" },
+  { label: "ความรับผิดชอบ", score: 10, comment: "เอาใจใส่ผู้เรียนอย่างดี" },
+];
+
+const files = [
+  { name: "แบบประเมินครูผู้สอน.xlsx", date: "12 ม.ค. 2568" },
+  { name: "บันทึกข้อเสนอแนะ.pdf", date: "10 ม.ค. 2568" },
+];
+
 export default function EvaluateTeachers() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { userId, fallback } = location.state || {};
+  const [teacher, setTeacher] = useState(fallback || null);
+  const [loading, setLoading] = useState(Boolean(userId));
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      setError("ไม่พบข้อมูลผู้สอน กรุณากลับไปเลือกรายชื่ออีกครั้ง");
+      return;
+    }
+
+    const fetchTeacher = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(`/api/admin/users/${userId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const payload = response.data?.data ?? response.data;
+        setTeacher(payload);
+      } catch (err) {
+        const message = err.response?.data?.message || "ไม่สามารถดึงข้อมูลผู้สอนได้";
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeacher();
+  }, [userId]);
+
+  const teacherProfile = useMemo(() => {
+    const fullName = `${teacher?.firstName || ""} ${teacher?.lastName || ""}`.trim();
+    return {
+      name: fullName || teacher?.username || "-",
+      rank: teacher?.rank || "ไม่ระบุ",
+      qualification: teacher?.qualification || "ไม่ระบุ",
+      subject: teacher?.subject || teacher?.department || "ไม่ระบุ",
+      experience: teacher?.experience || "-",
+      cycle: teacher?.evaluationCycle || "-",
+      email: teacher?.email || "-",
+      phone: teacher?.phone || "-",
+      photo: teacher?.profileImage || navy,
+    };
+  }, [teacher]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl shadow p-6 text-center text-blue-600 font-semibold">
+        กำลังโหลดข้อมูลครูผู้สอน...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-2xl shadow p-6 text-center space-y-4">
+        <p className="text-red-500 font-semibold">{error}</p>
+        <button
+          onClick={() => navigate("/listteacher")}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+        >
+          กลับไปยังรายชื่อครูผู้สอน
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col w-full h-full gap-6">
       <section className="bg-white rounded-2xl shadow-xl p-6 flex flex-col lg:flex-row gap-6">
         <div className="flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 w-full lg:w-1/3">
-          <img src={teacherProfile.photo} alt="Teacher" className="max-w-[220px] w-full object-contain" />
+          <img src={teacherProfile.photo} alt="Teacher" className="max-w-[220px] w-full object-contain rounded-2xl" />
         </div>
         <div className="flex flex-col gap-4 w-full">
           <header className="flex flex-wrap gap-4 justify-between">
@@ -121,9 +177,10 @@ export default function EvaluateTeachers() {
       </section>
 
       <section className="grid md:grid-cols-4 gap-4">
-        {summaryStats.map((stat) => (
-          <MetricCard key={stat.label} {...stat} />
-        ))}
+        <MetricCard label="คะแนนรวม" value="89" trend="+4.3%" color="from-blue-500 to-blue-700" />
+        <MetricCard label="ความพึงพอใจผู้เรียน" value="92%" trend="+2.1%" color="from-emerald-500 to-emerald-600" />
+        <MetricCard label="ความพร้อมด้านเอกสาร" value="95%" trend="100% ส่งตรงเวลา" color="from-violet-500 to-violet-600" />
+        <MetricCard label="ชั่วโมงสอน" value="128 ชม." trend="เพิ่มขึ้น 16%" color="from-amber-500 to-orange-500" />
       </section>
 
       <section className="grid lg:grid-cols-2 gap-6">
