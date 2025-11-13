@@ -53,7 +53,7 @@ export default function Login() {
             }
 
             const payload = parseJwt(token) || {};
-            const role = payload.role || "guest";
+            const role = (payload.role || "guest").toLowerCase();
             const user = { id: payload.id, role };
 
             localStorage.setItem("token", token);
