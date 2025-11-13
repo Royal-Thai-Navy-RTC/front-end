@@ -1,22 +1,24 @@
 
 
 @font-face {
-  font-family: 'sarabun'; 
-  src: url('./fonts/Sarabun-Regular.ttf');
+  font-family: 'kanit';
+  src: url('./fonts/Kanit-Regular.ttf');
+  font-display: swap;
 }
 
 @font-face {
-  font-family: 'sarabun_bold'; 
-  src: url('./fonts/Sarabun-Bold.ttf');
-  font-weight: bold;
-  font-style: bold;
+  font-family: 'kanit_bold';
+  src: url('./fonts/Kanit-Bold.ttf');
+  font-weight: 700;
+  font-display: swap;
 }
 
 
 
 @import "tailwindcss";
 
-@theme{
-    ---font-sarabun: sarabun, 'sans-serif';
-    ---font-sarabun-bold: sarabun_bold, 'sans-serif';
+@layer components {
+  :root {
+    font-family: kanit, 'Kanit', sans-serif;
+  }
 }
