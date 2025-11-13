@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { Users, RefreshCw, Search, Pencil } from "lucide-react";
+import { Users, RefreshCw, Search, Pencil, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
 import navy from "../assets/navy.png";
 
@@ -30,6 +30,22 @@ const RANK_OPTIONS = [
     { value: "ABLE_SEAMAN", label: "จ่าตรี" },
     { value: "SEAMAN_RECRUIT", label: "พลฯ" },
 ];
+
+const CREATE_USER_DEFAULT = {
+    rank: "SEAMAN_RECRUIT",
+    role: "STUDENT",
+    firstName: "",
+    lastName: "",
+    username: "",
+    birthDate: "",
+    fullAddress: "",
+    email: "",
+    phone: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+    password: "",
+    confirmPassword: "",
+};
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
 const resolveAvatarUrl = (value) => {
@@ -67,6 +83,11 @@ export default function ManageUsers() {
     const [editLoading, setEditLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [createForm, setCreateForm] = useState(CREATE_USER_DEFAULT);
+    const [createAvatarPreview, setCreateAvatarPreview] = useState("");
+    const [createAvatarBase64, setCreateAvatarBase64] = useState("");
+    const [creatingUser, setCreatingUser] = useState(false);
     const pageSize = 10;
     const currentUser = getStoredUser();
     const currentUserId = currentUser?.id;
@@ -389,6 +410,124 @@ export default function ManageUsers() {
         }
     };
 
+    const resetCreateForm = () => {
+        setCreateForm(CREATE_USER_DEFAULT);
+        setCreateAvatarPreview("");
+        setCreateAvatarBase64("");
+    };
+
+    const openCreateModal = () => {
+        resetCreateForm();
+        setCreateModalOpen(true);
+    };
+
+    const closeCreateModal = () => {
+        if (creatingUser) return;
+        setCreateModalOpen(false);
+        resetCreateForm();
+    };
+
+    const handleCreateChange = (event) => {
+        const { name, value } = event.target;
+        setCreateForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleCreateAvatarChange = (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        setCreateAvatarPreview(URL.createObjectURL(file));
+        const reader = new FileReader();
+        reader.onloadend = () => setCreateAvatarBase64(reader.result?.toString() ?? "");
+        reader.readAsDataURL(file);
+    };
+
+    const handleCreateSubmit = async () => {
+        const requiredFields = [
+            "firstName",
+            "lastName",
+            "username",
+            "birthDate",
+            "fullAddress",
+            "email",
+            "phone",
+            "emergencyContactName",
+            "emergencyContactPhone",
+            "password",
+            "confirmPassword",
+        ];
+
+        const missing = requiredFields.filter((field) => !`${createForm[field] ?? ""}`.trim());
+        if (missing.length) {
+            Swal.fire({
+                icon: "warning",
+                title: "กรุณากรอกข้อมูลให้ครบ",
+                text: "โปรดตรวจสอบข้อมูลให้ครบทุกช่องที่จำเป็น",
+            });
+            return;
+        }
+
+        if (createForm.password !== createForm.confirmPassword) {
+            Swal.fire({
+                icon: "warning",
+                title: "รหัสผ่านไม่ตรงกัน",
+                text: "กรุณายืนยันรหัสผ่านให้ตรงกัน",
+            });
+            return;
+        }
+
+        const payload = {
+            rank: createForm.rank,
+            firstName: createForm.firstName,
+            lastName: createForm.lastName,
+            username: createForm.username,
+            birthDate: createForm.birthDate,
+            fullAddress: createForm.fullAddress,
+            email: createForm.email,
+            phone: createForm.phone,
+            emergencyContactName: createForm.emergencyContactName,
+            emergencyContactPhone: createForm.emergencyContactPhone,
+            password: createForm.password,
+        };
+
+        if (!payload.rank) {
+            delete payload.rank;
+        }
+
+        if (createForm.role) {
+            payload.role = createForm.role.toUpperCase();
+        }
+
+        if (createAvatarBase64) {
+            payload.profileImage = createAvatarBase64;
+        }
+
+        setCreatingUser(true);
+        try {
+            const token = localStorage.getItem("token");
+            await axios.post("/api/admin/users", payload, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+            Swal.fire({
+                icon: "success",
+                title: "สร้างผู้ใช้สำเร็จ",
+                timer: 1600,
+                showConfirmButton: false,
+            });
+            setReloadKey((prev) => prev + 1);
+            setCreateModalOpen(false);
+            resetCreateForm();
+        } catch (err) {
+            const message = err.response?.data?.message || "ไม่สามารถสร้างผู้ใช้ได้";
+            Swal.fire({
+                icon: "error",
+                title: "เกิดข้อผิดพลาด",
+                text: message,
+            });
+        } finally {
+            setCreatingUser(false);
+        }
+    };
+
     if (!isAdmin) {
         return (
             <div className="bg-white rounded-2xl p-6 shadow-md w-full text-center">
@@ -406,9 +545,20 @@ export default function ManageUsers() {
                         <p className="text-sm text-gray-500">ระบบจัดการผู้ใช้</p>
                         <h1 className="text-3xl font-bold text-blue-900">Admin Control Center</h1>
                     </div>
-                    <div className="flex items-center gap-2 text-blue-900">
-                        <Users />
-                        <span className="text-sm">อัปเดตล่าสุด: {new Date().toLocaleDateString("th-TH")}</span>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 text-blue-900">
+                            <Users />
+                            <span className="text-sm">อัปเดตล่าสุด: {new Date().toLocaleDateString("th-TH")}</span>
+                        </div>
+                        {isAdmin && (
+                            <button
+                                onClick={openCreateModal}
+                                className="inline-flex items-center gap-2 rounded-xl bg-blue-800 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition shadow"
+                            >
+                                <UserPlus size={16} />
+                                สร้างผู้ใช้ใหม่
+                            </button>
+                        )}
                     </div>
                 </div>
                 <p className="text-gray-600 text-sm">
@@ -617,6 +767,227 @@ export default function ManageUsers() {
                     </button>
                 </div>
             </section>
+            {createModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <p className="text-sm text-blue-500 font-semibold">สร้างผู้ใช้ใหม่</p>
+                                <h3 className="text-2xl font-semibold text-gray-900">บันทึกข้อมูลกำลังพล</h3>
+                                <p className="text-sm text-gray-500">ข้อมูลที่ครบถ้วนช่วยให้ระบบจัดการสิทธิ์ได้อย่างแม่นยำ</p>
+                            </div>
+                            <button
+                                onClick={closeCreateModal}
+                                disabled={creatingUser}
+                                className="rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 p-2 disabled:opacity-60"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="grid lg:grid-cols-[260px,1fr] gap-6">
+                            <div className="flex flex-col items-center gap-4 border border-gray-100 rounded-2xl p-4">
+                                {createAvatarPreview ? (
+                                    <img
+                                        src={createAvatarPreview}
+                                        alt="avatar preview"
+                                        className="w-32 h-32 rounded-full object-cover border border-gray-200"
+                                    />
+                                ) : (
+                                    <div className="w-32 h-32 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400">
+                                        รูปโปรไฟล์
+                                    </div>
+                                )}
+                                <label className="w-full">
+                                    <div className="w-full text-center px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 cursor-pointer hover:bg-gray-50">
+                                        เลือกรูปภาพ
+                                    </div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleCreateAvatarChange}
+                                        className="hidden"
+                                        disabled={creatingUser}
+                                    />
+                                </label>
+                                <p className="text-xs text-gray-500 text-center px-2">
+                                    รองรับไฟล์ JPG, PNG ขนาดไม่เกิน 5 MB
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col gap-4">
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>ยศ</span>
+                                        <select
+                                            name="rank"
+                                            value={createForm.rank}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        >
+                                            <option value="">-- เลือกยศ --</option>
+                                            {RANK_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>บทบาท</span>
+                                        <select
+                                            name="role"
+                                            value={createForm.role}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        >
+                                            <option value="ADMIN">ADMIN</option>
+                                            <option value="TEACHER">TEACHER</option>
+                                            <option value="STUDENT">STUDENT</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>ชื่อ</span>
+                                        <input
+                                            type="text"
+                                            name="firstName"
+                                            value={createForm.firstName}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>นามสกุล</span>
+                                        <input
+                                            type="text"
+                                            name="lastName"
+                                            value={createForm.lastName}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                </div>
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>Username</span>
+                                        <input
+                                            type="text"
+                                            name="username"
+                                            value={createForm.username}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>วันเดือนปีเกิด</span>
+                                        <input
+                                            type="date"
+                                            name="birthDate"
+                                            value={createForm.birthDate}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                </div>
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>อีเมล</span>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={createForm.email}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>เบอร์โทรศัพท์</span>
+                                        <input
+                                            type="text"
+                                            name="phone"
+                                            value={createForm.phone}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                </div>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>ที่อยู่</span>
+                                    <textarea
+                                        name="fullAddress"
+                                        value={createForm.fullAddress}
+                                        onChange={handleCreateChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 min-h-20"
+                                    />
+                                </label>
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>ผู้ติดต่อฉุกเฉิน</span>
+                                        <input
+                                            type="text"
+                                            name="emergencyContactName"
+                                            value={createForm.emergencyContactName}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>เบอร์ติดต่อฉุกเฉิน</span>
+                                        <input
+                                            type="text"
+                                            name="emergencyContactPhone"
+                                            value={createForm.emergencyContactPhone}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                </div>
+                                <div className="grid sm:grid-cols-2 gap-3">
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>รหัสผ่าน</span>
+                                        <input
+                                            type="password"
+                                            name="password"
+                                            value={createForm.password}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>ยืนยันรหัสผ่าน</span>
+                                        <input
+                                            type="password"
+                                            name="confirmPassword"
+                                            value={createForm.confirmPassword}
+                                            onChange={handleCreateChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                onClick={closeCreateModal}
+                                disabled={creatingUser}
+                                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                                ยกเลิก
+                            </button>
+                            <button
+                                onClick={handleCreateSubmit}
+                                disabled={creatingUser}
+                                className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60"
+                            >
+                                {creatingUser ? "กำลังสร้าง..." : "สร้างผู้ใช้"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {editForm && (
                 <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
