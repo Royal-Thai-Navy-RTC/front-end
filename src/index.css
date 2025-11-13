@@ -1,0 +1,22 @@
+
+
+@font-face {
+  font-family: 'sarabun'; 
+  src: url('./fonts/Sarabun-Regular.ttf');
+}
+
+@font-face {
+  font-family: 'sarabun_bold'; 
+  src: url('./fonts/Sarabun-Bold.ttf');
+  font-weight: bold;
+  font-style: bold;
+}
+
+
+
+@import "tailwindcss";
+
+@theme{
+    ---font-sarabun: sarabun, 'sans-serif';
+    ---font-sarabun-bold: sarabun_bold, 'sans-serif';
+}
