@@ -1,33 +1,61 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from "react-router-dom";
-import { Eye, Edit, Star } from "lucide-react";
+import { Edit } from "lucide-react";
+import axios from "axios";
 
 export default function Listteacher() {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
     const pageSize = 10;
 
-    // ตัวอย่างข้อมูล mock (20 คน)
-    const data = useMemo(
-        () =>
-            Array.from({ length: 50 }, (_, i) => ({
-                id: i + 1,
-                name: `ครูหมายเลข ${i + 1}`,
-                subject: ["เงื่อน", "กรรเชียง", "ปืน", "แผนที่", "สังคม"][i % 5],
-                phone: `081-${String(i + 1).padStart(7, "0")}`,
-            })),
-        []
-    );
+    useEffect(() => {
+        const fetchUsers = async () => {
+            setLoading(true);
+            setError("");
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get("/api/admin/users", {
+                    params: { role: "TEACHER" },
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                });
 
-    // filter
-    const filtered = data.filter(
-        (d) =>
-            d.name.toLowerCase().includes(search.toLowerCase()) ||
-            d.subject.toLowerCase().includes(search.toLowerCase())
-    );
+                const payload = Array.isArray(response.data)
+                    ? response.data
+                    : Array.isArray(response.data?.data)
+                        ? response.data.data
+                        : [];
+
+                setUsers(payload);
+            } catch (err) {
+                const message = err.response?.data?.message || "ไม่สามารถดึงข้อมูลผู้ใช้ได้";
+                setError(message);
+                setUsers([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUsers();
+    }, []);
+
+    const filtered = useMemo(() => {
+        const keyword = search.toLowerCase();
+        return users.filter((user) => {
+            const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim().toLowerCase();
+            const subject = (user.subject || user.department || "").toLowerCase();
+            return (
+                fullName.includes(keyword) ||
+                subject.includes(keyword) ||
+                (user.username || "").toLowerCase().includes(keyword)
+            );
+        });
+    }, [users, search]);
 
     // pagination logic
-    const totalPages = Math.ceil(filtered.length / pageSize);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
     const handlePageChange = (p) => {
@@ -36,10 +64,11 @@ export default function Listteacher() {
 
     // ฟังก์ชันสร้าง pagination แบบ dynamic (มี ... ตัดหน้า)
     const getPaginationNumbers = () => {
+        if (totalPages <= 1) return [1];
+
         const delta = 2; // จำนวนเพจรอบๆหน้าปัจจุบัน
         const range = [];
         const rangeWithDots = [];
-        let l;
 
         for (
             let i = Math.max(2, page - delta);
@@ -64,7 +93,7 @@ export default function Listteacher() {
                     <p className="text-xl sm:text-2xl text-blue-700 font-bold border-b-2 sm:border-0 border-gray-300 pb-1">
                         ครูผู้สอน
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
                         <input type="text" placeholder="ค้นหาชื่อหรือวิชา..." value={search}
                             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                             className="border border-b-gray-600 rounded-lg px-3 py-2 text-base w-full sm:w-64 focus:outline-none focus:ring focus:ring-blue-200"
@@ -88,19 +117,37 @@ export default function Listteacher() {
                         </tr>
                     </thead>
                     <tbody>
-                        {paginated.map((d, i) => (
-                            <tr key={d.id} className="hover:bg-blue-50">
-                                <td className="p-3 border-b text-center">{(page - 1) * pageSize + i + 1}</td>
-                                <td className="p-3 border-b text-center">{d.name}</td>
-                                <td className="p-3 border-b text-center">{d.subject}</td>
-                                <td className="p-3 border-b text-center">
-                                    <Link to="/evaluateteachers" state={d} className='flex items-center justify-center text-white p-2 border-blue-900 cursor-pointer hover:opacity-30'>
-                                        <Edit className="size-5 text-yellow-500 " />
-                                    </Link>
+                        {loading && (
+                            <tr>
+                                <td colSpan="4" className="text-center p-4 text-blue-600">
+                                    กำลังโหลดข้อมูล...
                                 </td>
                             </tr>
-                        ))}
-                        {paginated.length === 0 && (
+                        )}
+                        {!loading && error && (
+                            <tr>
+                                <td colSpan="4" className="text-center p-4 text-red-500">
+                                    {error}
+                                </td>
+                            </tr>
+                        )}
+                        {!loading && !error && paginated.map((user, i) => {
+                            const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username || "-";
+                            const subject = user.subject || user.department || "-";
+                            return (
+                                <tr key={user.id ?? `${user.username}-${i}`} className="hover:bg-blue-50">
+                                    <td className="p-3 border-b text-center">{(page - 1) * pageSize + i + 1}</td>
+                                    <td className="p-3 border-b text-center">{fullName}</td>
+                                    <td className="p-3 border-b text-center">{subject}</td>
+                                    <td className="p-3 border-b text-center">
+                                        <Link to="/evaluateteachers" state={user} className='flex items-center justify-center text-white p-2 border-blue-900 cursor-pointer hover:opacity-30'>
+                                            <Edit className="size-5 text-yellow-500 " />
+                                        </Link>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        {!loading && !error && paginated.length === 0 && (
                             <tr>
                                 <td colSpan="4" className="text-center p-4 text-gray-400">
                                     ไม่พบข้อมูล
