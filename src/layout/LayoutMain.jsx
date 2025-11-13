@@ -1,7 +1,8 @@
-import { Outlet } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Outlet } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import axios from "axios";
 import bg from "../assets/bg-sea.jpg";
-import Nav from '../components/Nav';
+import Nav from "../components/Nav";
 
 const getStoredUser = () => {
   try {
@@ -11,11 +12,49 @@ const getStoredUser = () => {
   }
 };
 
+const normalizeUser = (data = {}) => {
+  if (!data || typeof data !== "object") return { role: "guest" };
+  return { role: (data.role || "guest").toUpperCase(), ...data };
+};
+
 export default function LayoutMain() {
-  const [user, setUser] = useState(getStoredUser);
+  const [user, setUser] = useState(() => normalizeUser(getStoredUser()));
+
+  const handleProfileUpdated = useCallback((updated) => {
+    setUser((prev) => {
+      const merged = normalizeUser({ ...prev, ...updated });
+      localStorage.setItem("user", JSON.stringify(merged));
+      return merged;
+    });
+    window.dispatchEvent(new Event("auth-change"));
+  }, []);
+
+  const fetchProfile = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setUser({ role: "guest" });
+      return;
+    }
+    try {
+      const response = await axios.get("/api/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const profile = response.data?.data ?? response.data;
+      if (profile) {
+        handleProfileUpdated(profile);
+      }
+    } catch {
+      // ignore fetch errors silently
+    }
+  }, [handleProfileUpdated]);
 
   useEffect(() => {
-    const syncUser = () => setUser(getStoredUser());
+    fetchProfile();
+
+    const syncUser = () => {
+      setUser(normalizeUser(getStoredUser()));
+      fetchProfile();
+    };
 
     window.addEventListener("storage", syncUser);
     window.addEventListener("auth-change", syncUser);
@@ -24,12 +63,12 @@ export default function LayoutMain() {
       window.removeEventListener("storage", syncUser);
       window.removeEventListener("auth-change", syncUser);
     };
-  }, []);
+  }, [fetchProfile]);
 
   return (
     <div className="relative min-h-screen flex flex-col">
       <img src={bg} className="absolute inset-0 w-full h-full object-cover -z-10" />
-      <Nav user={user} />
+      <Nav user={user} onProfileUpdated={handleProfileUpdated} />
       {/* ส่วนเนื้อหา */}
       <div className="flex flex-col flex-grow items-center p-2 px-5 mb-5">
         <Outlet />

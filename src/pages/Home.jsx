@@ -68,8 +68,8 @@ function HeroSection() {
   return (
     <section className="bg-white rounded-2xl shadow p-6 sm:p-10 flex flex-col gap-4">
       <div>
-        <p className="text-sm uppercase tracking-[0.45em] text-blue-500 font-semibold">
-          NAVAL TRAINING CENTER
+        <p className="text-sm text-blue-400 font-semibold">
+          RTcas (Recruit Training Center Academic System)
         </p>
         <h1 className="text-3xl sm:text-5xl font-bold text-blue-900 mt-2">
           ศูนย์ฝึกทหารใหม่
