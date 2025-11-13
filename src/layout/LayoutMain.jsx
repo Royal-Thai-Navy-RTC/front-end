@@ -1,9 +1,30 @@
-import { Outlet } from 'react-router-dom'
-import bg from "../assets/bg-sea.jpg"
-import Nav from '../components/Nav'
+import { Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import bg from "../assets/bg-sea.jpg";
+import Nav from '../components/Nav';
+
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user")) || { role: "guest" };
+  } catch {
+    return { role: "guest" };
+  }
+};
 
 export default function LayoutMain() {
-  const user = JSON.parse(localStorage.getItem("user")) || { role: "guest" };
+  const [user, setUser] = useState(getStoredUser);
+
+  useEffect(() => {
+    const syncUser = () => setUser(getStoredUser());
+
+    window.addEventListener("storage", syncUser);
+    window.addEventListener("auth-change", syncUser);
+
+    return () => {
+      window.removeEventListener("storage", syncUser);
+      window.removeEventListener("auth-change", syncUser);
+    };
+  }, []);
 
   return (
     <div className="relative min-h-screen flex flex-col">
@@ -21,5 +42,5 @@ export default function LayoutMain() {
         </p>
       </div>
     </div>
-  )
+  );
 }

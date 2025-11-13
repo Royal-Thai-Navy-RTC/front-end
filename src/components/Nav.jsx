@@ -16,7 +16,12 @@ export default function Nav({ user = { role: "guest" } }) {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    navigate("/login");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("accessData");
+    window.dispatchEvent(new Event("auth-change"));
+    navigate("/login", { replace: true });
   };
 
   const visibleItems = pages.filter(item => item.roles.includes(user.role));
