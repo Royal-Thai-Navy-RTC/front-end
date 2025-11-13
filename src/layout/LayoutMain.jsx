@@ -20,13 +20,16 @@ const normalizeUser = (data = {}) => {
 export default function LayoutMain() {
   const [user, setUser] = useState(() => normalizeUser(getStoredUser()));
 
-  const handleProfileUpdated = useCallback((updated) => {
+  const handleProfileUpdated = useCallback((updated, options = {}) => {
+    const { emitEvent = false } = options;
     setUser((prev) => {
       const merged = normalizeUser({ ...prev, ...updated });
       localStorage.setItem("user", JSON.stringify(merged));
       return merged;
     });
-    window.dispatchEvent(new Event("auth-change"));
+    if (emitEvent) {
+      window.dispatchEvent(new Event("auth-change"));
+    }
   }, []);
 
   const fetchProfile = useCallback(async () => {

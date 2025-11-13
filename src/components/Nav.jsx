@@ -95,6 +95,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       { path: "/home", label: "หน้าหลัก", roles: ["admin", "teacher", "student"] },
       { path: "/history", label: "ประวัติ", roles: ["admin", "teacher", "student"] },
       { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin"] },
+      { path: "/teacher-report", label: "ส่งยอดนักเรียน", roles: ["teacher"] },
       { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "teacher", "student"] },
     ],
     []
@@ -182,7 +183,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       const mapped = mapProfileToForm({ ...profileForm, ...updatedProfile });
       setProfileForm(mapped);
       setProfileOriginal(mapped);
-      onProfileUpdated(updatedProfile);
+      onProfileUpdated(updatedProfile, { emitEvent: true });
       Swal.fire({
         icon: "success",
         title: "บันทึกข้อมูลสำเร็จ",
@@ -220,7 +221,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       const mapped = mapProfileToForm({ ...profileForm, ...updatedProfile });
       setProfileForm(mapped);
       setProfileOriginal(mapped);
-      onProfileUpdated(updatedProfile);
+      onProfileUpdated(updatedProfile, { emitEvent: true });
       Swal.fire({
         icon: "success",
         title: "อัปโหลดรูปโปรไฟล์สำเร็จ",

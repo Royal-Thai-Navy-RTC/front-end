@@ -10,6 +10,7 @@ import Listteacher from "./pages/Listteacher";
 import ManageUsers from "./pages/ManageUsers";
 import UserDetail from "./pages/UserDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
+import TeacherRollCall from "./pages/TeacherRollCall";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -42,6 +43,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN"]}>
                         <ManageUsers />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "teacher-report",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER"]}>
+                        <TeacherRollCall />
                     </ProtectedRoute>
                 )
             },
