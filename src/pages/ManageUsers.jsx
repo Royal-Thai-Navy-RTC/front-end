@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { Users, RefreshCw, Search } from "lucide-react";
+import { Users, RefreshCw, Search, Pencil } from "lucide-react";
 
 const ROLE_FILTERS = [
     { label: "ทั้งหมด", value: "ALL" },
@@ -32,6 +32,11 @@ export default function ManageUsers() {
     const [page, setPage] = useState(1);
     const [reloadKey, setReloadKey] = useState(0);
     const [actionUserId, setActionUserId] = useState(null);
+    const [editUserId, setEditUserId] = useState(null);
+    const [editForm, setEditForm] = useState(null);
+    const [editOriginal, setEditOriginal] = useState(null);
+    const [editLoading, setEditLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const pageSize = 10;
     const currentUser = getStoredUser();
     const currentUserId = currentUser?.id;
@@ -135,12 +140,13 @@ export default function ManageUsers() {
     };
 
     const handleToggleStatus = async (user) => {
-        if (!user?.id) return;
+        const userId = user?.id ?? user?._id;
+        if (!userId) return;
         const isActive = user.isActive ?? true;
         const token = localStorage.getItem("token");
         const url = isActive
-            ? `/api/admin/users/deactivate/${user.id}`
-            : `/api/admin/users/activate/${user.id}`;
+            ? `/api/admin/users/deactivate/${userId}`
+            : `/api/admin/users/activate/${userId}`;
         const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
         const confirmResult = await Swal.fire({
@@ -157,7 +163,7 @@ export default function ManageUsers() {
 
         if (!confirmResult.isConfirmed) return;
 
-        setActionUserId(user.id);
+        setActionUserId(userId);
         try {
             if (isActive) {
                 await axios.delete(url, config);
@@ -166,7 +172,7 @@ export default function ManageUsers() {
             }
             setUsers((prev) =>
                 prev.map((item) =>
-                    item.id === user.id ? { ...item, isActive: !isActive } : item
+                    (item.id ?? item._id) === userId ? { ...item, isActive: !isActive } : item
                 )
             );
             Swal.fire({
@@ -184,6 +190,125 @@ export default function ManageUsers() {
             });
         } finally {
             setActionUserId(null);
+        }
+    };
+
+    const mapUserToForm = (data = {}) => ({
+        firstName: data.firstName || "",
+        lastName: data.lastName || "",
+        username: data.username || "",
+        email: data.email || "",
+        phone: data.phone || "",
+        rank: data.rank || "",
+        role: (data.role || "STUDENT").toUpperCase(),
+        isActive: data.isActive ?? true,
+        fullAddress: data.fullAddress || "",
+        password: "",
+    });
+
+    const openEditModal = async (user) => {
+        const userId = user?.id ?? user?._id;
+        if (!userId) return;
+        setEditUserId(userId);
+        setEditLoading(true);
+        const initialForm = mapUserToForm(user);
+        setEditForm(initialForm);
+        setEditOriginal(initialForm);
+        try {
+            const token = localStorage.getItem("token");
+            const response = await axios.get(`/api/admin/users/${userId}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+            const payload = response.data?.data ?? response.data;
+            if (payload) {
+                const mapped = mapUserToForm(payload);
+                setEditForm(mapped);
+                setEditOriginal(mapped);
+            }
+        } catch (err) {
+            const message = err.response?.data?.message || "ไม่สามารถโหลดข้อมูลผู้ใช้ได้";
+            Swal.fire({
+                icon: "error",
+                title: "เกิดข้อผิดพลาด",
+                text: message,
+            });
+        } finally {
+            setEditLoading(false);
+        }
+    };
+
+    const closeEditModal = () => {
+        setEditUserId(null);
+        setEditForm(null);
+        setEditOriginal(null);
+        setEditLoading(false);
+        setSaving(false);
+    };
+
+    const handleEditChange = (e) => {
+        const { name, value } = e.target;
+        setEditForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleEditToggleActive = () => {
+        setEditForm((prev) => ({ ...prev, isActive: !prev.isActive }));
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editUserId || !editForm) return;
+        const payload = {};
+        const keysToCompare = ["firstName", "lastName", "email", "phone", "rank", "role", "isActive", "fullAddress"];
+
+        keysToCompare.forEach((key) => {
+            if (!editOriginal || editForm[key] !== editOriginal[key]) {
+                payload[key] = editForm[key];
+            }
+        });
+
+        if (editForm.password) {
+            payload.password = editForm.password;
+        }
+
+        if (Object.keys(payload).length === 0) {
+            Swal.fire({
+                icon: "info",
+                title: "ไม่มีการเปลี่ยนแปลง",
+                text: "กรุณาแก้ไขข้อมูลก่อนบันทึก",
+            });
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const token = localStorage.getItem("token");
+            const response = await axios.put(`/api/admin/users/${editUserId}`, payload, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+
+            const updatedUser = response.data?.data ?? response.data ?? payload;
+
+            setUsers((prev) =>
+                prev.map((user) =>
+                    (user.id ?? user._id) === editUserId ? { ...user, ...updatedUser } : user
+                )
+            );
+
+            Swal.fire({
+                icon: "success",
+                title: "บันทึกข้อมูลสำเร็จ",
+                timer: 1500,
+                showConfirmButton: false,
+            });
+            closeEditModal();
+        } catch (err) {
+            const message = err.response?.data?.message || "ไม่สามารถบันทึกข้อมูลได้";
+            Swal.fire({
+                icon: "error",
+                title: "เกิดข้อผิดพลาด",
+                text: message,
+            });
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -288,20 +413,21 @@ export default function ManageUsers() {
                                 <th className="p-4">Username</th>
                                 <th className="p-4">อีเมล</th>
                                 <th className="p-4 text-center">บทบาท</th>
+                                <th className="p-4 text-center">แก้ไข</th>
                                 <th className="p-4 text-center">สถานะ</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading && (
                                 <tr>
-                                    <td colSpan="4" className="text-center p-6 text-blue-600">
+                                    <td colSpan="6" className="text-center p-6 text-blue-600">
                                         กำลังโหลดข้อมูล...
                                     </td>
                                 </tr>
                             )}
                             {!loading && error && (
                                 <tr>
-                                    <td colSpan="4" className="text-center p-6 text-red-500">
+                                    <td colSpan="6" className="text-center p-6 text-red-500">
                                         {error}
                                     </td>
                                 </tr>
@@ -323,13 +449,22 @@ export default function ManageUsers() {
                                             </span>
                                         </td>
                                         <td className="p-4 text-center">
+                                            <button
+                                                onClick={() => openEditModal(user)}
+                                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-50 transition"
+                                            >
+                                                <Pencil size={14} />
+                                                แก้ไข
+                                            </button>
+                                        </td>
+                                        <td className="p-4 text-center">
                                             <div className="flex flex-col items-center gap-2">
                                                 <span className={`text-xs font-semibold ${isActive ? "text-emerald-600" : "text-red-500"}`}>
                                                     {isActive ? "เปิดใช้งานอยู่" : "ปิดการใช้งาน"}
                                                 </span>
                                                 <ToggleSwitch
                                                     isActive={isActive}
-                                                    disabled={actionUserId === user.id}
+                                                    disabled={actionUserId === (user.id ?? user._id)}
                                                     onToggle={() => handleToggleStatus(user)}
                                                 />
                                             </div>
@@ -339,7 +474,7 @@ export default function ManageUsers() {
                             })}
                             {!loading && !error && paginated.length === 0 && (
                                 <tr>
-                                    <td colSpan="4" className="text-center p-6 text-gray-400">
+                                        <td colSpan="6" className="text-center p-6 text-gray-400">
                                         ไม่พบข้อมูลผู้ใช้
                                     </td>
                                 </tr>
@@ -381,6 +516,141 @@ export default function ManageUsers() {
                     </button>
                 </div>
             </section>
+            {editForm && (
+                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <p className="text-sm text-blue-500 font-semibold">แก้ไขข้อมูลผู้ใช้</p>
+                                <h3 className="text-2xl font-semibold text-gray-900">
+                                    {editForm.firstName || editForm.lastName
+                                        ? `${editForm.firstName} ${editForm.lastName}`
+                                        : editForm.username}
+                                </h3>
+                                <p className="text-xs text-gray-500">Username: {editForm.username || "-"}</p>
+                            </div>
+                            <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-700 text-xl font-semibold">
+                                ✕
+                            </button>
+                        </div>
+
+                        {editLoading ? (
+                            <div className="text-center py-10 text-blue-600 font-semibold">กำลังโหลดข้อมูล...</div>
+                        ) : (
+                            <div className="grid sm:grid-cols-2 gap-4">
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>ชื่อ</span>
+                                    <input
+                                        type="text"
+                                        name="firstName"
+                                        value={editForm.firstName}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>นามสกุล</span>
+                                    <input
+                                        type="text"
+                                        name="lastName"
+                                        value={editForm.lastName}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>อีเมล</span>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={editForm.email}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>เบอร์โทรศัพท์</span>
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        value={editForm.phone}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>ยศ / ตำแหน่ง</span>
+                                    <input
+                                        type="text"
+                                        name="rank"
+                                        value={editForm.rank}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>Role</span>
+                                    <select
+                                        name="role"
+                                        value={editForm.role}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    >
+                                        <option value="ADMIN">ADMIN</option>
+                                        <option value="TEACHER">TEACHER</option>
+                                        <option value="STUDENT">STUDENT</option>
+                                    </select>
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                                    <span>ที่อยู่</span>
+                                    <textarea
+                                        name="fullAddress"
+                                        value={editForm.fullAddress}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 min-h-24"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                                    <span>รีเซ็ตรหัสผ่าน (เว้นว่างหากไม่ต้องการเปลี่ยน)</span>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        value={editForm.password}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <div className="flex flex-col gap-2 text-sm">
+                                    <span>สถานะการใช้งาน</span>
+                                    <div className="flex items-center gap-3">
+                                        <ToggleSwitch isActive={editForm.isActive} disabled={false} onToggle={handleEditToggleActive} />
+                                        <span className={`text-sm font-semibold ${editForm.isActive ? "text-emerald-600" : "text-red-500"}`}>
+                                            {editForm.isActive ? "เปิดใช้งาน" : "ปิดการใช้งาน"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                onClick={closeEditModal}
+                                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50"
+                                disabled={saving}
+                            >
+                                ยกเลิก
+                            </button>
+                            <button
+                                onClick={handleSaveEdit}
+                                disabled={saving || editLoading}
+                                className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60"
+                            >
+                                {saving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
