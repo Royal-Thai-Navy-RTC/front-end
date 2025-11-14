@@ -581,7 +581,7 @@ export default function TeacherRollCall() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="grid md:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1 text-sm">
-              <span>วิชา</span>
+              <span>หัวข้อรายวิชา</span>
               <input
                 type="text"
                 name="subject"
