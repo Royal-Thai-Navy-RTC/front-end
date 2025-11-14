@@ -7,6 +7,23 @@ const LEAVE_TYPES = [
   { value: "SICK", label: "ลาป่วย" },
   { value: "ANNUAL", label: "ลาพักผ่อน" },
   { value: "OTHER", label: "อื่นๆ" },
+  { value: "OFFICIAL_DUTY", label: "ลาไปราชการ" },
+];
+
+const GENERAL_LEAVE_TYPES = LEAVE_TYPES.filter((type) => type.value !== "OFFICIAL_DUTY");
+
+const LEAVE_PRESETS = [
+  {
+    value: "PERSONAL",
+    title: "คำขอลาทั่วไป",
+    description: "ลากิจ/ลาป่วย/ลาพักผ่อน ส่งถึงหัวหน้าหมวดของคุณ",
+  },
+  {
+    value: "OFFICIAL_DUTY",
+    title: "ลาไปราชการ",
+    description: "ใช้เมื่อได้รับคำสั่งราชการ ต้องรอหัวหน้าแผนกศึกษาพิจารณา",
+    highlight: true,
+  },
 ];
 
 const INITIAL_FORM = {
@@ -97,6 +114,11 @@ const getTeacherDisplayName = (leave) => {
   return leave.teacher?.username || leave.teacherUsername || "ไม่ระบุชื่อ";
 };
 
+const isOfficialDutyLeave = (leaveType) => {
+  if (!leaveType) return false;
+  return leaveType.toString().trim().toUpperCase() === "OFFICIAL_DUTY";
+};
+
 export default function TeacherLeave() {
   const [role, setRole] = useState(() => getStoredRole());
   const isAdmin = role === "ADMIN";
@@ -106,6 +128,7 @@ export default function TeacherLeave() {
   const [submitting, setSubmitting] = useState(false);
   const [leaves, setLeaves] = useState([]);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
+  const isOfficialDutyForm = isOfficialDutyLeave(form.leaveType);
 
   // admin state
   const [summary, setSummary] = useState(null);
@@ -198,6 +221,10 @@ export default function TeacherLeave() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handlePresetSelect = (value) => {
+    setForm((prev) => ({ ...prev, leaveType: value }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (submitting || isAdmin) return;
@@ -277,7 +304,10 @@ export default function TeacherLeave() {
     const totalRequests = summary?.totalLeaveRequests ?? 0;
     const currentLeaves = summary?.currentLeaves ?? [];
     const recentLeaves = summary?.recentLeaves ?? [];
-
+    const officialDutyCurrent = currentLeaves.filter((leave) => isOfficialDutyLeave(leave.leaveType)).length;
+    const officialDutyInView = adminLeaves.filter((leave) => isOfficialDutyLeave(leave.leaveType)).length;
+    const adminFilterLabel =
+      adminFilter === "APPROVED" ? "อนุมัติแล้ว" : adminFilter === "REJECTED" ? "ไม่อนุมัติ" : "รออนุมัติ";
     return (
       <div className="w-full flex flex-col gap-6">
         <header className="bg-white rounded-2xl shadow p-6 flex flex-col gap-2">
@@ -289,8 +319,8 @@ export default function TeacherLeave() {
         <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-lg font-semibold text-gray-900">ภาพรวมกำลังพล</p>
-              <p className="text-sm text-gray-500">ข้อมูลอัปเดตจากระบบแจ้งลา</p>
+              <p className="text-sm text-blue-600 font-semibold uppercase tracking-[0.3em]">ภาพรวมกำลังพล</p>
+              <p className="text-xl font-semibold text-gray-900">ข้อมูลอัปเดตจากระบบแจ้งลา</p>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
               <select
@@ -298,7 +328,7 @@ export default function TeacherLeave() {
                 onChange={(event) => setAdminFilter(event.target.value)}
                 className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
-                <option value="PENDING">รออนุมัติ</option>
+                <option value="PENDING">สถานะ: รออนุมัติ</option>
                 <option value="APPROVED">อนุมัติแล้ว</option>
                 <option value="REJECTED">ไม่อนุมัติ</option>
               </select>
@@ -319,13 +349,23 @@ export default function TeacherLeave() {
 
           {!summaryError && (
             <>
-              <div className="grid gap-4 md:grid-cols-3">
-                <AdminLeaveStatCard label="ครูทั้งหมด" value={totalTeachers.toLocaleString("th-TH")} accent="from-slate-600 to-slate-500" />
-                <AdminLeaveStatCard label="กำลังลา" value={onLeave.toLocaleString("th-TH")} accent="from-rose-500 to-pink-500" />
-                <AdminLeaveStatCard label="พร้อมปฏิบัติหน้าที่" value={available.toLocaleString("th-TH")} accent="from-emerald-500 to-green-500" />
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <AdminLeaveStatCard label="ครูทั้งหมด" value={totalTeachers.toLocaleString("th-TH")} accent="from-slate-700 to-slate-500" />
+                <AdminLeaveStatCard label="กำลังลา" value={onLeave.toLocaleString("th-TH")} accent="from-rose-500 to-amber-500" />
+                <AdminLeaveStatCard label="พร้อมปฏิบัติหน้าที่" value={available.toLocaleString("th-TH")} accent="from-emerald-600 to-emerald-400" />
+                <AdminLeaveStatCard
+                  label="ลาไปราชการ (กำลังลา)"
+                  value={officialDutyCurrent.toLocaleString("th-TH")}
+                  accent="from-amber-500 to-orange-500"
+                />
               </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                <AdminLeaveStatCard label="คำขอลาทั้งหมด" value={totalRequests.toLocaleString("th-TH")} accent="from-indigo-500 to-indigo-400" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <AdminLeaveStatCard label="คำขอลาทั้งหมด" value={totalRequests.toLocaleString("th-TH")} accent="from-indigo-600 to-indigo-400" />
+                <AdminLeaveStatCard
+                  label={`ลาไปราชการ (${adminFilterLabel})`}
+                  value={officialDutyInView.toLocaleString("th-TH")}
+                  accent="from-sky-600 to-blue-500"
+                />
                 <div className="border border-gray-100 rounded-2xl p-4 flex flex-col gap-2 md:col-span-2">
                   <p className="text-sm text-gray-500">กำลังลาปัจจุบัน</p>
                   {summaryLoading ? (
@@ -334,16 +374,25 @@ export default function TeacherLeave() {
                     <p className="text-sm text-gray-400">ไม่มีครูที่กำลังลา</p>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      {currentLeaves.map((leave) => (
-                        <div key={leave.id || `${leave.teacherId}-${leave.startDate}`} className="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl px-3 py-2">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{getTeacherDisplayName(leave)} · {getLeaveTypeLabel(leave.leaveType)}</p>
-                            <p className="text-xs text-gray-500">{formatDateRange(leave.startDate, leave.endDate)} · จุดหมาย {leave.destination || "-"}</p>
-                          </div>
-                          <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">{getStatusLabel(leave.status)}</span>
-                        </div>
-                      ))}
+                  {currentLeaves.map((leave) => (
+                    <div key={leave.id || `${leave.teacherId}-${leave.startDate}`} className="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl px-3 py-2">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {getTeacherDisplayName(leave)} · {getLeaveTypeLabel(leave.leaveType)}
+                        </p>
+                        <p className="text-xs text-gray-500">{formatDateRange(leave.startDate, leave.endDate)} · จุดหมาย {leave.destination || "-"}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isOfficialDutyLeave(leave.leaveType) && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">ลาไปราชการ</span>
+                        )}
+                        <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">
+                          {getStatusLabel(leave.status)}
+                        </span>
+                      </div>
                     </div>
+                  ))}
+                </div>
                   )}
                 </div>
               </div>
@@ -382,7 +431,14 @@ export default function TeacherLeave() {
                   {adminLeaves.map((leave) => (
                     <tr key={leave.id || `${leave.teacherId}-${leave.createdAt}`} className="border-t border-gray-100">
                       <td className="p-3 font-semibold text-gray-900">{getTeacherDisplayName(leave)}</td>
-                      <td className="p-3">{getLeaveTypeLabel(leave.leaveType)}</td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <span>{getLeaveTypeLabel(leave.leaveType)}</span>
+                          {isOfficialDutyLeave(leave.leaveType) && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">ลาไปราชการ</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-3">{formatDateRange(leave.startDate, leave.endDate)}</td>
                       <td className="p-3">{leave.destination || "-"}</td>
                       <td className="p-3">{getStatusLabel(leave.status)}</td>
@@ -431,6 +487,28 @@ export default function TeacherLeave() {
           <p className="text-lg font-semibold text-gray-800">ฟอร์มแจ้งการลา</p>
           <p className="text-sm text-gray-500">กรอกข้อมูลให้ครบถ้วนเพื่อให้ผู้บังคับบัญชาดำเนินการอนุมัติ</p>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {LEAVE_PRESETS.map((preset) => (
+            <LeavePresetCard
+              key={preset.value}
+              title={preset.title}
+              description={preset.description}
+              active={form.leaveType === preset.value}
+              highlight={preset.highlight}
+              onClick={() => handlePresetSelect(preset.value)}
+            />
+          ))}
+        </div>
+        {isOfficialDutyForm && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-semibold">คำแนะนำสำหรับลาไปราชการ</p>
+            <ul className="mt-2 list-disc pl-5 space-y-1">
+              <li>คำขอนี้จะถูกส่งให้หัวหน้าแผนกศึกษาเพื่ออนุมัติเท่านั้น</li>
+              <li>กรุณาระบุจุดหมายและเหตุผลให้ชัดเจน พร้อมแนบหลักฐานในช่องเหตุผลหากจำเป็น</li>
+              <li>หากเลือกผิดประเภท สามารถย้อนกลับไปเลือก “คำขอลาทั่วไป” ได้จากการ์ดด้านบน</li>
+            </ul>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="grid md:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1 text-sm">
@@ -440,13 +518,20 @@ export default function TeacherLeave() {
                 value={form.leaveType}
                 onChange={handleChange}
                 className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                disabled={isOfficialDutyForm}
               >
-                {LEAVE_TYPES.map((option) => (
+                {GENERAL_LEAVE_TYPES.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
+                <option value="OFFICIAL_DUTY" disabled>
+                  ลาไปราชการ (เลือกผ่านการ์ดด้านบน)
+                </option>
               </select>
+              {isOfficialDutyForm && (
+                <span className="text-xs text-amber-700 mt-1">กำลังส่งคำขอ “ลาไปราชการ”</span>
+              )}
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span>จุดหมายปลายทาง</span>
@@ -530,23 +615,54 @@ export default function TeacherLeave() {
           {leaves.length === 0 && !loadingLeaves && (
             <p className="text-sm text-gray-400 text-center py-4">ยังไม่มีข้อมูลการลา</p>
           )}
-          {leaves.map((leave) => (
-            <div key={leave.id || leave._id || `${leave.leaveType}-${leave.startDate}-${leave.createdAt}`} className="border border-gray-100 rounded-2xl p-4 flex flex-col gap-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-base font-semibold text-gray-900">
-                  {getLeaveTypeLabel(leave.leaveType)} · {formatDateRange(leave.startDate, leave.endDate)}
-                </p>
-                <span className="text-sm px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">
-                  {leave.status ? getStatusLabel(leave.status) : "รออนุมัติ"}
-                </span>
+          {leaves.map((leave) => {
+            const official = isOfficialDutyLeave(leave.leaveType);
+            const typeLabel = getLeaveTypeLabel(leave.leaveType);
+            return (
+              <div
+                key={leave.id || leave._id || `${leave.leaveType}-${leave.startDate}-${leave.createdAt}`}
+                className="border border-gray-100 rounded-2xl p-4 flex flex-col gap-2"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-base font-semibold text-gray-900">
+                    {typeLabel} · {formatDateRange(leave.startDate, leave.endDate)}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {official && (
+                      <span className="text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">
+                        ลาไปราชการ
+                      </span>
+                    )}
+                    <span className="text-sm px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">
+                      {leave.status ? getStatusLabel(leave.status) : "รออนุมัติ"}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600">จุดหมาย: {leave.destination || "-"}</p>
+                {leave.reason && <p className="text-sm text-gray-500 italic">เหตุผล: {leave.reason}</p>}
               </div>
-              <p className="text-sm text-gray-600">จุดหมาย: {leave.destination || "-"}</p>
-              {leave.reason && <p className="text-sm text-gray-500 italic">เหตุผล: {leave.reason}</p>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     </div>
+  );
+}
+
+function LeavePresetCard({ title, description, active, highlight, onClick }) {
+  const accent = highlight ? "border-amber-200 bg-amber-50" : "border-gray-100 bg-white";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${
+        active ? "ring-2 ring-blue-200" : "ring-0"
+      } ${accent}`}
+    >
+      <p className="text-base font-semibold text-gray-900">{title}</p>
+      <p className="text-sm text-gray-600 mt-1">{description}</p>
+      {active && <p className="text-xs text-blue-600 mt-2">กำลังเลือกประเภทนี้</p>}
+    </button>
   );
 }
 
