@@ -54,6 +54,7 @@ const CREATE_USER_DEFAULT = {
     phone: "",
     emergencyContactName: "",
     emergencyContactPhone: "",
+    profileImage: "",
     password: "",
     confirmPassword: "",
 };
@@ -96,8 +97,6 @@ export default function ManageUsers() {
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [createForm, setCreateForm] = useState(CREATE_USER_DEFAULT);
-    const [createAvatarPreview, setCreateAvatarPreview] = useState("");
-    const [createAvatarBase64, setCreateAvatarBase64] = useState("");
     const [creatingUser, setCreatingUser] = useState(false);
     const pageSize = 10;
     const currentUser = getStoredUser();
@@ -423,8 +422,6 @@ const mapUserToForm = (data = {}) => ({
 
     const resetCreateForm = () => {
         setCreateForm(CREATE_USER_DEFAULT);
-        setCreateAvatarPreview("");
-        setCreateAvatarBase64("");
     };
 
     const openCreateModal = () => {
@@ -441,15 +438,6 @@ const mapUserToForm = (data = {}) => ({
     const handleCreateChange = (event) => {
         const { name, value } = event.target;
         setCreateForm((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleCreateAvatarChange = (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        setCreateAvatarPreview(URL.createObjectURL(file));
-        const reader = new FileReader();
-        reader.onloadend = () => setCreateAvatarBase64(reader.result?.toString() ?? "");
-        reader.readAsDataURL(file);
     };
 
     const handleCreateSubmit = async () => {
@@ -508,8 +496,17 @@ const mapUserToForm = (data = {}) => ({
             payload.role = createForm.role.toUpperCase();
         }
 
-        if (createAvatarBase64) {
-            payload.profileImage = createAvatarBase64;
+        const profileImageValue = (createForm.profileImage || "").trim();
+        if (profileImageValue) {
+            if (profileImageValue.length > 255) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "รูปโปรไฟล์ไม่ถูกต้อง",
+                    text: "กรุณาระบุ URL หรือ path ที่มีความยาวไม่เกิน 255 ตัวอักษร",
+                });
+                return;
+            }
+            payload.profileImage = profileImageValue;
         }
 
         setCreatingUser(true);
@@ -798,31 +795,38 @@ const mapUserToForm = (data = {}) => ({
 
                         <div className="grid lg:grid-cols-[260px,1fr] gap-6">
                             <div className="flex flex-col items-center gap-4 border border-gray-100 rounded-2xl p-4">
-                                {createAvatarPreview ? (
+                                {createForm.profileImage?.trim() ? (
                                     <img
-                                        src={createAvatarPreview}
-                                        alt="avatar preview"
+                                        src={resolveAvatarUrl(createForm.profileImage.trim())}
+                                        alt="profile preview"
                                         className="w-32 h-32 rounded-full object-cover border border-gray-200"
+                                        onError={(event) => {
+                                            event.currentTarget.style.display = "none";
+                                        }}
                                     />
                                 ) : (
                                     <div className="w-32 h-32 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400">
                                         รูปโปรไฟล์
                                     </div>
                                 )}
-                                <label className="w-full">
-                                    <div className="w-full text-center px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 cursor-pointer hover:bg-gray-50">
-                                        เลือกรูปภาพ
-                                    </div>
+                                <label className="w-full flex flex-col gap-1 text-sm">
+                                    <span>ลิงก์รูปโปรไฟล์ (URL หรือ path)</span>
                                     <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleCreateAvatarChange}
-                                        className="hidden"
-                                        disabled={creatingUser}
+                                        type="text"
+                                        name="profileImage"
+                                        value={createForm.profileImage}
+                                        onChange={(event) => {
+                                            const { value } = event.target;
+                                            if (value.length <= 255) {
+                                                handleCreateChange(event);
+                                            }
+                                        }}
+                                        placeholder="เช่น /uploads/profile.jpg หรือ https://..."
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     />
                                 </label>
                                 <p className="text-xs text-gray-500 text-center px-2">
-                                    รองรับไฟล์ JPG, PNG ขนาดไม่เกิน 5 MB
+                                    ระบบจะบันทึกเฉพาะ URL หรือ path ความยาวไม่เกิน 255 ตัวอักษร
                                 </p>
                             </div>
 
