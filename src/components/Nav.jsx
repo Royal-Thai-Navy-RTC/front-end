@@ -96,6 +96,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       { path: "/history", label: "ประวัติ", roles: ["admin", "teacher", "student"] },
       { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin"] },
       { path: "/teacher-report", label: "ส่งยอดนักเรียน", roles: ["teacher"] },
+      { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher"] },
       { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "teacher", "student"] },
     ],
     []

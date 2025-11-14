@@ -101,29 +101,6 @@ const getReportDate = (report = {}) => {
   return null;
 };
 
-const normalizeLeaveSummary = (payload) => {
-  const source = payload?.data ?? payload ?? {};
-  const totalTeachers = source.totalTeachers ?? source.total ?? 0;
-  const onLeave = source.onLeave ?? source.currentOnLeave ?? source.activeLeaves ?? 0;
-  const destinationsRaw = Array.isArray(source.destinations)
-    ? source.destinations
-    : Array.isArray(source.topDestinations)
-      ? source.topDestinations
-      : source.destination
-        ? [{ destination: source.destination, count: source.destinationCount ?? 0 }]
-        : [];
-  const destinations = destinationsRaw.map((item, index) => ({
-    key: item.id || item.destination || item.name || `dest-${index}`,
-    label: item.destination || item.name || item.title || "ไม่ระบุ",
-    count: item.count ?? item.total ?? item.value ?? 0,
-  }));
-  return {
-    totalTeachers,
-    onLeave,
-    destinations,
-  };
-};
-
 export default function TeacherRollCall() {
   const [role, setRole] = useState(() => getStoredRole());
   const [form, setForm] = useState(INITIAL_FORM);
@@ -134,9 +111,6 @@ export default function TeacherRollCall() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState("");
   const [adminSearch, setAdminSearch] = useState("");
-  const [leaveSummary, setLeaveSummary] = useState(null);
-  const [leaveSummaryLoading, setLeaveSummaryLoading] = useState(false);
-  const [leaveSummaryError, setLeaveSummaryError] = useState("");
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminTeacherStats, setAdminTeacherStats] = useState([]);
 
@@ -186,29 +160,13 @@ export default function TeacherRollCall() {
     }
   }, [headers, isAdmin]);
 
-  const fetchLeaveSummary = useCallback(async () => {
-    if (!isAdmin) return;
-    setLeaveSummaryLoading(true);
-    setLeaveSummaryError("");
-    try {
-      const response = await axios.get("/api/admin/teacher-leaves/summary", { headers });
-      setLeaveSummary(normalizeLeaveSummary(response.data));
-    } catch (error) {
-      setLeaveSummary(null);
-      setLeaveSummaryError(error?.response?.data?.message || "ไม่สามารถโหลดสรุปการลาได้");
-    } finally {
-      setLeaveSummaryLoading(false);
-    }
-  }, [headers, isAdmin]);
-
   useEffect(() => {
     if (isAdmin) {
       fetchAdminReports();
-      fetchLeaveSummary();
       return;
     }
     fetchHistory();
-  }, [fetchAdminReports, fetchHistory, fetchLeaveSummary, isAdmin]);
+  }, [fetchAdminReports, fetchHistory, isAdmin]);
 
   useEffect(() => {
     const syncRole = () => setRole(getStoredRole());
@@ -418,13 +376,6 @@ export default function TeacherRollCall() {
     };
   }, [adminLastSevenDays, isAdmin]);
 
-  const leaveStats = useMemo(() => {
-    if (!isAdmin) {
-      return { totalTeachers: 0, onLeave: 0, destinations: [] };
-    }
-    return leaveSummary ?? { totalTeachers: 0, onLeave: 0, destinations: [] };
-  }, [isAdmin, leaveSummary]);
-
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -527,68 +478,6 @@ export default function TeacherRollCall() {
             description="เวลาที่มีรายงานเข้ามาล่าสุด"
             accent="from-amber-500 to-orange-400"
           />
-        </section>
-
-        <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-lg font-semibold text-gray-900">สรุปการลาของครูผู้สอน</p>
-              <p className="text-sm text-gray-500">จำนวนครูทั้งหมด ผู้ที่กำลังลาปัจจุบัน และจุดหมายปลายทางที่ได้รับการแจ้ง</p>
-            </div>
-            <button
-              onClick={fetchLeaveSummary}
-              disabled={leaveSummaryLoading}
-              className="px-4 py-2 rounded-xl border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-60"
-            >
-              {leaveSummaryLoading ? "กำลังโหลด..." : "รีเฟรชข้อมูลลา"}
-            </button>
-          </div>
-          {leaveSummaryError && (
-            <div className="text-center py-4 text-red-500 text-sm">{leaveSummaryError}</div>
-          )}
-          {!leaveSummaryError && (
-            <>
-              <div className="grid gap-4 md:grid-cols-3">
-                <LeaveSummaryCard
-                  label="จำนวนครูทั้งหมด"
-                  value={leaveStats.totalTeachers.toLocaleString("th-TH")}
-                  accent="bg-gradient-to-br from-slate-500 to-slate-400"
-                />
-                <LeaveSummaryCard
-                  label="ครูที่ลาปัจจุบัน"
-                  value={leaveStats.onLeave.toLocaleString("th-TH")}
-                  accent="bg-gradient-to-br from-rose-500 to-pink-400"
-                />
-                <LeaveSummaryCard
-                  label="ครูที่ปฏิบัติหน้าที่"
-                  value={(leaveStats.totalTeachers - leaveStats.onLeave >= 0
-                    ? leaveStats.totalTeachers - leaveStats.onLeave
-                    : 0
-                  ).toLocaleString("th-TH")}
-                  accent="bg-gradient-to-br from-emerald-500 to-green-400"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <p className="text-sm text-gray-500">จุดหมายยอดนิยม</p>
-                {leaveSummaryLoading ? (
-                  <p className="text-sm text-gray-400">กำลังโหลดข้อมูล...</p>
-                ) : leaveStats.destinations.length === 0 ? (
-                  <p className="text-sm text-gray-400">ยังไม่มีข้อมูลจุดหมาย</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {leaveStats.destinations.map((destination) => (
-                      <span
-                        key={destination.key}
-                        className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold"
-                      >
-                        {destination.label} · {destination.count.toLocaleString("th-TH")} คน
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
         </section>
 
         <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
@@ -892,15 +781,6 @@ function AdminStatCard({ label, value, description, accent }) {
       <p className="text-sm text-white/80">{label}</p>
       <p className="text-3xl font-bold">{value}</p>
       {description && <p className="text-xs text-white/70 mt-1">{description}</p>}
-    </div>
-  );
-}
-
-function LeaveSummaryCard({ label, value, accent }) {
-  return (
-    <div className={`rounded-2xl p-4 text-white shadow ${accent}`}>
-      <p className="text-sm text-white/80">{label}</p>
-      <p className="text-3xl font-bold">{value}</p>
     </div>
   );
 }
