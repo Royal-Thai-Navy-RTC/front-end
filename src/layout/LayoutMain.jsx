@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import bg from "../assets/bg-sea.jpg";
 import Nav from "../components/Nav";
+import { useNavigate } from "react-router-dom";
 
 const getStoredUser = () => {
   try {
@@ -17,6 +18,70 @@ const normalizeUser = (data = {}) => {
   return { role: (data.role || "guest").toUpperCase(), ...data };
 };
 
+const requiredFields = [
+  "rank",
+  "firstName",
+  "lastName",
+  "username",
+  "birthDate",
+  "fullAddress",
+  "email",
+  "phone",
+  "emergencyContactName",
+  "emergencyContactPhone",
+  "password",
+  "confirmPassword",
+];
+
+const rankOptions = [
+    { value: "พลเรือเอก", label: "พลเรือเอก" },
+    { value: "พลเรือเอกหญิง", label: "พลเรือเอกหญิง" },
+    { value: "พลเรือโท", label: "พลเรือโท" },
+    { value: "พลเรือโทหญิง", label: "พลเรือโทหญิง" },
+    { value: "พลเรือตรี", label: "พลเรือตรี" },
+    { value: "พลเรือตรีหญิง", label: "พลเรือตรีหญิง" },
+    { value: "นาวาเอก", label: "นาวาเอก" },
+    { value: "นาวาเอกหญิง", label: "นาวาเอกหญิง" },
+    { value: "นาวาโท", label: "นาวาโท" },
+    { value: "นาวาโทหญิง", label: "นาวาโทหญิง" },
+    { value: "นาวาตรี", label: "นาวาตรี" },
+    { value: "นาวาตรีหญิง", label: "นาวาตรีหญิง" },
+    { value: "เรือเอก", label: "เรือเอก" },
+    { value: "เรือเอกหญิง", label: "เรือเอกหญิง" },
+    { value: "เรือโท", label: "เรือโท" },
+    { value: "เรือโทหญิง", label: "เรือโทหญิง" },
+    { value: "เรือตรี", label: "เรือตรี" },
+    { value: "เรือตรีหญิง", label: "เรือตรีหญิง" },
+    { value: "พันจ่าเอก", label: "พันจ่าเอก" },
+    { value: "พันจ่าเอกหญิง", label: "พันจ่าเอกหญิง" },
+    { value: "พันจ่าโท", label: "พันจ่าโท" },
+    { value: "พันจ่าโทหญิง", label: "พันจ่าโทหญิง" },
+    { value: "พันจ่าตรี", label: "พันจ่าตรี" },
+    { value: "พันจ่าตรีหญิง", label: "พันจ่าตรีหญิง" },
+    { value: "พันโท", label: "พันโท" },
+    { value: "พันโทหญิง", label: "พันโทหญิง" },
+    { value: "พันตรี", label: "พันตรี" },
+    { value: "พันตรีหญิง", label: "พันตรีหญิง" },
+    { value: "จ่าเอก", label: "จ่าเอก" },
+    { value: "จ่าเอกหญิง", label: "จ่าเอกหญิง" },
+    { value: "จ่าโท", label: "จ่าโท" },
+    { value: "จ่าโทหญิง", label: "จ่าโทหญิง" },
+    { value: "จ่าตรี", label: "จ่าตรี" },
+    { value: "จ่าตรีหญิง", label: "จ่าตรีหญิง" },
+];
+
+const divisionOptions = [
+    { value: "การเรือ", label: "การเรือ (ทร.101)" },
+    { value: "การอาวุธ", label: "การอาวุธ (ทร.102)" },
+    { value: "การป้องกันความเสียหาย", label: "การป้องกันความเสียหาย (ทร.103)" },
+    { value: "ระเบียบข้อบังคับ", label: "ระเบียบข้อบังคับ (ทร.201)" },
+    { value: "ทหารราบ", label: "ทหารราบ (ทร.202)" },
+    { value: "พลศึกษา", label: "พลศึกษา (ทร.301)" },
+    { value: "ทดสอบสมรรถภาพ", label: "ทดสอบสมรรถภาพ (ทร.301)" },
+    { value: "สังคมและมนุษยศาสตร์", label: "สังคมและมนุษยศาสตร์ (ทร.401)" },
+    { value: "การพัฒนาสัมพันธ์", label: "การพัฒนาสัมพันธ์ (ทร.402)" },
+];
+
 export default function LayoutMain() {
   const [user, setUser] = useState(() => normalizeUser(getStoredUser()));
 
@@ -30,7 +95,9 @@ export default function LayoutMain() {
     if (emitEvent) {
       window.dispatchEvent(new Event("auth-change"));
     }
+    
   }, []);
+  
 
   const fetchProfile = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -43,6 +110,7 @@ export default function LayoutMain() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const profile = response.data?.data ?? response.data;
+      
       if (profile) {
         handleProfileUpdated(profile);
       }
@@ -71,10 +139,11 @@ export default function LayoutMain() {
   return (
     <div className="relative min-h-screen flex flex-col">
       <img src={bg} className="absolute inset-0 w-full h-full object-cover -z-10" />
-      <Nav user={user} onProfileUpdated={handleProfileUpdated} />
+      <Nav user={user} onProfileUpdated={handleProfileUpdated}/>
       {/* ส่วนเนื้อหา */}
       <div className="flex flex-col flex-grow items-center p-2 px-5 mb-5">
-        <Outlet />
+        {/* <Outlet /> */}
+        <Outlet context={{ user, onProfileUpdated: handleProfileUpdated, rankOptions, divisionOptions  }} />
       </div>
 
       {/* Footer */}

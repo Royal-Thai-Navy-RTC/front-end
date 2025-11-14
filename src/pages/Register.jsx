@@ -1,52 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { useNavigate } from "react-router-dom";
-
-const rankOptions = [
-    { value: "พลเรือเอก", label: "พลเรือเอก" },
-    { value: "พลเรือเอกหญิง", label: "พลเรือเอกหญิง" },
-    { value: "พลเรือโท", label: "พลเรือโท" },
-    { value: "พลเรือโทหญิง", label: "พลเรือโทหญิง" },
-    { value: "พลเรือตรี", label: "พลเรือตรี" },
-    { value: "พลเรือตรีหญิง", label: "พลเรือตรีหญิง" },
-    { value: "นาวาเอก", label: "นาวาเอก" },
-    { value: "นาวาเอกหญิง", label: "นาวาเอกหญิง" },
-    { value: "นาวาโท", label: "นาวาโท" },
-    { value: "นาวาโทหญิง", label: "นาวาโทหญิง" },
-    { value: "นาวาตรี", label: "นาวาตรี" },
-    { value: "นาวาตรีหญิง", label: "นาวาตรีหญิง" },
-    { value: "นาวาอากาศโท", label: "นาวาอากาศโท" },
-    { value: "นาวาอากาศโทหญิง", label: "นาวาอากาศโทหญิง" },
-    { value: "นาวาอากาศตรี", label: "นาวาอากาศตรี" },
-    { value: "นาวาอากาศตรีหญิง", label: "นาวาอากาศตรีหญิง" },
-    { value: "เรือเอก", label: "เรือเอก" },
-    { value: "เรือเอกหญิง", label: "เรือเอกหญิง" },
-    { value: "เรือโท", label: "เรือโท" },
-    { value: "เรือโทหญิง", label: "เรือโทหญิง" },
-    { value: "เรือตรี", label: "เรือตรี" },
-    { value: "เรือตรีหญิง", label: "เรือตรีหญิง" },
-    { value: "พันจ่าเอก", label: "พันจ่าเอก" },
-    { value: "พันจ่าเอกหญิง", label: "พันจ่าเอกหญิง" },
-    { value: "พันจ่าโท", label: "พันจ่าโท" },
-    { value: "พันจ่าโทหญิง", label: "พันจ่าโทหญิง" },
-    { value: "พันจ่าตรี", label: "พันจ่าตรี" },
-    { value: "พันจ่าตรีหญิง", label: "พันจ่าตรีหญิง" },
-    { value: "พันโท", label: "พันโท" },
-    { value: "พันโทหญิง", label: "พันโทหญิง" },
-    { value: "พันตรี", label: "พันตรี" },
-    { value: "พันตรีหญิง", label: "พันตรีหญิง" },
-    { value: "พันตำรวจโท", label: "พันตำรวจโท" },
-    { value: "พันตำรวจโทหญิง", label: "พันตำรวจโทหญิง" },
-    { value: "พันตำรวจตรี", label: "พันตำรวจตรี" },
-    { value: "พันตำรวจตรีหญิง", label: "พันตำรวจตรีหญิง" },
-    { value: "จ่าเอก", label: "จ่าเอก" },
-    { value: "จ่าเอกหญิง", label: "จ่าเอกหญิง" },
-    { value: "จ่าโท", label: "จ่าโท" },
-    { value: "จ่าโทหญิง", label: "จ่าโทหญิง" },
-    { value: "จ่าตรี", label: "จ่าตรี" },
-    { value: "จ่าตรีหญิง", label: "จ่าตรีหญิง" },
-];
+import { useNavigate, useOutletContext } from "react-router-dom";
+import { IoMdEye, IoIosEyeOff } from "react-icons/io";
 
 const initialFormValues = {
     rank: "",
@@ -64,11 +20,14 @@ const initialFormValues = {
 };
 
 export default function Register() {
+    const { rankOptions } = useOutletContext();
     const [avatar, setAvatar] = useState(null);
     const [preview, setPreview] = useState(null);
     const [avatarBase64, setAvatarBase64] = useState("");
     const [formValues, setFormValues] = useState(initialFormValues);
     const [loading, setLoading] = useState(false);
+    const [showpassword1, setShowpassword1] = useState(false);
+    const [showpassword2, setShowpassword2] = useState(false);
     const navigate = useNavigate();
 
     const handleAvatarChange = (e) => {
@@ -90,17 +49,19 @@ export default function Register() {
 
     const handleRegister = async () => {
         const requiredFields = [
+            "rank",
             "firstName",
             "lastName",
             "username",
-            "birthDate",
-            "fullAddress",
+            // "birthDate",
+            // "fullAddress",
             "email",
             "phone",
-            "emergencyContactName",
-            "emergencyContactPhone",
+            // "emergencyContactName",
+            // "emergencyContactPhone",
             "password",
             "confirmPassword",
+            // "division"
         ];
 
         const missingFields = requiredFields.filter((field) => !`${formValues[field] ?? ""}`.trim());
@@ -128,14 +89,16 @@ export default function Register() {
             firstName: formValues.firstName,
             lastName: formValues.lastName,
             username: formValues.username,
-            birthDate: formValues.birthDate,
-            fullAddress: formValues.fullAddress,
+            // birthDate: formValues.birthDate,
+            // fullAddress: formValues.fullAddress,
             email: formValues.email,
             phone: formValues.phone,
-            emergencyContactName: formValues.emergencyContactName,
-            emergencyContactPhone: formValues.emergencyContactPhone,
+            // emergencyContactName: formValues.emergencyContactName,
+            // emergencyContactPhone: formValues.emergencyContactPhone,
             password: formValues.password,
         };
+
+
 
         if (!payload.rank) {
             delete payload.rank;
@@ -250,7 +213,7 @@ export default function Register() {
                             className='w-full border p-1 rounded border-gray-500'
                         />
                     </label>
-                    <label className='flex flex-col w-full gap-1'>
+                    {/* <label className='flex flex-col w-full gap-1'>
                         <p>วันเกิด</p>
                         <input
                             type="date"
@@ -268,7 +231,7 @@ export default function Register() {
                             onChange={handleChange}
                             className='w-full border p-1 rounded border-gray-500 min-h-20'
                         />
-                    </label>
+                    </label> */}
                     <label className='flex flex-col w-full gap-1'>
                         <p>อีเมล</p>
                         <input
@@ -289,7 +252,7 @@ export default function Register() {
                             className='w-full border p-1 rounded border-gray-500'
                         />
                     </label>
-                    <label className='flex flex-col w-full gap-1'>
+                    {/* <label className='flex flex-col w-full gap-1'>
                         <p>ผู้ติดต่อฉุกเฉิน</p>
                         <input
                             type="text"
@@ -308,8 +271,17 @@ export default function Register() {
                             onChange={handleChange}
                             className='w-full border p-1 rounded border-gray-500'
                         />
-                    </label>
+                    </label> */}
                     <label className='flex flex-col w-full gap-1'>
+                        <p>รหัสผ่าน</p>
+                        <div className="relative w-full">
+                            <input type={showpassword1 ? "text" : "password"} onChange={handleChange} value={formValues.password} name='password' className='w-full border p-2 text-lg rounded border-gray-500 pr-10' />
+                            <div onClick={() => setShowpassword1((prev) => !prev)} className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-black">
+                                {showpassword1 ? <IoMdEye size={25} /> : <IoIosEyeOff size={25} />}
+                            </div>
+                        </div>
+                    </label>
+                    {/* <label className='flex flex-col w-full gap-1'>
                         <p>รหัสผ่าน</p>
                         <input
                             type="password"
@@ -318,8 +290,8 @@ export default function Register() {
                             onChange={handleChange}
                             className='w-full border p-1 rounded border-gray-500'
                         />
-                    </label>
-                    <label className='flex flex-col w-full gap-1'>
+                    </label> */}
+                    {/* <label className='flex flex-col w-full gap-1'>
                         <p>ยืนยันรหัสผ่าน</p>
                         <input
                             type="password"
@@ -328,6 +300,16 @@ export default function Register() {
                             onChange={handleChange}
                             className='w-full border p-1 rounded border-gray-500'
                         />
+                        
+                    </label> */}
+                    <label className='flex flex-col w-full gap-1'>
+                        <p>ยืนยันรหัสผ่าน</p>
+                        <div className="relative w-full">
+                            <input type={showpassword2 ? "text" : "password"} onChange={handleChange} value={formValues.confirmPassword} name='confirmPassword' className='w-full border p-2 text-lg rounded border-gray-500 pr-10' />
+                            <div onClick={() => setShowpassword2((prev) => !prev)} className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-black">
+                                {showpassword2 ? <IoMdEye size={25} /> : <IoIosEyeOff size={25} />}
+                            </div>
+                        </div>
                     </label>
                     <button
                         type="button"
