@@ -68,6 +68,12 @@ const profileSections = [
   },
 ];
 
+const PASSWORD_FORM_DEFAULT = {
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+};
+
 const getErrorMessage = (error, fallback = "เกิดข้อผิดพลาด กรุณาลองใหม่") =>
   error?.response?.data?.message || error?.message || fallback;
 
@@ -81,6 +87,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   const [profileOriginal, setProfileOriginal] = useState(() => mapProfileToForm(user));
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [passwordForm, setPasswordForm] = useState(PASSWORD_FORM_DEFAULT);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const dropdownRef = useRef(null);
   const avatarButtonRef = useRef(null);
@@ -147,6 +155,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   const openProfileModal = () => {
     setProfileForm(mapProfileToForm(user));
     setProfileOriginal(mapProfileToForm(user));
+    setPasswordForm(PASSWORD_FORM_DEFAULT);
     setProfileModalOpen(true);
     setProfileMenuOpen(false);
   };
@@ -155,6 +164,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
     setProfileModalOpen(false);
     setSavingProfile(false);
     setUploadingAvatar(false);
+    setPasswordForm(PASSWORD_FORM_DEFAULT);
+    setChangingPassword(false);
   };
 
   const handleProfileChange = (event) => {
@@ -202,6 +213,77 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       });
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handlePasswordInputChange = (event) => {
+    const { name, value } = event.target;
+    setPasswordForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordSubmit = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      Swal.fire({
+        icon: "warning",
+        title: "กรุณากรอกข้อมูลให้ครบ",
+        text: "ต้องกรอกรหัสผ่านปัจจุบัน รหัสผ่านใหม่ และยืนยันรหัสผ่านใหม่",
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      Swal.fire({
+        icon: "warning",
+        title: "รหัสผ่านใหม่สั้นเกินไป",
+        text: "กรุณาตั้งรหัสผ่านอย่างน้อย 8 ตัวอักษร",
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      Swal.fire({
+        icon: "warning",
+        title: "ยืนยันรหัสผ่านไม่ตรงกัน",
+        text: "กรุณาตรวจสอบให้รหัสผ่านใหม่ตรงกันทั้งสองช่อง",
+      });
+      return;
+    }
+
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      Swal.fire({
+        icon: "info",
+        title: "รหัสผ่านใหม่ต้องแตกต่าง",
+        text: "กรุณาตั้งรหัสผ่านใหม่ให้ต่างจากรหัสผ่านปัจจุบัน",
+      });
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        "/api/me/change-password",
+        {
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        },
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
+      Swal.fire({
+        icon: "success",
+        title: "เปลี่ยนรหัสผ่านสำเร็จ",
+      });
+      setPasswordForm(PASSWORD_FORM_DEFAULT);
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่สามารถเปลี่ยนรหัสผ่านได้",
+        text: getErrorMessage(error, "กรุณาตรวจสอบรหัสผ่านปัจจุบันอีกครั้ง"),
+      });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -448,6 +530,67 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                       className="rounded-xl border border-gray-200 px-3 py-2 text-gray-800 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none resize-none"
                     />
                   </label>
+                </div>
+
+                <div className="border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
+                  <div>
+                    <p className="font-semibold text-gray-800">เปลี่ยนรหัสผ่าน</p>
+                    <p className="text-xs text-gray-500">เพื่อความปลอดภัย กรุณาตั้งรหัสผ่านใหม่ที่คาดเดายาก</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-1 text-sm text-gray-600">
+                      รหัสผ่านปัจจุบัน
+                      <input
+                        type="password"
+                        name="currentPassword"
+                        value={passwordForm.currentPassword}
+                        onChange={handlePasswordInputChange}
+                        className="rounded-xl border border-gray-200 px-3 py-2 text-gray-800 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                        autoComplete="current-password"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm text-gray-600">
+                      รหัสผ่านใหม่
+                      <input
+                        type="password"
+                        name="newPassword"
+                        value={passwordForm.newPassword}
+                        onChange={handlePasswordInputChange}
+                        className="rounded-xl border border-gray-200 px-3 py-2 text-gray-800 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                        autoComplete="new-password"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm text-gray-600 sm:col-span-2">
+                      ยืนยันรหัสผ่านใหม่
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        value={passwordForm.confirmPassword}
+                        onChange={handlePasswordInputChange}
+                        className="rounded-xl border border-gray-200 px-3 py-2 text-gray-800 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                        autoComplete="new-password"
+                      />
+                    </label>
+                  </div>
+                  <div className="flex flex-col sm:flex-row justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPasswordForm(PASSWORD_FORM_DEFAULT)}
+                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm"
+                      disabled={changingPassword}
+                    >
+                      ล้างข้อมูล
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePasswordSubmit}
+                      disabled={changingPassword}
+                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
+                    >
+                      {changingPassword && <Loader2 size={16} className="animate-spin" />}
+                      {changingPassword ? "กำลังเปลี่ยน..." : "บันทึกรหัสผ่านใหม่"}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-end gap-3">
