@@ -11,6 +11,7 @@ import ManageUsers from "./pages/ManageUsers";
 import UserDetail from "./pages/UserDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import TeacherRollCall from "./pages/TeacherRollCall";
+import TeacherLeave from "./pages/TeacherLeave";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -51,6 +52,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER"]}>
                         <TeacherRollCall />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "teacher-leave",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER"]}>
+                        <TeacherLeave />
                     </ProtectedRoute>
                 )
             },
