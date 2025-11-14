@@ -232,7 +232,8 @@ export default function TeacherRollCall() {
         totalReports: reports.length,
         totalParticipants: accumParticipants,
         lastSubject: lastReport?.subject || "-",
-        unit: lastReport?.company || lastReport?.battalion || "-",
+        company: lastReport?.company || "-",
+        battalion: lastReport?.battalion || "-",
         lastUpdatedAt: lastTimestamp,
       };
     });
@@ -243,7 +244,8 @@ export default function TeacherRollCall() {
         teacherName: stat.teacherName || "ไม่ระบุครูผู้สอน",
         totalReports: stat.totalReports ?? 0,
         totalParticipants: stat.totalParticipants ?? 0,
-        unit: stat.company || stat.battalion || "-",
+        company: stat.company || "-",
+        battalion: stat.battalion || "-",
         lastSubject: stat.latestSubject || "-",
         lastUpdatedAt: stat.latestReportAt ? new Date(stat.latestReportAt).getTime() : 0,
       }));
@@ -282,8 +284,9 @@ export default function TeacherRollCall() {
     if (!term) return adminSummary.teacherSummaries;
     return adminSummary.teacherSummaries.filter((item) => {
       const name = item.teacherName?.toLowerCase() || "";
-      const unit = item.unit?.toString().toLowerCase() || "";
-      return name.includes(term) || unit.includes(term);
+      const company = item.company?.toString().toLowerCase() || "";
+      const battalion = item.battalion?.toString().toLowerCase() || "";
+      return name.includes(term) || company.includes(term) || battalion.includes(term);
     });
   }, [adminSearch, adminSummary.teacherSummaries, isAdmin]);
 
@@ -495,69 +498,34 @@ export default function TeacherRollCall() {
           )}
         </section>
 
-        <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-lg font-semibold text-gray-900">สถานะการส่งยอดตามครูผู้สอน</p>
               <p className="text-sm text-gray-500">สรุปจำนวนรายงานล่าสุดของแต่ละครู และหน่วยที่รับผิดชอบ</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="max-w-xs w-full">
               <input
                 type="text"
                 value={adminSearch}
                 onChange={(event) => setAdminSearch(event.target.value)}
                 placeholder="ค้นหาชื่อครูหรือหน่วย"
-                className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
           </div>
-          <div className="overflow-x-auto rounded-2xl border border-gray-100">
-            <table className="min-w-full text-sm text-gray-700">
-              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th className="p-4 text-left">ครูผู้สอน</th>
-                  <th className="p-4 text-left">จำนวนรายงาน</th>
-                  <th className="p-4 text-left">ผู้เข้าร่วมสะสม</th>
-                  <th className="p-4 text-left">ร้อย/พันที่รับผิดชอบ</th>
-                  <th className="p-4 text-left">วิชาล่าสุด</th>
-                  <th className="p-4 text-left">ส่งล่าสุด</th>
-                </tr>
-              </thead>
-              <tbody>
-                {adminLoading && (
-                  <tr>
-                    <td colSpan="6" className="p-6 text-center text-blue-600">
-                      กำลังโหลดข้อมูล...
-                    </td>
-                  </tr>
-                )}
-                {!adminLoading && adminError && (
-                  <tr>
-                    <td colSpan="6" className="p-6 text-center text-red-500">
-                      {adminError}
-                    </td>
-                  </tr>
-                )}
-                {!adminLoading && !adminError && filteredTeacherSummaries.length === 0 && (
-                  <tr>
-                    <td colSpan="6" className="p-6 text-center text-gray-400">ยังไม่มีข้อมูลการส่ง</td>
-                  </tr>
-                )}
-                {!adminLoading &&
-                  !adminError &&
-                  filteredTeacherSummaries.map((item) => (
-                    <tr key={item.teacherKey} className="border-t border-gray-100">
-                      <td className="p-4 font-semibold text-gray-900">{item.teacherName}</td>
-                      <td className="p-4">{item.totalReports.toLocaleString("th-TH")} รายงาน</td>
-                      <td className="p-4">{item.totalParticipants.toLocaleString("th-TH")} คน</td>
-                      <td className="p-4">{item.unit || "-"}</td>
-                      <td className="p-4">{item.lastSubject}</td>
-                      <td className="p-4">{formatThaiDateTimeFromTimestamp(item.lastUpdatedAt)}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+          {adminLoading && <div className="text-center py-10 text-blue-600 font-semibold">กำลังโหลดข้อมูล...</div>}
+          {!adminLoading && adminError && <div className="text-center py-10 text-red-500 font-semibold">{adminError}</div>}
+          {!adminLoading && !adminError && filteredTeacherSummaries.length === 0 && (
+            <div className="text-center py-10 text-gray-400">ยังไม่มีข้อมูลการส่ง</div>
+          )}
+          {!adminLoading && !adminError && filteredTeacherSummaries.length > 0 && (
+            <div className="grid gap-4">
+              {filteredTeacherSummaries.map((item) => (
+                <TeacherStatCard key={item.teacherKey} item={item} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
@@ -813,6 +781,42 @@ function AdminStatCard({ label, value, description, accent }) {
       <p className="text-sm text-white/80">{label}</p>
       <p className="text-3xl font-bold">{value}</p>
       {description && <p className="text-xs text-white/70 mt-1">{description}</p>}
+    </div>
+  );
+}
+
+function TeacherStatCard({ item }) {
+  const totalReports = Number(item.totalReports || 0).toLocaleString("th-TH");
+  const totalParticipants = Number(item.totalParticipants || 0).toLocaleString("th-TH");
+  return (
+    <div className="border border-gray-100 rounded-2xl p-5 flex flex-col gap-4 hover:border-blue-200 transition">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-lg font-semibold text-gray-900">{item.teacherName || "ไม่ระบุครูผู้สอน"}</p>
+          <p className="text-sm text-gray-500">
+            จำนวนรายงาน {totalReports} รายงาน · วิชาล่าสุด {item.lastSubject || "-"}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-gray-500 uppercase tracking-wide">ผู้เข้าร่วมสะสม</p>
+          <p className="text-3xl font-bold text-blue-700">{totalParticipants} คน</p>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4 text-sm text-gray-600">
+        <TeacherStatDetail label="ร้อยฝึกที่" value={item.company || "-"} />
+        <TeacherStatDetail label="พันฝึกที่" value={item.battalion || "-"} />
+        <TeacherStatDetail label="วิชาล่าสุด" value={item.lastSubject || "-"} />
+        <TeacherStatDetail label="ส่งล่าสุด" value={formatThaiDateTimeFromTimestamp(item.lastUpdatedAt)} />
+      </div>
+    </div>
+  );
+}
+
+function TeacherStatDetail({ label, value }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-gray-400 uppercase tracking-wide">{label}</span>
+      <span className="text-base text-gray-900">{value || "-"}</span>
     </div>
   );
 }
