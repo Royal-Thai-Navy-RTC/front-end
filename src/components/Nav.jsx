@@ -101,7 +101,11 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
     []
   );
 
-  const visibleItems = isAuthenticated ? pages.filter((item) => item.roles.includes(role)) : [];
+  const visibleItems = useMemo(() => {
+    if (!isAuthenticated) return [];
+    if (role === "admin") return pages;
+    return pages.filter((item) => item.roles.includes(role));
+  }, [isAuthenticated, role, pages]);
 
   useEffect(() => {
     setProfileForm(mapProfileToForm(user));
