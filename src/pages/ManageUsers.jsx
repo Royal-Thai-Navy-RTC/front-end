@@ -31,6 +31,17 @@ const RANK_OPTIONS = [
     { value: "SEAMAN_RECRUIT", label: "พลฯ" },
 ];
 
+const normalizeRankValue = (rank) => {
+    if (!rank) return "SEAMAN_RECRUIT";
+    const rankString = rank.toString().trim();
+    const normalizedValue = rankString.replace(/\s+/g, "_").replace(/-+/g, "_").toUpperCase();
+    const matchByValue = RANK_OPTIONS.find((option) => option.value === normalizedValue);
+    if (matchByValue) return matchByValue.value;
+    const matchByLabel = RANK_OPTIONS.find((option) => option.label === rankString);
+    if (matchByLabel) return matchByLabel.value;
+    return "SEAMAN_RECRUIT";
+};
+
 const CREATE_USER_DEFAULT = {
     rank: "SEAMAN_RECRUIT",
     role: "STUDENT",
@@ -244,18 +255,18 @@ export default function ManageUsers() {
         }
     };
 
-    const mapUserToForm = (data = {}) => ({
-        firstName: data.firstName || "",
-        lastName: data.lastName || "",
-        username: data.username || "",
-        email: data.email || "",
-        phone: data.phone || "",
-        rank: (data.rank || "SEAMAN_RECRUIT").toUpperCase(),
-        role: (data.role || "STUDENT").toUpperCase(),
-        isActive: data.isActive ?? true,
-        fullAddress: data.fullAddress || "",
-        avatar: data.avatar || "",
-        password: "",
+const mapUserToForm = (data = {}) => ({
+    firstName: data.firstName || "",
+    lastName: data.lastName || "",
+    username: data.username || "",
+    email: data.email || "",
+    phone: data.phone || "",
+    rank: normalizeRankValue(data.rank),
+    role: (data.role || "STUDENT").toUpperCase(),
+    isActive: data.isActive ?? true,
+    fullAddress: data.fullAddress || "",
+    avatar: data.avatar || "",
+    password: "",
     });
 
     const openEditModal = async (user) => {
