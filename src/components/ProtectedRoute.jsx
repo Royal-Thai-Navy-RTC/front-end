@@ -15,8 +15,8 @@ const requiredFields = [
   "phone",
   "emergencyContactName",
   "emergencyContactPhone",
-  "password",
-  "confirmPassword",
+  // "password",
+  // "confirmPassword",
 ];
 
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
@@ -39,11 +39,21 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
       return;
     }
 
-    // const missingFields = requiredFields.filter((field) => !`${user[field] ?? ""}`.trim());
+    const missingFields = requiredFields.filter((field) => !`${user[field] ?? ""}`.trim());
     
-    // if (missingFields.length) {
-    //   navigate("/addprofile")
-    // }
+    if (missingFields.length) {
+      // console.log(missingFields);
+      
+      Swal.fire({
+        icon: "warning",
+        title: "ข้อมูลไม่ครบ",
+        text:"กรุณากรอกข้อมูลส่วนตัวให้ครบถ้วนก่อนเข้าใช้งาน",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      navigate("/home", { replace: true });
+      return;
+    }
 
     if (allowedRoles.length && !allowedRoles.includes(role)) {
       Swal.fire({

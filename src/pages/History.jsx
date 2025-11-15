@@ -43,7 +43,7 @@ const values = [
 export default function History() {
     return (
         <div className="w-full flex flex-col gap-8">
-            <section className="bg-white/80 backdrop-blur rounded-2xl shadow p-6 sm:p-10 text-center">
+            <section className="bg-white/80 backdrop-blur rounded-2xl shadow p-6 sm:p-10 text-center -z-10">
                 <p className="text-sm uppercase tracking-[0.35em] text-blue-500 font-semibold">Heritage</p>
                 <h1 className="text-3xl sm:text-5xl font-bold text-blue-900 mt-3">ประวัติความเป็นมา</h1>
                 <p className="text-lg sm:text-2xl text-gray-600 mt-2">
