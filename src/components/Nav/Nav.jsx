@@ -139,7 +139,20 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   }, [location.pathname]);
 
   // logout
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const result = await Swal.fire({
+      title: "ยืนยันการออกจากระบบ",
+      text: "คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ใช่, ออกจากระบบ",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#9ca3af",
+      reverseButtons: true,
+    });
+    if (!result.isConfirmed) return;
+
     setProfileMenuOpen(false);
     setProfileModalOpen(false);
     localStorage.clear();
