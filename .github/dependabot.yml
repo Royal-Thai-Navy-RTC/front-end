@@ -5,8 +5,6 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    reviewers: []
-    assignees: []
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -15,8 +13,6 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    reviewers: []
-    assignees: []
     commit-message:
       prefix: "chore"
       include: "scope"
