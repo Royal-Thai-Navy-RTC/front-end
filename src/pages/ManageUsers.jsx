@@ -60,6 +60,7 @@ const CREATE_USER_DEFAULT = {
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
+const MAX_AVATAR_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const resolveAvatarUrl = (value) => {
     if (!value) return "";
     if (value.startsWith("http://") || value.startsWith("https://")) return value;
@@ -97,6 +98,7 @@ export default function ManageUsers() {
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [createForm, setCreateForm] = useState(CREATE_USER_DEFAULT);
+    const [createAvatarPreview, setCreateAvatarPreview] = useState("");
     const [creatingUser, setCreatingUser] = useState(false);
     const pageSize = 10;
     const currentUser = getStoredUser();
@@ -104,6 +106,13 @@ export default function ManageUsers() {
     const currentUsername = currentUser?.username;
     const currentRole = getCurrentRole(currentUser);
     const isAdmin = currentRole === "ADMIN";
+    const createAvatarSrc = useMemo(() => {
+        if (createAvatarPreview) return createAvatarPreview;
+        const value = createForm.profileImage || "";
+        if (!value) return "";
+        if (value.startsWith("data:")) return value;
+        return resolveAvatarUrl(value);
+    }, [createAvatarPreview, createForm.profileImage]);
 
     useEffect(() => {
         if (!isAdmin) return;
@@ -422,6 +431,7 @@ const mapUserToForm = (data = {}) => ({
 
     const resetCreateForm = () => {
         setCreateForm(CREATE_USER_DEFAULT);
+        setCreateAvatarPreview("");
     };
 
     const openCreateModal = () => {
@@ -438,6 +448,36 @@ const mapUserToForm = (data = {}) => ({
     const handleCreateChange = (event) => {
         const { name, value } = event.target;
         setCreateForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleCreateAvatarChange = (event) => {
+        const input = event.target;
+        const file = input.files?.[0];
+        if (!file) return;
+
+        if (file.size > MAX_AVATAR_FILE_SIZE) {
+            Swal.fire({
+                icon: "warning",
+                title: "ไฟล์รูปภาพใหญ่เกินไป",
+                text: "กรุณาเลือกไฟล์ที่มีขนาดไม่เกิน 5MB",
+            });
+            input.value = "";
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64 = reader.result?.toString() ?? "";
+            setCreateForm((prev) => ({ ...prev, profileImage: base64 }));
+            setCreateAvatarPreview(base64);
+            input.value = "";
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleClearCreateAvatar = () => {
+        setCreateForm((prev) => ({ ...prev, profileImage: "" }));
+        setCreateAvatarPreview("");
     };
 
     const handleCreateSubmit = async () => {
@@ -496,17 +536,8 @@ const mapUserToForm = (data = {}) => ({
             payload.role = createForm.role.toUpperCase();
         }
 
-        const profileImageValue = (createForm.profileImage || "").trim();
-        if (profileImageValue) {
-            if (profileImageValue.length > 255) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "รูปโปรไฟล์ไม่ถูกต้อง",
-                    text: "กรุณาระบุ URL หรือ path ที่มีความยาวไม่เกิน 255 ตัวอักษร",
-                });
-                return;
-            }
-            payload.profileImage = profileImageValue;
+        if (createForm.profileImage) {
+            payload.profileImage = createForm.profileImage;
         }
 
         setCreatingUser(true);
@@ -795,39 +826,41 @@ const mapUserToForm = (data = {}) => ({
 
                         <div className="grid lg:grid-cols-[260px,1fr] gap-6">
                             <div className="flex flex-col items-center gap-4 border border-gray-100 rounded-2xl p-4">
-                                {createForm.profileImage?.trim() ? (
+                                {createAvatarSrc ? (
                                     <img
-                                        src={resolveAvatarUrl(createForm.profileImage.trim())}
+                                        src={createAvatarSrc}
                                         alt="profile preview"
                                         className="w-32 h-32 rounded-full object-cover border border-gray-200"
-                                        onError={(event) => {
-                                            event.currentTarget.style.display = "none";
-                                        }}
+                                        onError={() => handleClearCreateAvatar()}
                                     />
                                 ) : (
                                     <div className="w-32 h-32 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400">
                                         รูปโปรไฟล์
                                     </div>
                                 )}
-                                <label className="w-full flex flex-col gap-1 text-sm">
-                                    <span>ลิงก์รูปโปรไฟล์ (URL หรือ path)</span>
-                                    <input
-                                        type="text"
-                                        name="profileImage"
-                                        value={createForm.profileImage}
-                                        onChange={(event) => {
-                                            const { value } = event.target;
-                                            if (value.length <= 255) {
-                                                handleCreateChange(event);
-                                            }
-                                        }}
-                                        placeholder="เช่น /uploads/profile.jpg หรือ https://..."
-                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    />
-                                </label>
-                                <p className="text-xs text-gray-500 text-center px-2">
-                                    ระบบจะบันทึกเฉพาะ URL หรือ path ความยาวไม่เกิน 255 ตัวอักษร
-                                </p>
+                                <div className="flex flex-wrap items-center justify-center gap-2 w-full">
+                                    <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-gray-100 border border-gray-300 rounded-xl text-sm text-gray-700 hover:bg-gray-200 transition">
+                                        {createAvatarSrc ? "เปลี่ยนรูปภาพ" : "อัปโหลดรูปภาพ"}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleCreateAvatarChange}
+                                            disabled={creatingUser}
+                                        />
+                                    </label>
+                                    {createAvatarSrc && (
+                                        <button
+                                            type="button"
+                                            onClick={handleClearCreateAvatar}
+                                            className="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
+                                            disabled={creatingUser}
+                                        >
+                                            ลบรูปภาพ
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500 text-center px-2">รองรับไฟล์ภาพ .jpg .jpeg .png ขนาดไม่เกิน 2MB</p>
                             </div>
 
                             <div className="flex flex-col gap-4">
