@@ -6,7 +6,7 @@ import { UserRound } from 'lucide-react';
 import navy from "../../assets/navy.png";
 import { mapProfileToForm, editableKeys } from "./profileUtils";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://pargorn.com";
 
 const resolveAvatarUrl = (value = "") => {
     if (!value) return "";
@@ -202,6 +202,10 @@ export default function ProfileModal({
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     const avatarSrc = resolveAvatarUrl(profileForm.avatar) || navy;
+    console.log(resolveAvatarUrl(profileForm.avatar));
+    console.log(profileForm.avatar);
+    
+    
 
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -231,7 +235,7 @@ export default function ProfileModal({
                             <img
                                 src={avatarSrc}
                                 className="w-28 h-28 rounded-full border border-gray-200 object-cover cursor-pointer"
-                                onClick={() => setIsPreviewOpen(true)}     // 👈 เปิดภาพ
+                                onClick={() => setIsPreviewOpen(true)}    
                             />
 
                             <input

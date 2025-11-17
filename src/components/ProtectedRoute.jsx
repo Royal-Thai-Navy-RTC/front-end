@@ -15,6 +15,9 @@ const requiredFields = [
   "phone",
   "emergencyContactName",
   "emergencyContactPhone",
+  "education",
+  "medicalHistory",
+  "position"
   // "password",
   // "confirmPassword",
 ];

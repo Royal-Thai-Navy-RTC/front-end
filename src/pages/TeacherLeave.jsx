@@ -534,7 +534,7 @@ export default function TeacherLeave() {
               )}
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span>จุดหมายปลายทาง</span>
+              <span>สาเหตุการลา</span>
               <input
                 type="text"
                 name="destination"

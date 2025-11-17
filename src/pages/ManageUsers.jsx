@@ -59,7 +59,7 @@ const CREATE_USER_DEFAULT = {
     confirmPassword: "",
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://pargorn.com";
 const resolveAvatarUrl = (value) => {
     if (!value) return "";
     if (value.startsWith("http://") || value.startsWith("https://")) return value;

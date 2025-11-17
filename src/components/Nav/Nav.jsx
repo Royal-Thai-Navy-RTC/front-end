@@ -8,7 +8,7 @@ import navy from "../../assets/navy.png";
 import ProfileModal from "./ProfileModal";
 import { mapProfileToForm, editableKeys } from "./profileUtils";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost.com";
 
 const resolveAvatarUrl = (value = "") => {
   if (!value) return "";
@@ -99,7 +99,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin"] },
       { path: "/teacher-report", label: "ส่งยอดนักเรียน", roles: ["teacher"] },
       { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher"] },
-      { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "teacher", "student"] },
+      { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin"] },
       { path: "/evaluatestudent", label: "ประเมินนักเรียน", roles: ["admin", "teacher"] },
     ],
     []
