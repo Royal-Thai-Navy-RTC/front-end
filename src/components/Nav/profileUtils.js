@@ -12,7 +12,7 @@ export const mapProfileToForm = (data = {}) => ({
   emergencyContactPhone: data.emergencyContactPhone || "",
   education: data.education || "",
   position: data.position || "",
-  medicalhistory: data.medicalhistory || "",
+  medicalHistory: data.medicalHistory || "",
   notes: data.notes || "",
   avatar: data.avatar || "",
 });
@@ -31,6 +31,6 @@ export const editableKeys = [
   "emergencyContactPhone",
   "education",
   "position",
-  "medicalhistory",
+  "medicalHistory",
   "notes",
 ];
