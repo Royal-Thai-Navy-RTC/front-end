@@ -712,7 +712,21 @@ function EditEvaluationModal({ open, evaluation, onClose, onSubmit, submitting, 
     }));
   };
 
-  const handleRemoveAnswer = (index) => {
+  const handleRemoveAnswer = async (index) => {
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "ยืนยันการลบคำถาม",
+      text: "การลบคำถามจะทำให้คำตอบที่เกี่ยวข้องถูกลบด้วย ต้องการดำเนินการหรือไม่?",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      confirmButtonText: "ลบคำถาม",
+      cancelButtonText: "ยกเลิก",
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
     setFormState((prev) => ({
       ...prev,
       answers: prev.answers.filter((_, answerIndex) => answerIndex !== index),
