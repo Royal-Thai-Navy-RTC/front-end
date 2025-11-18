@@ -121,7 +121,9 @@ export default function ProfileModal({
 
             Swal.fire({ icon: "success", title: "บันทึกสำเร็จ" });
             closeModal();
-        } catch {
+        } catch(e) {
+            console.log(e);
+            
             Swal.fire({ icon: "error", title: "บันทึกไม่สำเร็จ" });
         } finally {
             setSavingProfile(false);
