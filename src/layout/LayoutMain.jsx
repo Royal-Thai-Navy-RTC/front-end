@@ -113,7 +113,10 @@ export default function LayoutMain() {
     try {
       const response = await axios.post("/api/refresh-token", { refreshToken: refreshToken });
       const data = response.data;
+      const role = data?.usesr?.role;
+      // console.log(role);
 
+      localStorage.setItem("role", role);
       localStorage.setItem("token", data?.accessToken);
       localStorage.setItem("refreshToken", data?.refreshToken);
     } catch {

@@ -171,7 +171,7 @@ export default function EvaluateStudent() {
                     </div>
 
                     {/* SEARCH BOX */}
-                    <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3 text-gray-600">
                         <select
                             name="subject"
                             value={searchBattalion}
@@ -179,6 +179,19 @@ export default function EvaluateStudent() {
                             className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:outline-none w-full sm:w-35 md:w-48"
                         >
                             <option value="">-- หมวดวิชา --</option>
+                            {divisionOptions.map((v) => (
+                                <option key={v.value} value={v.value}>
+                                    {v.label}
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            name="subject"
+                            value={searchBattalion}
+                            onChange={(e) => { setSearchBattalion(e.target.value); setPage(1); }}
+                            className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:outline-none w-full sm:w-35 md:w-60"
+                        >
+                            <option value="">-- แบบฟอร์มการประเมิน --</option>
                             {divisionOptions.map((v) => (
                                 <option key={v.value} value={v.value}>
                                     {v.label}
@@ -193,7 +206,7 @@ export default function EvaluateStudent() {
                                 setSearchBattalion("");
                                 setPage(1);
                             }}
-                            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 whitespace-nowrap"
+                            className="px-4 py-2 rounded-xl border border-gray-300  hover:bg-gray-50 whitespace-nowrap"
                         >
                             ค้นหา
                         </button>
@@ -201,9 +214,8 @@ export default function EvaluateStudent() {
                 </div>
             </section>
 
-            {/* TABLE */}
+            {/* FORM */}
             <div className="bg-white shadow rounded-2xl p-6 flex flex-col gap-8">
-
                 {/* Loop หมวดทั้งหมด */}
                 {sections.map((sec) => (
                     <section key={sec.key}>
@@ -217,25 +229,12 @@ export default function EvaluateStudent() {
                         ))}
                     </section>
                 ))}
-
-                {/* หมวด Overall */}
-                <section>
-                    <h2 className="text-xl font-bold text-blue-800 mb-3">6) ผลสัมฤทธิ์โดยรวม (Overall)</h2>
-
-                    <div className="flex justify-between items-center py-2 border-b">
-                        <span>คะแนนภาพรวม</span>
-                        <Rating section="overall" item="summary" />
-                    </div>
-
-                    <textarea
-                        placeholder="ข้อเสนอแนะสำหรับการพัฒนา"
-                        className="mt-3 w-full border rounded-lg p-3"
-                        rows={3}
-                    />
-                </section>
-
             </div>
 
+            {/* SCORRE OVER ALL */}
+            <div className="bg-white shadow rounded-2xl p-6 flex flex-col gap-8">
+                
+            </div>
         </div>
     );
 }
