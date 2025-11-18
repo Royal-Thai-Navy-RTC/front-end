@@ -138,46 +138,66 @@ export default function UserDetail() {
 
     return (
         <div className="flex flex-col gap-6 w-full">
-            <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
-                <div className="flex flex-wrap justify-between gap-3 items-center">
-                    <div>
-                        <p className="text-sm text-blue-500 font-semibold uppercase tracking-[0.4em]">USER PROFILE</p>
-                        <h1 className="text-3xl font-bold text-blue-900 mt-2">{fullName}</h1>
-                        <p className="text-gray-500 text-sm">{user.username}</p>
+            <section className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 flex flex-col gap-6">
+                <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-6 w-full lg:w-1/3 shadow-inner border border-blue-100">
+                        <img src={avatarSrc} alt={fullName} className="w-48 h-48 object-cover rounded-3xl border-4 border-white shadow-lg" />
                     </div>
-                    <div className="flex items-center gap-4">
-                        <img src={avatarSrc} alt={fullName} className="w-20 h-20 object-cover rounded-2xl border border-gray-200" />
-                        <div className="text-right">
-                            <p className="text-sm text-gray-500">ยศ</p>
-                            <p className="text-xl font-semibold text-blue-700">{rankLabel}</p>
-                            <p className="text-xs text-gray-400 mt-1">Role: {(user.role || "").toUpperCase()}</p>
+                    <div className="flex flex-col gap-6 w-full">
+                        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-2xl p-5 shadow">
+                            <p className="text-sm uppercase tracking-[0.4em] text-white/70">User Profile</p>
+                            <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
+                                <div>
+                                    <p className="text-3xl font-extrabold">{fullName}</p>
+                                    <p className="text-sm text-white/70 mt-1">{user.username}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-white/70">ยศ</p>
+                                    <p className="text-2xl font-semibold">{rankLabel}</p>
+                                    <p className="text-xs text-white/60 mt-1">Role: {(user.role || "").toUpperCase()}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 rounded-2xl p-4 shadow-inner">
+                            <h3 className="text-lg font-semibold text-gray-900">ข้อมูลติดต่อ</h3>
+                            <div className="grid sm:grid-cols-2 gap-3 mt-3 text-gray-600">
+                                <InfoItem label="อีเมล" value={user.email || "-"} />
+                                <InfoItem label="เบอร์โทรศัพท์" value={user.phone || "-"} />
+                                <InfoItem label="สถานะ" value={user.isActive ? "เปิดใช้งาน" : "ปิดการใช้งาน"} highlight={user.isActive ? "text-emerald-600" : "text-red-500"} />
+                                <InfoItem label="วันเกิด" value={birthDate} />
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                    <InfoItem label="อีเมล" value={user.email || "-"} />
-                    <InfoItem label="เบอร์โทรศัพท์" value={user.phone || "-"} />
-                    <InfoItem label="สถานะ" value={user.isActive ? "เปิดใช้งาน" : "ปิดการใช้งาน"} highlight={user.isActive ? "text-emerald-600" : "text-red-500"} />
-                    <InfoItem label="วันเกิด" value={birthDate} />
-                    <InfoItem label="การศึกษา" value={user.education || "-"} />
-                    <InfoItem label="ตำแหน่ง" value={user.position || "-"} />
-                    <InfoItem label="ที่อยู่" value={user.fullAddress || "-"} span />
-                    <InfoItem label="ผู้ติดต่อฉุกเฉิน" value={`${user.emergencyContactName || "-"} (${user.emergencyContactPhone || "-"})`} span />
-                    <InfoItem label="ประวัติทางการแพทย์" value={user.medicalHistory || "-"} span />
+
+                <div className="grid lg:grid-cols-3 gap-5 text-gray-700">
+                    <div className="col-span-2 grid sm:grid-cols-2 gap-4 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                        <SectionItem label="การศึกษา" value={user.education || "-"} />
+                        <SectionItem label="ตำแหน่ง" value={user.position || "-"} />
+                        <SectionItem label="ที่อยู่" value={user.fullAddress || "-"} />
+                        <SectionItem label="ผู้ติดต่อฉุกเฉิน" value={`${user.emergencyContactName || "-"} (${user.emergencyContactPhone || "-"})`} />
+                        <SectionItem label="ประวัติทางการแพทย์" value={user.medicalHistory || "-"} />
+                    </div>
+                    <div className="bg-gradient-to-b from-blue-50 to-white rounded-2xl p-5 border border-blue-100 shadow-sm flex flex-col gap-3">
+                        <InfoItem label="วันที่สร้างบัญชี" value={user.createdAt ? new Date(user.createdAt).toLocaleString("th-TH") : "-"} />
+                        <InfoItem label="อัปเดตล่าสุด" value={user.updatedAt ? new Date(user.updatedAt).toLocaleString("th-TH") : "-"} />
+                    </div>
                 </div>
             </section>
 
             <section className="grid lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-2xl shadow p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <p className="text-xl font-semibold text-gray-800">ขีดความสามารถ</p>
-                        <span className="text-sm text-gray-500">ข้อมูลจำลองเพื่อการนำเสนอ</span>
+                <div className="bg-white rounded-3xl shadow-xl p-6 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xl font-semibold text-gray-800">ขีดความสามารถโดยรวม</p>
+                            <p className="text-sm text-gray-500">ข้อมูลจำลองเพื่อการนำเสนอ</p>
+                        </div>
                     </div>
                     <div className="h-80">
                         <ReactECharts option={radarOptions} style={{ width: "100%", height: "100%" }} />
                     </div>
                 </div>
-                <div className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
+                <div className="bg-white rounded-3xl shadow-xl p-6 flex flex-col gap-4">
                     <p className="text-xl font-semibold text-gray-800">บันทึกสำคัญ</p>
                     <TimelineItem title="สร้างบัญชีผู้ใช้" date={user.createdAt} description="ถูกเพิ่มเข้าสู่ระบบจัดการผู้ใช้" />
                     <TimelineItem title="อัปเดตล่าสุด" date={user.updatedAt} description="ข้อมูลผู้ใช้ได้รับการแก้ไขล่าสุด" />
@@ -187,11 +207,20 @@ export default function UserDetail() {
     );
 }
 
-function InfoItem({ label, value, highlight = "", span = false }) {
+function InfoItem({ label, value, highlight = "" }) {
     return (
-        <div className={`${span ? "sm:col-span-2 lg:col-span-3" : ""}`}>
-            <p className="text-xs text-gray-400 uppercase tracking-wide">{label}</p>
+        <div>
+            <p className="text-xs uppercase tracking-widest text-gray-400">{label}</p>
             <p className={`text-base font-semibold text-gray-900 ${highlight}`}>{value}</p>
+        </div>
+    );
+}
+
+function SectionItem({ label, value }) {
+    return (
+        <div className="flex flex-col bg-gray-50/70 rounded-xl p-3 border border-gray-100">
+            <span className="text-xs tracking-wider text-gray-500">{label}</span>
+            <span className="text-lg font-semibold text-gray-900">{value}</span>
         </div>
     );
 }
