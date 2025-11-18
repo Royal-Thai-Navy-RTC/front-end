@@ -46,17 +46,20 @@ export default function Login() {
         setLoading(true);
         try {
             const response = await axios.post("/api/login", values);
-            const { token } = response.data || {};
+            const { accessToken,refreshToken } = response.data || {};
+            console.log(response.data);
+            
 
-            if (!token) {
+            if (!accessToken || !refreshToken) {
                 throw new Error("ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง");
             }
 
-            const payload = parseJwt(token) || {};
+            const payload = parseJwt(accessToken) || {};
             const role = (payload.role || "guest").toLowerCase();
             const user = { id: payload.id, role };
 
-            localStorage.setItem("token", token);
+            localStorage.setItem("token", accessToken);
+            localStorage.setItem("refreshToken", refreshToken);
             localStorage.setItem("role", role);
             localStorage.setItem("user", JSON.stringify(user));
             window.dispatchEvent(new Event("auth-change"));

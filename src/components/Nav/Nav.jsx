@@ -14,7 +14,7 @@ const resolveAvatarUrl = (value = "") => {
   if (!value) return "";
   if (value.startsWith("http://") || value.startsWith("https://")) return value;
   const path = value.startsWith("/") ? value : `/${value}`;
-  return `${API_BASE_URL}${path}?v=${Date.now()}`;
+  return `${API_BASE_URL}${path}`;
 };
 
 const PASSWORD_FORM_DEFAULT = {
@@ -29,6 +29,8 @@ const getErrorMessage = (error, fallback = "เกิดข้อผิดพล
 export default function Nav({ user = { role: "guest" }, onProfileUpdated = () => { }, rankOptions, divisionOptions }) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [avatarVersion, setAvatarVersion] = useState(0);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -80,7 +82,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       fields: [
         { name: "position", label: "ตำแหน่ง/หน้าที่", type: "text" },
         { name: "division", label: "หมวดวิชา", type: "select", option: divisionOptions },
-        { name: "medicalhistory", label: "ประวัติทางการแพทย์", type: "textarea" },
+        { name: "medicalHistory", label: "ประวัติทางการแพทย์", type: "textarea" },
         { name: "notes", label: "หมายเหตุเพิ่มเติม", type: "textarea" },
       ],
     },
@@ -89,8 +91,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   const role = (user?.role || "guest").toLowerCase();
   const isAuthenticated = role !== "guest";
 
-  const avatarSrc =
-    resolveAvatarUrl(profileForm?.avatar || user?.avatar) || navy;
+  // const avatarSrc = resolveAvatarUrl(profileForm?.avatar || user?.avatar) || navy;
 
   const pages = useMemo(
     () => [
@@ -99,8 +100,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin"] },
       { path: "/teacher-report", label: "ส่งยอดนักเรียน", roles: ["teacher"] },
       { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher"] },
-      { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "teacher", "student"] },
-      { path: "/evaluatestudent", label: "ประเมินนักเรียน", roles: ["admin", "teacher"] },
+      { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin"] },
+      { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "teacher"] },
     ],
     []
   );
@@ -208,7 +209,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                     onClick={() => setProfileMenuOpen((prev) => !prev)}
                     className="flex items-center gap-2 rounded-full border border-gray-200 p-1 hover:bg-gray-50 transition"
                   >
-                    <img src={avatarSrc} className="w-9 h-9 rounded-full object-cover" />
+                    <img src={`${resolveAvatarUrl(profileForm?.avatar || user?.avatar)}?v=${avatarVersion}`} className="w-9 h-9 rounded-full object-cover" />
                     <ChevronDownIcon open={profileMenuOpen} />
                   </button>
 
@@ -324,6 +325,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
           closeModal={() => setProfileModalOpen(false)}
           rankOptions={rankOptions}
           divisionOptions={divisionOptions}
+          avatarVersion={avatarVersion}
+          setAvatarVersion={setAvatarVersion}
         />
       )}
     </>

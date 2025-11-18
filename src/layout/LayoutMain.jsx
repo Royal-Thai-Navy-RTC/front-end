@@ -18,21 +18,6 @@ const normalizeUser = (data = {}) => {
   return { role: (data.role || "guest").toUpperCase(), ...data };
 };
 
-const requiredFields = [
-  "rank",
-  "firstName",
-  "lastName",
-  "username",
-  "birthDate",
-  "fullAddress",
-  "email",
-  "phone",
-  "emergencyContactName",
-  "emergencyContactPhone",
-  "password",
-  "confirmPassword",
-];
-
 const rankOptions = [
   { value: "พลเรือเอก", label: "พลเรือเอก" },
   { value: "พลเรือเอกหญิง", label: "พลเรือเอกหญิง" },
@@ -68,6 +53,7 @@ const rankOptions = [
   { value: "จ่าโทหญิง", label: "จ่าโทหญิง" },
   { value: "จ่าตรี", label: "จ่าตรี" },
   { value: "จ่าตรีหญิง", label: "จ่าตรีหญิง" },
+  { value: "พลฯ", label: "พลฯ" },
 ];
 
 const divisionOptions = [
@@ -98,7 +84,6 @@ export default function LayoutMain() {
 
   }, []);
 
-
   const fetchProfile = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -118,6 +103,27 @@ export default function LayoutMain() {
       // ignore fetch errors silently
     }
   }, [handleProfileUpdated]);
+
+  const fetchToken = async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) {
+      setUser({ role: "guest" });
+      return;
+    }
+    try {
+      const response = await axios.post("/api/refresh-token", { refreshToken: refreshToken });
+      const data = response.data;
+
+      localStorage.setItem("token", data?.accessToken);
+      localStorage.setItem("refreshToken", data?.refreshToken);
+    } catch {
+      // ignore fetch errors silently
+    }
+  };
+  // update Role and token
+  useEffect(() => {
+    fetchToken();
+  }, []);
 
   useEffect(() => {
     fetchProfile();
