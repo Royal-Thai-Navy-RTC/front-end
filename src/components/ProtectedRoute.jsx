@@ -44,7 +44,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
 
     const missingFields = requiredFields.filter((field) => !`${user[field] ?? ""}`.trim());
 
-    if (missingFields.length && user.role !== "ADMIN") {
+    if (missingFields.length && !["ADMIN", "OWNER"].includes((user.role || "").toUpperCase())) {
       const listHtml = missingFields .map(f => `${f}`) .join(", ");
 
       Swal.fire({

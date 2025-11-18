@@ -121,7 +121,7 @@ const isOfficialDutyLeave = (leaveType) => {
 
 export default function TeacherLeave() {
   const [role, setRole] = useState(() => getStoredRole());
-  const isAdmin = role === "ADMIN";
+  const isAdmin = role === "ADMIN" || role === "OWNER";
 
   // teacher state
   const [form, setForm] = useState(INITIAL_FORM);

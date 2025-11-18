@@ -119,7 +119,7 @@ export default function TeacherRollCall() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, []);
 
-  const isAdmin = role === "ADMIN";
+  const isAdmin = role === "ADMIN" || role === "OWNER";
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);

@@ -105,7 +105,7 @@ export default function ManageUsers() {
     const currentUserId = currentUser?.id;
     const currentUsername = currentUser?.username;
     const currentRole = getCurrentRole(currentUser);
-    const isAdmin = currentRole === "ADMIN";
+    const isAdmin = currentRole === "ADMIN" || currentRole === "OWNER";
     const createAvatarSrc = useMemo(() => {
         if (createAvatarPreview) return createAvatarPreview;
         const value = createForm.profileImage || "";
