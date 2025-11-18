@@ -95,20 +95,20 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
 
   const pages = useMemo(
     () => [
-      { path: "/home", label: "หน้าหลัก", roles: ["admin", "teacher", "student"] },
-      { path: "/history", label: "ประวัติ", roles: ["admin", "teacher", "student"] },
-      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin"] },
+      { path: "/home", label: "หน้าหลัก", roles: ["admin", "teacher", "student", "owner"] },
+      { path: "/history", label: "ประวัติ", roles: ["admin", "teacher", "student", "owner"] },
+      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
       { path: "/teacher-report", label: "ส่งยอดนักเรียน", roles: ["teacher"] },
       { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher"] },
-      { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin"] },
-      { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "teacher"] },
+      { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
+      { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "teacher", "owner"] },
     ],
     []
   );
 
   const visibleItems = useMemo(() => {
     if (!isAuthenticated) return [];
-    if (role === "admin") return pages;
+    if (role === "admin" || role === "owner") return pages;
     return pages.filter((item) => item.roles.includes(role));
   }, [isAuthenticated, role, pages]);
 
