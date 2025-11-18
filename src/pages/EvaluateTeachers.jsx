@@ -122,6 +122,10 @@ export default function EvaluateTeachers() {
   });
   const [activeEvaluationIndex, setActiveEvaluationIndex] = useState(-1);
   const [importingEvaluations, setImportingEvaluations] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingEvaluation, setEditingEvaluation] = useState(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [deleteProcessingId, setDeleteProcessingId] = useState(null);
 
   useEffect(() => {
     if (!userId) {
@@ -316,6 +320,123 @@ export default function EvaluateTeachers() {
     }
   };
 
+  const handleStartEditEvaluation = () => {
+    if (!selectedEvaluation) {
+      Swal.fire({ icon: "info", title: "ไม่พบข้อมูล", text: "กรุณาเลือกผลการประเมินก่อนแก้ไข" });
+      return;
+    }
+    setEditingEvaluation(selectedEvaluation);
+    setEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setEditingEvaluation(null);
+  };
+
+  const handleSubmitEvaluationEdit = async (formValues) => {
+    if (!editingEvaluation?.id) {
+      Swal.fire({ icon: "warning", title: "ไม่พบแบบประเมินที่ต้องการแก้ไข" });
+      return;
+    }
+
+    const payload = {
+      subject: formValues.subject?.trim() || undefined,
+      teacherName: formValues.teacherName?.trim() || undefined,
+      teacherId: formValues.teacherId || evaluationTeacherId || undefined,
+      evaluatorName: formValues.evaluatorName?.trim() || undefined,
+      evaluatedAt: formValues.evaluatedAt || undefined,
+      notes: formValues.notes?.trim() || undefined,
+    };
+
+    const answersPayload = Array.isArray(formValues.answers)
+      ? formValues.answers.map((answer) => {
+          const hasRatingInput = answer.rating !== "" && answer.rating !== null && answer.rating !== undefined;
+          const ratingNumber = hasRatingInput ? Number(answer.rating) : NaN;
+          const sanitizedRating = hasRatingInput && Number.isFinite(ratingNumber) ? ratingNumber : undefined;
+          const sanitizedAnswer = {
+            section: answer.section?.trim() || undefined,
+            itemCode: answer.itemCode?.trim() || undefined,
+            itemText: answer.itemText?.trim() || undefined,
+          };
+          if (sanitizedRating !== undefined) {
+            sanitizedAnswer.rating = sanitizedRating;
+          }
+          Object.keys(sanitizedAnswer).forEach((key) => {
+            if (sanitizedAnswer[key] === undefined) {
+              delete sanitizedAnswer[key];
+            }
+          });
+          return sanitizedAnswer;
+        })
+      : [];
+
+    if (Array.isArray(formValues.answers)) {
+      payload.answers = answersPayload;
+    }
+
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === undefined) {
+        delete payload[key];
+      }
+    });
+
+    setEditSubmitting(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`/api/evaluations/${editingEvaluation.id}`, payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      Swal.fire({ icon: "success", title: "แก้ไขแบบประเมินสำเร็จ" });
+      handleCloseEditModal();
+      setEvaluationsReloadKey((prev) => prev + 1);
+    } catch (err) {
+      const message = err.response?.data?.message || "ไม่สามารถบันทึกการแก้ไขได้";
+      Swal.fire({ icon: "error", title: "เกิดข้อผิดพลาด", text: message });
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const handleDeleteEvaluation = async (evaluationToDelete) => {
+    if (!evaluationToDelete?.id) {
+      Swal.fire({ icon: "warning", title: "ไม่สามารถลบแบบประเมินนี้" });
+      return;
+    }
+
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "ยืนยันการลบแบบประเมิน",
+      text: "เมื่อยืนยันแล้วจะไม่สามารถกู้คืนได้ ต้องการลบหรือไม่?",
+      showCancelButton: true,
+      confirmButtonText: "ลบข้อมูล",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#dc2626",
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    setDeleteProcessingId(evaluationToDelete.id);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`/api/evaluations/${evaluationToDelete.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      Swal.fire({ icon: "success", title: "ลบแบบประเมินสำเร็จ" });
+      if (editModalOpen) {
+        handleCloseEditModal();
+      }
+      setEvaluationsReloadKey((prev) => prev + 1);
+    } catch (err) {
+      const message = err.response?.data?.message || "ไม่สามารถลบแบบประเมินได้";
+      Swal.fire({ icon: "error", title: "เกิดข้อผิดพลาด", text: message });
+    } finally {
+      setDeleteProcessingId(null);
+    }
+  };
+
   return (
     <div className="flex flex-col w-full h-full gap-6">
       <section className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 flex flex-col gap-6">
@@ -417,13 +538,28 @@ export default function EvaluateTeachers() {
             )}
           </div>
         </div>
-        <EvaluationAnswers evaluation={selectedEvaluation} answers={selectedAnswers} loading={evaluationsLoading} />
+        <EvaluationAnswers
+          evaluation={selectedEvaluation}
+          answers={selectedAnswers}
+          loading={evaluationsLoading}
+          onEdit={handleStartEditEvaluation}
+          onDelete={() => handleDeleteEvaluation(selectedEvaluation)}
+          deleteLoading={Boolean(selectedEvaluation && deleteProcessingId === selectedEvaluation.id)}
+        />
       </section>
+      <EditEvaluationModal
+        open={editModalOpen}
+        evaluation={editingEvaluation}
+        onClose={handleCloseEditModal}
+        onSubmit={handleSubmitEvaluationEdit}
+        submitting={editSubmitting}
+        teacherProfile={teacherProfile}
+      />
     </div>
   );
 }
 
-function EvaluationAnswers({ evaluation, answers = [], loading = false }) {
+function EvaluationAnswers({ evaluation, answers = [], loading = false, onEdit, onDelete, deleteLoading }) {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl shadow-xl p-6 space-y-3">
@@ -464,6 +600,33 @@ function EvaluationAnswers({ evaluation, answers = [], loading = false }) {
           </div>
         )}
       </div>
+      {evaluation && (onEdit || onDelete) && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(evaluation)}
+              className="px-4 py-2 rounded-xl border border-blue-300 text-blue-700 font-semibold hover:bg-blue-50 transition"
+            >
+              แก้ไขข้อมูล
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(evaluation)}
+              disabled={deleteLoading}
+              className={`px-4 py-2 rounded-xl border font-semibold transition ${
+                deleteLoading
+                  ? "border-gray-300 text-gray-400 cursor-not-allowed"
+                  : "border-red-300 text-red-600 hover:bg-red-50"
+              }`}
+            >
+              {deleteLoading ? "กำลังลบ..." : "ลบแบบประเมิน"}
+            </button>
+          )}
+        </div>
+      )}
 
       {answers.length === 0 ? (
         <p className="text-sm text-gray-500">ไม่มีคำตอบสำหรับผลการประเมินนี้</p>
@@ -484,6 +647,259 @@ function EvaluationAnswers({ evaluation, answers = [], loading = false }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function EditEvaluationModal({ open, evaluation, onClose, onSubmit, submitting, teacherProfile }) {
+  const buildInitialForm = () => {
+    const base = evaluation || {};
+    return {
+      subject: base.subject || "",
+      teacherName: base.teacherName || teacherProfile?.name || "",
+      teacherId: base.teacherId || "",
+      evaluatorName: base.evaluatorName || "",
+      evaluatedAt: base.evaluatedAt ? base.evaluatedAt.slice(0, 10) : "",
+      notes: base.notes || "",
+      answers: Array.isArray(base.answers)
+        ? base.answers.map((answer) => ({
+            section: answer.section || "",
+            itemCode: answer.itemCode || "",
+            itemText: answer.itemText || "",
+            rating: answer.rating ?? "",
+          }))
+        : [],
+    };
+  };
+
+  const [formState, setFormState] = useState(buildInitialForm);
+
+  useEffect(() => {
+    if (open) {
+      setFormState(buildInitialForm());
+    }
+  }, [evaluation, open, teacherProfile]);
+
+  if (!open || !evaluation) {
+    return null;
+  }
+
+  const handleFieldChange = (field, value) => {
+    setFormState((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAnswerChange = (index, field, value) => {
+    setFormState((prev) => {
+      const nextAnswers = prev.answers.map((answer, answerIndex) =>
+        answerIndex === index ? { ...answer, [field]: value } : answer
+      );
+      return { ...prev, answers: nextAnswers };
+    });
+  };
+
+  const handleAddAnswer = () => {
+    setFormState((prev) => ({
+      ...prev,
+      answers: [
+        ...prev.answers,
+        {
+          section: "",
+          itemCode: "",
+          itemText: "",
+          rating: "",
+        },
+      ],
+    }));
+  };
+
+  const handleRemoveAnswer = (index) => {
+    setFormState((prev) => ({
+      ...prev,
+      answers: prev.answers.filter((_, answerIndex) => answerIndex !== index),
+    }));
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    onSubmit?.(formState);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-h-[90vh] w-full max-w-4xl overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div>
+            <p className="text-xl font-semibold text-gray-900">แก้ไขผลการประเมิน</p>
+            <p className="text-sm text-gray-500">{evaluation.subject || "ไม่ระบุหัวข้อ"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 transition text-2xl leading-none px-2"
+            aria-label="ปิดหน้าต่าง"
+          >
+            ×
+          </button>
+        </div>
+
+        <form className="px-6 py-4 space-y-6" onSubmit={handleSubmit}>
+          <div className="grid md:grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1 text-sm text-gray-600">
+              หัวข้อการประเมิน
+              <input
+                type="text"
+                value={formState.subject}
+                onChange={(e) => handleFieldChange("subject", e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none"
+                placeholder="ชื่อวิชา / หัวข้อ"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600">
+              ผู้รับการประเมิน
+              <input
+                type="text"
+                value={formState.teacherName}
+                onChange={(e) => handleFieldChange("teacherName", e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none"
+                placeholder="ชื่อผู้สอน"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600">
+              รหัสผู้สอน
+              <input
+                type="text"
+                value={formState.teacherId}
+                onChange={(e) => handleFieldChange("teacherId", e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none"
+                placeholder="Teacher ID"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600">
+              ผู้ประเมิน
+              <input
+                type="text"
+                value={formState.evaluatorName}
+                onChange={(e) => handleFieldChange("evaluatorName", e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none"
+                placeholder="ผู้ประเมิน"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600">
+              วันที่ประเมิน
+              <input
+                type="date"
+                value={formState.evaluatedAt}
+                onChange={(e) => handleFieldChange("evaluatedAt", e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600">
+              บันทึกเพิ่มเติม
+              <input
+                type="text"
+                value={formState.notes}
+                onChange={(e) => handleFieldChange("notes", e.target.value)}
+                className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none"
+                placeholder="เช่น ข้อสังเกต"
+              />
+            </label>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-base font-semibold text-gray-900">รายการคำถาม / คำตอบ</p>
+              <button
+                type="button"
+                onClick={handleAddAnswer}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 transition"
+              >
+                เพิ่มคำถาม
+              </button>
+            </div>
+            {formState.answers.length === 0 ? (
+              <p className="text-sm text-gray-500">ยังไม่มีคำถามในแบบประเมินนี้</p>
+            ) : (
+              <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
+                {formState.answers.map((answer, index) => (
+                  <div key={`${answer.itemCode}-${index}`} className="border border-gray-100 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-gray-700">คำถามที่ {index + 1}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAnswer(index)}
+                        className="text-xs text-red-500 hover:text-red-600"
+                      >
+                        ลบ
+                      </button>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <label className="flex flex-col gap-1 text-xs text-gray-500">
+                        หมวดหมู่
+                        <input
+                          type="text"
+                          value={answer.section}
+                          onChange={(e) => handleAnswerChange(index, "section", e.target.value)}
+                          className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none text-sm"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-xs text-gray-500">
+                        รหัสข้อ / ลำดับ
+                        <input
+                          type="text"
+                          value={answer.itemCode}
+                          onChange={(e) => handleAnswerChange(index, "itemCode", e.target.value)}
+                          className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none text-sm"
+                        />
+                      </label>
+                    </div>
+                    <label className="flex flex-col gap-1 text-xs text-gray-500">
+                      คำถาม / รายละเอียด
+                      <input
+                        type="text"
+                        value={answer.itemText}
+                        onChange={(e) => handleAnswerChange(index, "itemText", e.target.value)}
+                        className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none text-sm"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-xs text-gray-500">
+                      คะแนน (0-5)
+                      <input
+                        type="number"
+                        min="0"
+                        max="5"
+                        step="0.1"
+                        value={answer.rating}
+                        onChange={(e) => handleAnswerChange(index, "rating", e.target.value)}
+                        className="px-3 py-2 rounded-xl border border-gray-200 focus:border-blue-400 focus:outline-none text-sm"
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+              onClick={onClose}
+              disabled={submitting}
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="submit"
+              className={`px-4 py-2 rounded-xl text-white font-semibold transition ${
+                submitting ? "bg-blue-300" : "bg-blue-600 hover:bg-blue-500"
+              }`}
+              disabled={submitting}
+            >
+              {submitting ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
