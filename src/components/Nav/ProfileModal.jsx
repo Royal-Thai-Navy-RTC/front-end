@@ -50,42 +50,6 @@ export default function ProfileModal({
         setProfileForm((prev) => ({ ...prev, [name]: value }));
     };
 
-    // const handleAvatarUpload = async (e) => {
-    //     const file = e.target.files?.[0];
-    //     if (!file) return;
-
-    //     setUploadingAvatar(true);
-    //     try {
-    //         const token = localStorage.getItem("token");
-    //         const formData = new FormData();
-    //         formData.append("avatar", file);
-
-    //         const response = await axios.post("/api/me/avatar", formData, {
-    //             headers: {
-    //                 Authorization: token ? `Bearer ${token}` : "",
-    //                 "Content-Type": "multipart/form-data",
-    //             },
-    //         });
-
-    //         const updated = { avatar: response.data?.avatar };
-
-    //         setProfileForm((prev) =>
-    //             mapProfileToForm({ ...prev, ...updated })
-    //         );
-    //         setProfileOriginal((prev) =>
-    //             mapProfileToForm({ ...prev, ...updated })
-    //         );
-
-    //         onProfileUpdated(updated, { emitEvent: true });
-
-    //         Swal.fire({ icon: "success", title: "อัปโหลดสำเร็จ" });
-    //     } catch (err) {
-    //         Swal.fire({ icon: "error", title: "อัปโหลดไม่สำเร็จ" });
-    //     } finally {
-    //         setUploadingAvatar(false);
-    //     }
-    // };
-
     const handleAvatarUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -260,7 +224,6 @@ export default function ProfileModal({
 
                 {/* FORM MAIN */}
                 <div className="flex flex-col lg:flex-row gap-6">
-
                     <>
                         {/* Avatar + Upload */}
                         <div className="lg:w-1/3 flex flex-col items-center gap-3 border border-gray-200 rounded-2xl p-4">
