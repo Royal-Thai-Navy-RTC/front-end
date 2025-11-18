@@ -10,11 +10,14 @@ const requiredFields = [
   "lastName",
   "username",
   "birthDate",
-  "fullAddress",
+  // "fullAddress",
   "email",
   "phone",
   "emergencyContactName",
   "emergencyContactPhone",
+  // "medicalHistory",
+  "position",
+  "education"
   // "password",
   // "confirmPassword",
 ];
@@ -40,20 +43,22 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
     }
 
     const missingFields = requiredFields.filter((field) => !`${user[field] ?? ""}`.trim());
-    
-    if (missingFields.length) {
-      // console.log(missingFields);
-      
+
+    if (missingFields.length && user.role !== "ADMIN") {
+      const listHtml = missingFields .map(f => `${f}`) .join(", ");
+
       Swal.fire({
         icon: "warning",
-        title: "ข้อมูลไม่ครบ",
-        text:"กรุณากรอกข้อมูลส่วนตัวให้ครบถ้วนก่อนเข้าใช้งาน",
-        timer: 2000,
+        title: "ข้อมูลยังไม่ครบ",
+        html: ` กรุณากรอกข้อมูลต่อไปนี้ก่อนเข้าใช้งาน : ${listHtml} `,
+        timer: 3000,
         showConfirmButton: false,
       });
+
       navigate("/home", { replace: true });
       return;
     }
+
 
     if (allowedRoles.length && !allowedRoles.includes(role)) {
       Swal.fire({

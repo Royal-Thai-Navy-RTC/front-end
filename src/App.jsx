@@ -13,6 +13,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import TeacherRollCall from "./pages/TeacherRollCall";
 import TeacherLeave from "./pages/TeacherLeave";
 import EvaluateStudent from "./pages/EvaluateStudent";
+import ListStudent from "./pages/ListStudent";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -77,6 +78,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER"]}>
                         <EvaluateStudent />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "liststudent",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER"]}>
+                        <ListStudent />
                     </ProtectedRoute>
                 )
             },

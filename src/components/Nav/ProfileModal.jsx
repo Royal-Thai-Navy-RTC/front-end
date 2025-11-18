@@ -12,7 +12,7 @@ const resolveAvatarUrl = (value = "") => {
     if (!value) return "";
     if (value.startsWith("http://") || value.startsWith("https://")) return value;
     const path = value.startsWith("/") ? value : `/${value}`;
-    return `${API_BASE_URL}${path}?v=${Date.now()}`;
+    return `${API_BASE_URL}${path}`;
 };
 
 export default function ProfileModal({
@@ -34,8 +34,9 @@ export default function ProfileModal({
     closeModal,
     rankOptions,
     divisionOptions,
+    avatarVersion,
+    setAvatarVersion,
 }) {
-    // console.log(profileForm);
 
     const fileInputRef = useRef(null);
     const PASSWORD_FORM_DEFAULT = {
@@ -48,6 +49,42 @@ export default function ProfileModal({
         const { name, value } = e.target;
         setProfileForm((prev) => ({ ...prev, [name]: value }));
     };
+
+    // const handleAvatarUpload = async (e) => {
+    //     const file = e.target.files?.[0];
+    //     if (!file) return;
+
+    //     setUploadingAvatar(true);
+    //     try {
+    //         const token = localStorage.getItem("token");
+    //         const formData = new FormData();
+    //         formData.append("avatar", file);
+
+    //         const response = await axios.post("/api/me/avatar", formData, {
+    //             headers: {
+    //                 Authorization: token ? `Bearer ${token}` : "",
+    //                 "Content-Type": "multipart/form-data",
+    //             },
+    //         });
+
+    //         const updated = { avatar: response.data?.avatar };
+
+    //         setProfileForm((prev) =>
+    //             mapProfileToForm({ ...prev, ...updated })
+    //         );
+    //         setProfileOriginal((prev) =>
+    //             mapProfileToForm({ ...prev, ...updated })
+    //         );
+
+    //         onProfileUpdated(updated, { emitEvent: true });
+
+    //         Swal.fire({ icon: "success", title: "อัปโหลดสำเร็จ" });
+    //     } catch (err) {
+    //         Swal.fire({ icon: "error", title: "อัปโหลดไม่สำเร็จ" });
+    //     } finally {
+    //         setUploadingAvatar(false);
+    //     }
+    // };
 
     const handleAvatarUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -68,22 +105,21 @@ export default function ProfileModal({
 
             const updated = { avatar: response.data?.avatar };
 
-            setProfileForm((prev) =>
-                mapProfileToForm({ ...prev, ...updated })
-            );
-            setProfileOriginal((prev) =>
-                mapProfileToForm({ ...prev, ...updated })
-            );
+            setProfileForm(prev => mapProfileToForm({ ...prev, ...updated }));
+            setProfileOriginal(prev => mapProfileToForm({ ...prev, ...updated }));
 
             onProfileUpdated(updated, { emitEvent: true });
+            setAvatarVersion(Date.now());
 
             Swal.fire({ icon: "success", title: "อัปโหลดสำเร็จ" });
+
         } catch (err) {
             Swal.fire({ icon: "error", title: "อัปโหลดไม่สำเร็จ" });
         } finally {
             setUploadingAvatar(false);
         }
     };
+
 
     const handleSave = async () => {
         const payload = {};
@@ -201,7 +237,7 @@ export default function ProfileModal({
 
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-    const avatarSrc = resolveAvatarUrl(profileForm.avatar) || navy;
+    // const avatarSrc = resolveAvatarUrl(profileForm.avatar) || navy;
 
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -229,9 +265,9 @@ export default function ProfileModal({
                         {/* Avatar + Upload */}
                         <div className="lg:w-1/3 flex flex-col items-center gap-3 border border-gray-200 rounded-2xl p-4">
                             <img
-                                src={avatarSrc}
+                                src={`${resolveAvatarUrl(profileForm.avatar)}?v=${avatarVersion}` || navy}
                                 className="w-28 h-28 rounded-full border border-gray-200 object-cover cursor-pointer"
-                                onClick={() => setIsPreviewOpen(true)}     // 👈 เปิดภาพ
+                                onClick={() => setIsPreviewOpen(true)}   
                             />
 
                             <input
@@ -271,29 +307,6 @@ export default function ProfileModal({
                             </div>
                         )}
                     </>
-                    {/* <div className="lg:w-1/3 flex flex-col items-center gap-3 border border-gray-200 rounded-2xl p-4">
-                        <img
-                            src={resolveAvatarUrl(profileForm.avatar) || navy}
-                            className="w-28 h-28 rounded-full border  border-gray-200 object-cover"
-                        />
-
-                        <input
-                            type="file"
-                            className="hidden"
-                            ref={fileInputRef}
-                            accept="image/*"
-                            onChange={handleAvatarUpload}
-                        />
-
-                        <button
-                            className="px-4 py-2 bg-blue-800 text-white rounded-xl hover:bg-blue-700 flex items-center gap-2"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploadingAvatar}
-                        >
-                            {uploadingAvatar ? <Loader2 className="animate-spin" /> : <UserRoundPen size={16} />}
-                            เปลี่ยนรูปโปรไฟล์
-                        </button>
-                    </div> */}
 
                     {/* Profile Sections */}
                     <div className="lg:w-2/3 flex flex-col gap-6">
