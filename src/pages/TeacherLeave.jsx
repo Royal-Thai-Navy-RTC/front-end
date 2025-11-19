@@ -119,9 +119,52 @@ const isOfficialDutyLeave = (leaveType) => {
   return leaveType.toString().trim().toUpperCase() === "OFFICIAL_DUTY";
 };
 
+const parseDateValue = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+};
+
+const isLeaveOngoing = (leave, referenceDate = new Date()) => {
+  if (!leave) return false;
+  const now = referenceDate.getTime();
+  const start = parseDateValue(leave.startDate);
+  const end = parseDateValue(leave.endDate);
+  if (!start) return false;
+  if (start.getTime() > now) return false;
+  if (end && end.getTime() < now) return false;
+  return true;
+};
+
+const APPROVAL_STATUS_META = {
+  PENDING: { label: "รอดำเนินการ", color: "text-amber-600", dot: "bg-amber-400" },
+  APPROVED: { label: "อนุมัติแล้ว", color: "text-emerald-600", dot: "bg-emerald-500" },
+  REJECTED: { label: "ไม่อนุมัติ", color: "text-rose-600", dot: "bg-rose-500" },
+};
+
+const mapApprovalStatus = (value, fallback = "PENDING") => {
+  if (!value) return fallback;
+  const normalized = value.toString().trim().toUpperCase();
+  if (normalized === "ACTIVE") return "APPROVED";
+  if (normalized === "IN_PROGRESS") return "PENDING";
+  if (["PENDING", "APPROVED", "REJECTED"].includes(normalized)) return normalized;
+  return fallback;
+};
+
+const getApproverDisplayName = (approver) => {
+  if (!approver) return "";
+  if (approver.fullName) return approver.fullName;
+  const rank = approver.rank ? `${approver.rank} ` : "";
+  const composed = `${rank}${(approver.firstName || "")} ${(approver.lastName || "")}`.trim();
+  if (composed) return composed;
+  return approver.username || approver.name || "";
+};
+
 export default function TeacherLeave() {
   const [role, setRole] = useState(() => getStoredRole());
-  const isAdmin = role === "ADMIN" || role === "OWNER";
+  const isOwner = role === "OWNER";
+  const isAdmin = role === "ADMIN" || isOwner;
 
   // teacher state
   const [form, setForm] = useState(INITIAL_FORM);
@@ -139,6 +182,9 @@ export default function TeacherLeave() {
   const [adminLeavesError, setAdminLeavesError] = useState("");
   const [adminFilter, setAdminFilter] = useState("PENDING");
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
+  const [currentActiveLeaves, setCurrentActiveLeaves] = useState([]);
+  const [currentLeavesLoading, setCurrentLeavesLoading] = useState(false);
+  const [currentLeavesError, setCurrentLeavesError] = useState("");
   // const [typeBreakdown, setTypeBreakdown] = useState([]);
 
   const headers = useMemo(() => {
@@ -150,8 +196,24 @@ export default function TeacherLeave() {
     if (isAdmin) return;
     setLoadingLeaves(true);
     try {
-      const response = await axios.get("/api/teacher/leaves", { headers });
-      setLeaves(parseLeaves(response.data));
+      const [generalResponse, officialResponse] = await Promise.all([
+        axios.get("/api/teacher/leaves", { headers }),
+        axios.get("/api/teacher/official-duty-leaves", { headers }),
+      ]);
+      const generalLeaves = parseLeaves(generalResponse.data).map((leave) => ({
+        ...leave,
+        isOfficialDuty: Boolean(leave.isOfficialDuty),
+      }));
+      const officialLeaves = parseLeaves(officialResponse.data).map((leave) => ({
+        ...leave,
+        isOfficialDuty: true,
+      }));
+      const combined = [...generalLeaves, ...officialLeaves].sort((a, b) => {
+        const aDate = new Date(a.createdAt || a.startDate || 0).getTime();
+        const bDate = new Date(b.createdAt || b.startDate || 0).getTime();
+        return bDate - aDate;
+      });
+      setLeaves(combined);
     } catch (error) {
       setLeaves([]);
       Swal.fire({
@@ -188,7 +250,18 @@ export default function TeacherLeave() {
         headers,
         params: { status: adminFilter, limit: 100 },
       });
-      setAdminLeaves(parseLeaves(response.data));
+      const records = parseLeaves(response.data).map((leave) => ({
+        ...leave,
+        isOfficialDuty: Boolean(leave.isOfficialDuty || isOfficialDutyLeave(leave.leaveType)),
+      }));
+      records.sort((a, b) => {
+        const dutyDiff = Number(b.isOfficialDuty) - Number(a.isOfficialDuty);
+        if (dutyDiff !== 0) return dutyDiff;
+        const aDate = new Date(a.createdAt || a.startDate || 0).getTime();
+        const bDate = new Date(b.createdAt || b.startDate || 0).getTime();
+        return bDate - aDate;
+      });
+      setAdminLeaves(records);
     } catch (error) {
       setAdminLeaves([]);
       setAdminLeavesError(error?.response?.data?.message || "ไม่สามารถโหลดรายการการลาได้");
@@ -197,14 +270,30 @@ export default function TeacherLeave() {
     }
   }, [adminFilter, headers, isAdmin]);
 
+  const fetchCurrentLeaves = useCallback(async () => {
+    if (!isAdmin) return;
+    setCurrentLeavesLoading(true);
+    setCurrentLeavesError("");
+    try {
+      const response = await axios.get("/api/admin/teacher-leaves/current", { headers });
+      setCurrentActiveLeaves(parseLeaves(response.data));
+    } catch (error) {
+      setCurrentActiveLeaves([]);
+      setCurrentLeavesError(error?.response?.data?.message || "ไม่สามารถโหลดรายชื่อผู้ที่กำลังลาได้");
+    } finally {
+      setCurrentLeavesLoading(false);
+    }
+  }, [headers, isAdmin]);
+
   useEffect(() => {
     if (isAdmin) {
       fetchSummary();
       fetchAdminLeaves();
+      fetchCurrentLeaves();
       return;
     }
     fetchLeaves();
-  }, [fetchAdminLeaves, fetchLeaves, fetchSummary, isAdmin]);
+  }, [fetchAdminLeaves, fetchCurrentLeaves, fetchLeaves, fetchSummary, isAdmin]);
 
   useEffect(() => {
     const syncRole = () => setRole(getStoredRole());
@@ -248,8 +337,10 @@ export default function TeacherLeave() {
     }
 
     setSubmitting(true);
+    const payload = { ...form, isOfficialDuty: Boolean(isOfficialDutyForm) };
+    const endpoint = isOfficialDutyForm ? "/api/teacher/official-duty-leaves" : "/api/teacher/leaves";
     try {
-      await axios.post("/api/teacher/leaves", form, { headers });
+      await axios.post(endpoint, payload, { headers });
       Swal.fire({
         icon: "success",
         title: "บันทึกคำขอลาสำเร็จ",
@@ -271,6 +362,15 @@ export default function TeacherLeave() {
 
   const handleUpdateStatus = async (leaveId, nextStatus) => {
     if (!isAdmin || !leaveId || !nextStatus) return;
+    const targetLeave = adminLeaves.find((leave) => leave.id === leaveId);
+    if (targetLeave && isOfficialDutyLeave(targetLeave.leaveType) && !isOwner) {
+      Swal.fire({
+        icon: "info",
+        title: "รอการอนุมัติจาก OWNER",
+        text: "คำขอลาไปราชการสามารถอนุมัติได้เฉพาะผู้บังคับบัญชาระดับ OWNER เท่านั้น",
+      });
+      return;
+    }
     setUpdatingStatusId(leaveId);
     try {
       await axios.patch(
@@ -280,6 +380,7 @@ export default function TeacherLeave() {
       );
       fetchSummary();
       fetchAdminLeaves();
+      fetchCurrentLeaves();
       Swal.fire({
         icon: "success",
         title: nextStatus === "APPROVED" ? "อนุมัติคำขอลาสำเร็จ" : "ปฏิเสธคำขอลาสำเร็จ",
@@ -302,10 +403,15 @@ export default function TeacherLeave() {
     const onLeave = summary?.onLeave ?? 0;
     const available = summary?.availableTeachers ?? Math.max(totalTeachers - onLeave, 0);
     const totalRequests = summary?.totalLeaveRequests ?? 0;
-    const currentLeaves = summary?.currentLeaves ?? [];
+    const currentLeaves = currentActiveLeaves;
+    const activeLeaves = currentLeaves.length ? currentLeaves : [];
     const recentLeaves = summary?.recentLeaves ?? [];
-    const officialDutyCurrent = currentLeaves.filter((leave) => isOfficialDutyLeave(leave.leaveType)).length;
+    const recentApprovedLeaves = recentLeaves.filter(
+      (leave) => mapApprovalStatus(leave.status, "PENDING") === "APPROVED"
+    );
+    const officialDutyCurrent = activeLeaves.filter((leave) => isOfficialDutyLeave(leave.leaveType)).length;
     const officialDutyInView = adminLeaves.filter((leave) => isOfficialDutyLeave(leave.leaveType)).length;
+    const activeLeaveCount = activeLeaves.length || onLeave;
     const adminFilterLabel =
       adminFilter === "APPROVED" ? "อนุมัติแล้ว" : adminFilter === "REJECTED" ? "ไม่อนุมัติ" : "รออนุมัติ";
     return (
@@ -336,11 +442,12 @@ export default function TeacherLeave() {
                 onClick={() => {
                   fetchSummary();
                   fetchAdminLeaves();
+                  fetchCurrentLeaves();
                 }}
-                disabled={summaryLoading || adminLeavesLoading}
+                disabled={summaryLoading || adminLeavesLoading || currentLeavesLoading}
                 className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60"
               >
-                {summaryLoading || adminLeavesLoading ? "กำลังโหลด..." : "รีเฟรชข้อมูล"}
+                {summaryLoading || adminLeavesLoading || currentLeavesLoading ? "กำลังโหลด..." : "รีเฟรชข้อมูล"}
               </button>
             </div>
           </div>
@@ -351,7 +458,11 @@ export default function TeacherLeave() {
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <AdminLeaveStatCard label="ครูทั้งหมด" value={totalTeachers.toLocaleString("th-TH")} accent="from-slate-700 to-slate-500" />
-                <AdminLeaveStatCard label="กำลังลา" value={onLeave.toLocaleString("th-TH")} accent="from-rose-500 to-amber-500" />
+                <AdminLeaveStatCard
+                  label="กำลังลา"
+                  value={activeLeaveCount.toLocaleString("th-TH")}
+                  accent="from-rose-500 to-amber-500"
+                />
                 <AdminLeaveStatCard label="พร้อมปฏิบัติหน้าที่" value={available.toLocaleString("th-TH")} accent="from-emerald-600 to-emerald-400" />
                 <AdminLeaveStatCard
                   label="ลาไปราชการ (กำลังลา)"
@@ -367,32 +478,77 @@ export default function TeacherLeave() {
                   accent="from-sky-600 to-blue-500"
                 />
                 <div className="border border-gray-100 rounded-2xl p-4 flex flex-col gap-2 md:col-span-2">
-                  <p className="text-sm text-gray-500">กำลังลาปัจจุบัน</p>
-                  {summaryLoading ? (
+                  <p className="text-sm text-gray-500">กำลังลาปัจจุบัน (ยังไม่หมดลา)</p>
+                  {currentLeavesLoading ? (
                     <p className="text-sm text-gray-400">กำลังโหลดข้อมูล...</p>
-                  ) : currentLeaves.length === 0 ? (
+                  ) : currentLeavesError ? (
+                    <p className="text-sm text-red-500">{currentLeavesError}</p>
+                  ) : activeLeaves.length === 0 ? (
                     <p className="text-sm text-gray-400">ไม่มีครูที่กำลังลา</p>
                   ) : (
                     <div className="flex flex-col gap-2">
-                  {currentLeaves.map((leave) => (
-                    <div key={leave.id || `${leave.teacherId}-${leave.startDate}`} className="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl px-3 py-2">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {getTeacherDisplayName(leave)} · {getLeaveTypeLabel(leave.leaveType)}
-                        </p>
-                        <p className="text-xs text-gray-500">{formatDateRange(leave.startDate, leave.endDate)} · จุดหมาย {leave.destination || "-"}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isOfficialDutyLeave(leave.leaveType) && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">ลาไปราชการ</span>
-                        )}
-                        <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">
-                          {getStatusLabel(leave.status)}
-                        </span>
-                      </div>
+                      {activeLeaves.map((leave) => (
+                        <div
+                          key={leave.id || `${leave.teacherId}-${leave.startDate}`}
+                          className="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl px-3 py-2"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {getTeacherDisplayName(leave)} · {getLeaveTypeLabel(leave.leaveType)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatDateRange(leave.startDate, leave.endDate)} · จุดหมาย {leave.destination || "-"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isOfficialDutyLeave(leave.leaveType) && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">
+                                ลาไปราชการ
+                              </span>
+                            )}
+                            <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">
+                              {getStatusLabel(leave.status)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
+                <div className="border border-gray-100 rounded-2xl p-4 flex flex-col gap-2 md:col-span-2">
+                  <p className="text-sm text-gray-500">คำขอลาที่อนุมัติแล้ว (ล่าสุด)</p>
+                  {summaryLoading ? (
+                    <p className="text-sm text-gray-400">กำลังโหลดข้อมูล...</p>
+                  ) : recentApprovedLeaves.length === 0 ? (
+                    <p className="text-sm text-gray-400">ยังไม่มีคำขอที่อนุมัติแล้วในช่วงล่าสุด</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {recentApprovedLeaves.map((leave) => (
+                        <div
+                          key={leave.id || `${leave.teacherId}-${leave.startDate}-approved`}
+                          className="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl px-3 py-2"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {getTeacherDisplayName(leave)} · {getLeaveTypeLabel(leave.leaveType)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatDateRange(leave.startDate, leave.endDate)} · จุดหมาย {leave.destination || "-"}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 text-xs text-gray-500">
+                            <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">
+                              อนุมัติแล้ว
+                            </span>
+                            {leave.ownerApprovalAt ? (
+                              <span>{formatDateTime(leave.ownerApprovalAt)}</span>
+                            ) : leave.adminApprovalAt ? (
+                              <span>{formatDateTime(leave.adminApprovalAt)}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
@@ -422,6 +578,7 @@ export default function TeacherLeave() {
                     <th className="p-3 text-left">ประเภท</th>
                     <th className="p-3 text-left">ช่วงวันลา</th>
                     <th className="p-3 text-left">จุดหมาย</th>
+                    <th className="p-3 text-left">ขั้นการอนุมัติ</th>
                     <th className="p-3 text-left">สถานะ</th>
                     <th className="p-3 text-left">บันทึกเมื่อ</th>
                     {adminFilter === "PENDING" && <th className="p-3 text-left">การจัดการ</th>}
@@ -441,26 +598,33 @@ export default function TeacherLeave() {
                       </td>
                       <td className="p-3">{formatDateRange(leave.startDate, leave.endDate)}</td>
                       <td className="p-3">{leave.destination || "-"}</td>
+                      <td className="p-3 align-top">
+                        <LeaveApprovalSteps leave={leave} compact />
+                      </td>
                       <td className="p-3">{getStatusLabel(leave.status)}</td>
                       <td className="p-3">{formatDateTime(leave.createdAt)}</td>
                       {adminFilter === "PENDING" && (
                         <td className="p-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleUpdateStatus(leave.id, "APPROVED")}
-                              disabled={updatingStatusId === leave.id}
-                              className="px-3 py-1 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 disabled:opacity-60"
-                            >
-                              {updatingStatusId === leave.id ? "กำลังบันทึก..." : "อนุมัติ"}
-                            </button>
-                            <button
-                              onClick={() => handleUpdateStatus(leave.id, "REJECTED")}
-                              disabled={updatingStatusId === leave.id}
-                              className="px-3 py-1 rounded-lg bg-rose-500 text-white text-xs font-semibold hover:bg-rose-600 disabled:opacity-60"
-                            >
-                              {updatingStatusId === leave.id ? "กำลังบันทึก..." : "ไม่อนุมัติ"}
-                            </button>
-                          </div>
+                          {isOfficialDutyLeave(leave.leaveType) && !isOwner ? (
+                            <p className="text-xs text-gray-500 font-semibold">รอ OWNER พิจารณา</p>
+                          ) : (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleUpdateStatus(leave.id, "APPROVED")}
+                                disabled={updatingStatusId === leave.id}
+                                className="px-3 py-1 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 disabled:opacity-60"
+                              >
+                                {updatingStatusId === leave.id ? "กำลังบันทึก..." : "อนุมัติ"}
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStatus(leave.id, "REJECTED")}
+                                disabled={updatingStatusId === leave.id}
+                                className="px-3 py-1 rounded-lg bg-rose-500 text-white text-xs font-semibold hover:bg-rose-600 disabled:opacity-60"
+                              >
+                                {updatingStatusId === leave.id ? "กำลังบันทึก..." : "ไม่อนุมัติ"}
+                              </button>
+                            </div>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -503,7 +667,7 @@ export default function TeacherLeave() {
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <p className="font-semibold">คำแนะนำสำหรับลาไปราชการ</p>
             <ul className="mt-2 list-disc pl-5 space-y-1">
-              <li>คำขอนี้จะถูกส่งให้หัวหน้าแผนกศึกษาเพื่ออนุมัติเท่านั้น</li>
+              <li>คำขอนี้จะถูกส่งให้ผู้บังคับบัญชาระดับ OWNER เพื่ออนุมัติเท่านั้น</li>
               <li>กรุณาระบุจุดหมายและเหตุผลให้ชัดเจน พร้อมแนบหลักฐานในช่องเหตุผลหากจำเป็น</li>
               <li>หากเลือกผิดประเภท สามารถย้อนกลับไปเลือก “คำขอลาทั่วไป” ได้จากการ์ดด้านบน</li>
             </ul>
@@ -640,6 +804,10 @@ export default function TeacherLeave() {
                 </div>
                 <p className="text-sm text-gray-600">จุดหมาย: {leave.destination || "-"}</p>
                 {leave.reason && <p className="text-sm text-gray-500 italic">เหตุผล: {leave.reason}</p>}
+                <div className="border-t border-gray-100 pt-3 mt-2">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">ขั้นการอนุมัติ</p>
+                  <LeaveApprovalSteps leave={leave} />
+                </div>
               </div>
             );
           })}
@@ -671,6 +839,57 @@ function AdminLeaveStatCard({ label, value, accent }) {
     <div className={`rounded-2xl p-4 text-white shadow bg-gradient-to-br ${accent}`}>
       <p className="text-sm text-white/80">{label}</p>
       <p className="text-3xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function LeaveApprovalSteps({ leave, compact = false }) {
+  if (!leave) return null;
+  const overallStatus = mapApprovalStatus(leave.status, "PENDING");
+  const adminStatus = mapApprovalStatus(leave.adminApprovalStatus, overallStatus);
+  const ownerStatusFallback = adminStatus === "APPROVED" ? overallStatus : "PENDING";
+  const ownerStatus = mapApprovalStatus(leave.ownerApprovalStatus, ownerStatusFallback);
+  const isOfficialDuty = isOfficialDutyLeave(leave.leaveType);
+
+  const steps = [];
+  if (!isOfficialDuty) {
+    steps.push({
+      key: "ADMIN",
+      label: "หัวหน้าหมวด / ADMIN",
+      status: adminStatus,
+      approver: leave.adminApprover,
+      approvedAt: leave.adminApprovalAt,
+    });
+  }
+  steps.push({
+    key: "OWNER",
+    label: "ผู้บังคับบัญชา / OWNER",
+    status: ownerStatus,
+    approver: leave.ownerApprover,
+    approvedAt: leave.ownerApprovalAt,
+  });
+
+  return (
+    <div className={`flex flex-col gap-2 ${compact ? "text-xs" : "text-sm"}`}>
+      {steps.map((step, index) => {
+        const meta = APPROVAL_STATUS_META[step.status] || APPROVAL_STATUS_META.PENDING;
+        const name = getApproverDisplayName(step.approver);
+        const showConnector = index < steps.length - 1;
+        return (
+          <div key={step.key} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <span className={`w-2.5 h-2.5 rounded-full ${meta.dot}`} />
+              {showConnector && <span className="w-px flex-1 bg-gray-200 mt-1" />}
+            </div>
+            <div className="flex-1">
+              <p className={`font-semibold text-gray-900 ${compact ? "text-[11px]" : "text-sm"}`}>{step.label}</p>
+              <p className={`text-xs font-medium ${meta.color}`}>{meta.label}</p>
+              {name && <p className="text-[11px] text-gray-500">โดย {name}</p>}
+              {step.approvedAt && <p className="text-[11px] text-gray-400">{formatDateTime(step.approvedAt)}</p>}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
