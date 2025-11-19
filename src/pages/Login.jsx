@@ -47,8 +47,7 @@ export default function Login() {
         try {
             const response = await axios.post("/api/login", values);
             const { accessToken,refreshToken } = response.data || {};
-            console.log(response.data);
-            
+            // console.log(response.data);
 
             if (!accessToken || !refreshToken) {
                 throw new Error("ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง");

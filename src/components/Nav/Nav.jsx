@@ -86,25 +86,25 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   const role = (user?.role || "guest").toLowerCase();
   const isAuthenticated = role !== "guest";
 
-  console.log(profileModalOpen);
+  // console.log(profileModalOpen);
 
 
   /* --- PAGES (WITH DROPDOWN SUPPORT) --- */
   const pages = useMemo(
     () => [
-      { path: "/home", label: "หน้าหลัก", roles: ["admin", "teacher", "student"] },
-      { path: "/history", label: "ประวัติ", roles: ["admin", "teacher", "student"] },
-      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin"] },
+      { path: "/home", label: "หน้าหลัก", roles: ["admin", "teacher", "student", "owner"] },
+      { path: "/history", label: "ประวัติ", roles: ["admin", "teacher", "student", "owner"] },
+      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
       // { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "student"] },
       {
-        label: "นักเรียน", roles: ["teacher", "admin"], children: [
-          { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin"] },
-          { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "teacher", "admin"] },
+        label: "นักเรียน", roles: ["teacher", "admin", "owner"], children: [
+          { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
+          { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "admin"] },
         ]
       },
       {
-        label: "ข้าราชการ", roles: ["teacher", "admin"], children: [
-          { path: "/teacher-report", label: "ประเมินผู้สอน", roles: ["admin"] },
+        label: "ข้าราชการ", roles: ["teacher", "admin", "owner"], children: [
+          { path: "/teacher-report", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
           { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher"] },
         ]
       },
@@ -312,9 +312,9 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                   </button>
 
                   {openDropdown === item.label && (
-                    <div className="pl-4 flex flex-col gap-2">
+                    <div className="pl-4 flex flex-col gap-2 bg-gray-200">
                       {item.children.map(child => (
-                        <Link key={child.label} to={child.path} className="py-1 text-gray-700" onClick={() => setMenuOpen(false)}>
+                        <Link key={child.label} to={child.path} className="py-1  text-gray-700" onClick={() => setMenuOpen(false)}>
                           {child.label}
                         </Link>
                       ))}
