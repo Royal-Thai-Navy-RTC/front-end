@@ -104,8 +104,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       },
       {
         label: "ข้าราชการ", roles: ["teacher", "admin", "owner"], children: [
-          { path: "/teacher-report", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
-          { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher"] },
+          { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner"] },
+          { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher","admin", "owner"] },
         ]
       },
     ],
