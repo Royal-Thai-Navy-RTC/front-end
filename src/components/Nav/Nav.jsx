@@ -94,18 +94,19 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
     () => [
       { path: "/home", label: "หน้าหลัก", roles: ["admin", "teacher", "student", "owner"] },
       { path: "/history", label: "ประวัติ", roles: ["admin", "teacher", "student", "owner"] },
-      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
-      // { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "student"] },
+      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "SUB_ADMIN", "owner"] },
+      // { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin","SUB_ADMIN", "student"] },
       {
-        label: "นักเรียน", roles: ["teacher", "admin", "owner"], children: [
-          { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
-          { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "admin"] },
+        label: "นักเรียน", roles: ["teacher", "admin", "SUB_ADMIN", "owner"], children: [
+          { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "SUB_ADMIN", "owner"] },
+          { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "SUB_ADMIN", "owner", "teacher", "admin"] },
         ]
       },
       {
-        label: "ข้าราชการ", roles: ["teacher", "admin", "owner"], children: [
-          { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner"] },
-          { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher","admin", "owner"] },
+        label: "ข้าราชการ", roles: ["teacher", "admin", "SUB_ADMIN", "owner"], children: [
+          { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "SUB_ADMIN", "owner"] },
+          { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "SUB_ADMIN", "owner"] },
+          { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", roles: ["admin", "SUB_ADMIN", "owner"] },
         ]
       },
     ],
