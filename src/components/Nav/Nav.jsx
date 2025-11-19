@@ -26,13 +26,41 @@ const PASSWORD_FORM_DEFAULT = {
 };
 
 
-const getErrorMessage = (error, fallback = "เกิดข้อผิดพลาด กรุณาลองใหม่") =>
-  error?.response?.data?.message || error?.message || fallback;
+const getErrorMessage = (error, fallback = "เกิดข้อผิดพลาด กรุณาลองใหม่") => error?.response?.data?.message || error?.message || fallback;
 
 /* --- MAIN COMPONENT --- */
 export default function Nav({ user = { role: "guest" }, onProfileUpdated = () => { }, rankOptions, divisionOptions }) {
   const profileSections = [
-    { title: "ข้อมูลพื้นฐาน", fields: [{ name: "rank", label: "ยศ", type: "select", option: rankOptions }, { name: "firstName", label: "ชื่อ", type: "text" }, { name: "lastName", label: "นามสกุล", type: "text" }, { name: "username", label: "ชื่อผู้ใช้งาน", type: "text" }, { name: "birthDate", label: "วันเกิด", type: "date" }, { name: "education", label: "การศึกษา", type: "text" }, { name: "fullAddress", label: "ที่อยู่", type: "textarea" },], }, { title: "ข้อมูลการติดต่อ", fields: [{ name: "email", label: "อีเมล", type: "email" }, { name: "phone", label: "เบอร์โทรศัพท์", type: "text" },], }, { title: "ผู้ติดต่อฉุกเฉิน", fields: [{ name: "emergencyContactName", label: "ชื่อผู้ติดต่อฉุกเฉิน", type: "text" }, { name: "emergencyContactPhone", label: "เบอร์ผู้ติดต่อฉุกเฉิน", type: "text" },], }, { title: "ข้อมูลเพิ่มเติม", fields: [{ name: "position", label: "ตำแหน่ง/หน้าที่", type: "text" }, { name: "division", label: "หมวดวิชา", type: "select", option: divisionOptions }, { name: "medicalHistory", label: "ประวัติทางการแพทย์", type: "textarea" }, { name: "notes", label: "หมายเหตุเพิ่มเติม", type: "textarea" },], },
+    {
+      title: "ข้อมูลพื้นฐาน", fields: [
+        { name: "rank", label: "ยศ", type: "select", option: rankOptions },
+        { name: "firstName", label: "ชื่อ", type: "text" }, { name: "lastName", label: "นามสกุล", type: "text" },
+        { name: "username", label: "ชื่อผู้ใช้งาน", type: "text" },
+        { name: "birthDate", label: "วันเกิด", type: "date" },
+        { name: "education", label: "การศึกษา", type: "text" },
+        { name: "fullAddress", label: "ที่อยู่", type: "textarea" },
+      ],
+    },
+    {
+      title: "ข้อมูลการติดต่อ", fields: [
+        { name: "email", label: "อีเมล", type: "email" },
+        { name: "phone", label: "เบอร์โทรศัพท์", type: "text" },
+      ],
+    },
+    {
+      title: "ผู้ติดต่อฉุกเฉิน", fields: [
+        { name: "emergencyContactName", label: "ชื่อผู้ติดต่อฉุกเฉิน", type: "text" },
+        { name: "emergencyContactPhone", label: "เบอร์ผู้ติดต่อฉุกเฉิน", type: "text" },
+      ],
+    },
+    {
+      title: "ข้อมูลเพิ่มเติม", fields: [
+        { name: "position", label: "ตำแหน่ง/หน้าที่", type: "text" },
+        { name: "division", label: "หมวดวิชา", type: "select", option: divisionOptions },
+        { name: "medicalHistory", label: "ประวัติทางการแพทย์", type: "textarea" },
+        { name: "notes", label: "หมายเหตุเพิ่มเติม", type: "textarea" },
+      ],
+    },
   ];
 
   const navigate = useNavigate();
@@ -320,10 +348,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
           setChangingPassword={setChangingPassword}
           profileSections={profileSections}
           onProfileUpdated={onProfileUpdated}
-
-          /** ✔ FIX ต้นเหตุของปัญหา */
           closeModal={() => setProfileModalOpen(false)}
-
           rankOptions={rankOptions}
           divisionOptions={divisionOptions}
           avatarVersion={avatarVersion}
