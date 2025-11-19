@@ -14,6 +14,7 @@ import TeacherRollCall from "./pages/TeacherRollCall";
 import TeacherLeave from "./pages/TeacherLeave";
 import EvaluateStudent from "./pages/EvaluateStudent";
 import ListStudent from "./pages/ListStudent";
+import FormEvaluateStudent from "./pages/FormEvaluateStudent";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -86,6 +87,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER"]}>
                         <ListStudent />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "form-evaluate-student",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER"]}>
+                        <FormEvaluateStudent />
                     </ProtectedRoute>
                 )
             },

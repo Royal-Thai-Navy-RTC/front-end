@@ -3,7 +3,6 @@ import { useLocation, useOutletContext } from "react-router-dom";
 import axios from "axios";
 
 export default function EvaluateStudent() {
-
     const { divisionOptions } = useOutletContext();
     const { state } = useLocation();
     const battalion = state?.battalion;
@@ -55,7 +54,7 @@ export default function EvaluateStudent() {
         }));
     };
     // console.log(scores);
-    // console.log(formEvaluate);
+    console.log(listEvaluate);
     
 
     return (
@@ -165,7 +164,7 @@ export default function EvaluateStudent() {
                                             .map((q) => (
                                                 <tr key={q.id} className="hover:bg-gray-200">
                                                     {/* คำถาม */}
-                                                    <td className="p-3">{q.prompt}</td>
+                                                    <td className="p-2 sm:p-3 text-sm sm:text-md">{q.prompt}</td>
                                                     {/* ช่องคะแนน */}
                                                     {Array.from({ length: maxScore }, (_, i) => {
                                                         const scoreValue = i + 1;
@@ -175,10 +174,8 @@ export default function EvaluateStudent() {
                                                         return (
                                                             <td key={i} className="text-center p-2" >
                                                                 <input type="checkbox" checked={selected}
-                                                                    onChange={() =>
-                                                                        handleScore(sec.id, q.id, scoreValue)
-                                                                    }
-                                                                    className="size-5 cursor-pointer"
+                                                                    onChange={ () => handleScore(sec.id, q.id, scoreValue) }
+                                                                    className="size-4 sm:size-5 cursor-pointer"
                                                                 />
                                                             </td>
                                                         );

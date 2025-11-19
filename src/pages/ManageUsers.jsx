@@ -10,6 +10,7 @@ const ROLE_FILTERS = [
     { label: "ผู้ดูแลระบบ", value: "ADMIN" },
     { label: "ครูผู้สอน", value: "TEACHER" },
     { label: "นักเรียน", value: "STUDENT" },
+    { label: "ผู้ช่วยผู้ดูแลระบบ", value: "SUB_ADMIN" },
 ];
 
 const RANK_OPTIONS = [
@@ -177,7 +178,7 @@ export default function ManageUsers() {
             (acc, user) => {
                 const role = (user.role || "").toUpperCase();
                 if (role === "ADMIN") acc.admin += 1;
-                else if (role === "TEACHER") acc.teacher += 1;
+                else if (role === "TEACHER" || role === "SUB_ADMIN") acc.teacher += 1;
                 else if (role === "STUDENT") acc.student += 1;
                 else acc.others += 1;
                 acc.total += 1;
@@ -892,6 +893,7 @@ const mapUserToForm = (data = {}) => ({
                                             <option value="ADMIN">ADMIN</option>
                                             <option value="TEACHER">TEACHER</option>
                                             <option value="STUDENT">STUDENT</option>
+                                            <option value="SUB_ADMIN">SUB_ADMIN</option>
                                         </select>
                                     </label>
                                 </div>
