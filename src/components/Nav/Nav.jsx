@@ -68,7 +68,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [avatarVersion, setAvatarVersion] = useState(0);
+  const [avatarVersion, setAvatarVersion] = useState(() => Date.now());
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
