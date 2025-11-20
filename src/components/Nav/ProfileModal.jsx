@@ -13,7 +13,6 @@ const resolveAvatarUrl = (value = "") => {
   if (!value) return "";
   if (value.startsWith("http://") || value.startsWith("https://")) return value;
   const path = value.startsWith("/") ? value : `/${value}`;
-  console.log(`${API_BASE_URL}${path}`);
   return `${API_BASE_URL}${path}`;
 };
 
