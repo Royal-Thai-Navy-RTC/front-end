@@ -419,14 +419,26 @@ export default function TeacherLeave() {
 
   const handleUpdateStatus = async (leaveId, nextStatus) => {
     if (!isAdmin || !leaveId || !nextStatus) return;
+    const normalizedNextStatus = mapApprovalStatus(nextStatus, "PENDING");
     const targetLeave = adminLeaves.find((leave) => leave.id === leaveId);
-    if (targetLeave && isOfficialDutyLeave(targetLeave.leaveType) && !isOwner) {
-      Swal.fire({
-        icon: "info",
-        title: "รอการอนุมัติจาก OWNER",
-        text: "คำขอลาไปราชการสามารถอนุมัติได้เฉพาะผู้บังคับบัญชาระดับ OWNER เท่านั้น",
-      });
-      return;
+    if (targetLeave) {
+      const currentStatus = mapApprovalStatus(targetLeave.status, "PENDING");
+      if (currentStatus === normalizedNextStatus) {
+        Swal.fire({
+          icon: "info",
+          title: "สถานะถูกอัปเดตแล้ว",
+          text: `คำขอลานี้อยู่ในสถานะ "${currentStatus === "APPROVED" ? "อนุมัติแล้ว" : "ไม่อนุมัติ"}" อยู่แล้ว`,
+        });
+        return;
+      }
+      if (isOfficialDutyLeave(targetLeave.leaveType) && !isOwner) {
+        Swal.fire({
+          icon: "info",
+          title: "รอการอนุมัติจาก OWNER",
+          text: "คำขอลาไปราชการสามารถอนุมัติได้เฉพาะผู้บังคับบัญชาระดับ OWNER เท่านั้น",
+        });
+        return;
+      }
     }
     setUpdatingStatusId(leaveId);
     try {
@@ -932,7 +944,8 @@ function LeaveApprovalSteps({ leave, compact = false }) {
   if (!isOfficialDuty) {
     steps.push({
       key: "ADMIN",
-      label: "หัวหน้าหมวด / ADMIN",
+      // label: "หัวหน้าหมวด / ADMIN",
+      label: "หัวหน้าหมวด",
       status: adminStatus,
       approver: leave.adminApprover,
       approvedAt: leave.adminApprovalAt,
@@ -940,7 +953,8 @@ function LeaveApprovalSteps({ leave, compact = false }) {
   }
   steps.push({
     key: "OWNER",
-    label: "ผู้บังคับบัญชา / OWNER",
+    // label: "ผู้บังคับบัญชา / OWNER",
+    label: "ผู้บังคับบัญชา",
     status: ownerStatus,
     approver: leave.ownerApprover,
     approvedAt: leave.ownerApprovalAt,
