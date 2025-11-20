@@ -68,6 +68,12 @@ const divisionOptions = [
   { value: "การพัฒนาสัมพันธ์", label: "การพัฒนาสัมพันธ์ (ทร.402)" },
 ];
 
+const religionOptions = [
+  { value: "พุทธ", label: "ศาสนาพุทธ" },
+  { value: "อิสลาม", label: "ศาสนาอิสลาม" },
+  { value: "คริสต์", label: "ศาสนาคริสต์" },
+];
+
 export default function LayoutMain() {
   const [user, setUser] = useState(() => normalizeUser(getStoredUser()));
 
@@ -148,11 +154,11 @@ export default function LayoutMain() {
   return (
     <div className="relative min-h-screen flex flex-col">
       <img src={bg} className="absolute inset-0 w-full h-full object-cover -z-10" />
-      <Nav user={user} divisionOptions={divisionOptions} rankOptions={rankOptions} onProfileUpdated={handleProfileUpdated} />
+      <Nav user={user} divisionOptions={divisionOptions} rankOptions={rankOptions} religionOptions={religionOptions} onProfileUpdated={handleProfileUpdated} />
       {/* ส่วนเนื้อหา */}
       <div className="flex flex-col flex-grow items-center p-2 px-5 mb-5">
         {/* <Outlet /> */}
-        <Outlet context={{ user, onProfileUpdated: handleProfileUpdated, rankOptions, divisionOptions }} />
+        <Outlet context={{ user, onProfileUpdated: handleProfileUpdated, rankOptions, divisionOptions, religionOptions }} />
       </div>
 
       {/* Footer */}

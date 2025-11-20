@@ -301,6 +301,7 @@ export default function ProfileModal({
                                                     name={field.name}
                                                     value={profileForm[field.name]}
                                                     onChange={handleProfileChange}
+                                                    placeholder={field?.placeholder}
                                                     rows={3}
                                                     className="w-full border border-gray-300 rounded-xl px-3 py-2 mt-1"
                                                 />
@@ -310,6 +311,7 @@ export default function ProfileModal({
                                                     name={field.name}
                                                     value={field.type == "date" ? profileForm[field.name]?.split("T")[0] : profileForm[field.name]}
                                                     onChange={handleProfileChange}
+                                                    placeholder={field?.placeholder}
                                                     className="w-full border border-gray-300 rounded-xl px-3 py-2 mt-1"
                                                 />
                                             )}

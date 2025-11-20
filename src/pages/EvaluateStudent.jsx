@@ -54,7 +54,7 @@ export default function EvaluateStudent() {
         }));
     };
     // console.log(scores);
-    console.log(listEvaluate);
+    // console.log(listEvaluate);
     
 
     return (
@@ -129,7 +129,7 @@ export default function EvaluateStudent() {
 
             {/* FORM CONTENT */}
             <div className="bg-white shadow rounded-2xl flex flex-col pb-5">
-                <h2 className='bg-blue-800 p-3 text-white rounded-t-2xl text-xl sm:text-4xl font-bold'>
+                <h2 className='bg-blue-800 p-3 text-white rounded-t-2xl text-xl sm:text-2xl font-bold'>
                     {formEvaluate?.name || "แบบฟอร์มการประเมิน"}
                 </h2>
 
@@ -199,3 +199,4 @@ export default function EvaluateStudent() {
         </div>
     );
 }
+

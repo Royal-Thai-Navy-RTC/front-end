@@ -29,7 +29,7 @@ const PASSWORD_FORM_DEFAULT = {
 const getErrorMessage = (error, fallback = "เกิดข้อผิดพลาด กรุณาลองใหม่") => error?.response?.data?.message || error?.message || fallback;
 
 /* --- MAIN COMPONENT --- */
-export default function Nav({ user = { role: "guest" }, onProfileUpdated = () => { }, rankOptions, divisionOptions }) {
+export default function Nav({ user = { role: "guest" }, onProfileUpdated = () => { }, rankOptions, divisionOptions, religionOptions }) {
   const profileSections = [
     {
       title: "ข้อมูลพื้นฐาน", fields: [
@@ -57,8 +57,12 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       title: "ข้อมูลเพิ่มเติม", fields: [
         { name: "position", label: "ตำแหน่ง/หน้าที่", type: "text" },
         { name: "division", label: "หมวดวิชา", type: "select", option: divisionOptions },
-        { name: "medicalHistory", label: "ประวัติทางการแพทย์", type: "textarea" },
-        { name: "notes", label: "หมายเหตุเพิ่มเติม", type: "textarea" },
+        { name: "division", label: "ศาสนา", type: "select", option: religionOptions },
+        { name: "division", label: "ความสามารถพิเศษ", type: "input", placeholder:"ระบุ เช่น ว่ายน้ำ, ภาษาอังกฤษ" },
+        { name: "medicalHistory", label: "โรคประจำตัว", type: "input",placeholder:"ระบุโรคประจำตัว เช่น ความดัน, เบาหวาน" },
+        { name: "medicalHistory", label: "แพ้ยา", type: "input",placeholder:"ระบุยาที่แพ้ เช่น Sulfa, Pennicillin" },
+        { name: "medicalHistory", label: "แพ้อาหาร", type: "input",placeholder:"ระบุอาหารที่แพ้ เช่น กุ้ง, ถั่ว" },
+        { name: "notes", label: "หมายเหตุเพิ่มเติม", type: "textarea",placeholder:"..." },
       ],
     },
   ];
@@ -92,21 +96,20 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   /* --- PAGES (WITH DROPDOWN SUPPORT) --- */
   const pages = useMemo(
     () => [
-      { path: "/home", label: "หน้าหลัก", roles: ["admin", "teacher", "student", "owner"] },
-      { path: "/history", label: "ประวัติ", roles: ["admin", "teacher", "student", "owner"] },
-      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "SUB_ADMIN", "owner"] },
-      // { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin","SUB_ADMIN", "student"] },
+      { path: "/home", label: "หน้าหลัก", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
+      { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
+      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "sub_admin", "sub_admin", "owner"] },
       {
-        label: "นักเรียน", roles: ["teacher", "admin", "SUB_ADMIN", "owner"], children: [
-          { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "SUB_ADMIN", "owner"] },
-          { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "SUB_ADMIN", "owner", "teacher", "admin"] },
+        label: "นักเรียน", roles: ["teacher", "admin", "sub_admin", "owner"], children: [
+          { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "sub_admin", "owner"] },
+          { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "admin"] },
         ]
       },
       {
-        label: "ข้าราชการ", roles: ["teacher", "admin", "SUB_ADMIN", "owner"], children: [
-          { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "SUB_ADMIN", "owner"] },
-          { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "SUB_ADMIN", "owner"] },
-          { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", roles: ["admin", "SUB_ADMIN", "owner"] },
+        label: "ข้าราชการ", roles: ["teacher", "admin", "sub_admin", "owner"], children: [
+          { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "sub_admin", "owner"] },
+          { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner"] },
+          { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", roles: ["admin", "owner"] },
         ]
       },
     ],
