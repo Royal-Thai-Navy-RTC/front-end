@@ -240,7 +240,7 @@ export default function ProfileModal({
             <div className="lg:w-1/3 flex flex-col items-center gap-3 border border-gray-200 rounded-2xl p-4">
               <img
                 src={avatarSrc}
-                className="w-28 h-28 rounded-full border border-gray-200 object-cover cursor-pointer"
+                className="w-32 h-32 object-cover rounded-full cursor-pointer shadow-md"
                 onClick={() => setIsPreviewOpen(true)}
               />
               <input
