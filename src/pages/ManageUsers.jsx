@@ -463,6 +463,13 @@ export default function ManageUsers() {
         }
     };
 
+const normalizeTextList = (value) => {
+    if (!value) return "";
+    if (Array.isArray(value)) return value.join(", ");
+    if (typeof value === "string") return value;
+    return String(value);
+};
+
 const mapUserToForm = (data = {}) => ({
     firstName: data.firstName || "",
     lastName: data.lastName || "",
@@ -472,10 +479,22 @@ const mapUserToForm = (data = {}) => ({
     rank: normalizeRankValue(data.rank),
     role: (data.role || "STUDENT").toUpperCase(),
     isActive: data.isActive ?? true,
+    birthDate: data.birthDate || "",
+    education: data.education || "",
+    position: data.position || "",
+    religion: data.religion || "",
     fullAddress: data.fullAddress || "",
+    emergencyContactName: data.emergencyContactName || "",
+    emergencyContactPhone: data.emergencyContactPhone || "",
+    medicalHistory: data.medicalHistory || "",
+    chronicDiseases: normalizeTextList(data.chronicDiseases),
+    drugAllergies: normalizeTextList(data.drugAllergies),
+    foodAllergies: normalizeTextList(data.foodAllergies),
+    specialSkills: data.specialSkills || "",
+    secondaryOccupation: data.secondaryOccupation || "",
     avatar: data.avatar || "",
     password: "",
-    });
+});
 
     const openEditModal = async (user) => {
         const userId = user?.id ?? user?._id;
@@ -528,11 +547,37 @@ const mapUserToForm = (data = {}) => ({
     const handleSaveEdit = async () => {
         if (!editUserId || !editForm) return;
         const payload = {};
-        const keysToCompare = ["firstName", "lastName", "email", "phone", "rank", "role", "isActive", "fullAddress"];
+        const keysToCompare = [
+            "firstName",
+            "lastName",
+            "email",
+            "phone",
+            "rank",
+            "role",
+            "isActive",
+            "fullAddress",
+            "birthDate",
+            "education",
+            "position",
+            "religion",
+            "emergencyContactName",
+            "emergencyContactPhone",
+            "medicalHistory",
+            "chronicDiseases",
+            "drugAllergies",
+            "foodAllergies",
+            "specialSkills",
+            "secondaryOccupation",
+        ];
 
         keysToCompare.forEach((key) => {
             if (!editOriginal || editForm[key] !== editOriginal[key]) {
-                payload[key] = editForm[key];
+                if (key === "birthDate" && editForm[key]) {
+                    const iso = new Date(editForm[key]).toISOString();
+                    payload[key] = iso;
+                } else {
+                    payload[key] = editForm[key];
+                }
             }
         });
 
@@ -1532,6 +1577,46 @@ const mapUserToForm = (data = {}) => ({
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
+                                    <span>วันเกิด</span>
+                                    <input
+                                        type="date"
+                                        name="birthDate"
+                                        value={editForm.birthDate ? editForm.birthDate.split("T")[0] : ""}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>การศึกษา</span>
+                                    <input
+                                        type="text"
+                                        name="education"
+                                        value={editForm.education}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>ตำแหน่ง / หน้าที่</span>
+                                    <input
+                                        type="text"
+                                        name="position"
+                                        value={editForm.position}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>ศาสนา</span>
+                                    <input
+                                        type="text"
+                                        name="religion"
+                                        value={editForm.religion}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
                                     <span>ยศ / ตำแหน่ง</span>
                                     <select
                                         name="rank"
@@ -1566,6 +1651,86 @@ const mapUserToForm = (data = {}) => ({
                                         value={editForm.fullAddress}
                                         onChange={handleEditChange}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 min-h-24"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>ผู้ติดต่อฉุกเฉิน</span>
+                                    <input
+                                        type="text"
+                                        name="emergencyContactName"
+                                        value={editForm.emergencyContactName}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>เบอร์ผู้ติดต่อฉุกเฉิน</span>
+                                    <input
+                                        type="text"
+                                        name="emergencyContactPhone"
+                                        value={editForm.emergencyContactPhone}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                                    <span>ประวัติสุขภาพเพิ่มเติม</span>
+                                    <textarea
+                                        name="medicalHistory"
+                                        value={editForm.medicalHistory}
+                                        onChange={handleEditChange}
+                                        rows={2}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                                    <span>โรคประจำตัว (คั่นด้วย ,)</span>
+                                    <textarea
+                                        name="chronicDiseases"
+                                        value={editForm.chronicDiseases}
+                                        onChange={handleEditChange}
+                                        rows={2}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                                    <span>แพ้ยา (คั่นด้วย ,)</span>
+                                    <textarea
+                                        name="drugAllergies"
+                                        value={editForm.drugAllergies}
+                                        onChange={handleEditChange}
+                                        rows={2}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                                    <span>แพ้อาหาร (คั่นด้วย ,)</span>
+                                    <textarea
+                                        name="foodAllergies"
+                                        value={editForm.foodAllergies}
+                                        onChange={handleEditChange}
+                                        rows={2}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                                    <span>ทักษะพิเศษ</span>
+                                    <textarea
+                                        name="specialSkills"
+                                        value={editForm.specialSkills}
+                                        onChange={handleEditChange}
+                                        rows={2}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                                    <span>อาชีพเสริม</span>
+                                    <textarea
+                                        name="secondaryOccupation"
+                                        value={editForm.secondaryOccupation}
+                                        onChange={handleEditChange}
+                                        rows={2}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm sm:col-span-2">
