@@ -13,8 +13,12 @@ export const mapProfileToForm = (data = {}) => ({
   education: data.education || "",
   position: data.position || "",
   medicalHistory: data.medicalHistory || "",
+  chronicDiseases: data.chronicDiseases || [],
+  drugAllergies: data.drugAllergies || [],
+  foodAllergies: data.foodAllergies || [],
   notes: data.notes || "",
   avatar: data.avatar || "",
+  secondaryOccupation: data.secondaryOccupation || "",
 });
 
 export const editableKeys = [
@@ -32,5 +36,10 @@ export const editableKeys = [
   "education",
   "position",
   "medicalHistory",
+  "chronicDiseases",
+  "drugAllergies",
+  "foodAllergies",
   "notes",
+  "avatar",
+  "secondaryOccupation",
 ];

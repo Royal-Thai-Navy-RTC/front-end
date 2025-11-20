@@ -45,6 +45,19 @@ export default function ProfileModal({
         confirmPassword: "",
     };
 
+    // helper to ensure a field in profileForm is treated as an array
+    const ensureArrayField = (field) => {
+        const val = profileForm?.[field];
+        if (Array.isArray(val)) return val;
+        if (typeof val === "string") {
+            // split by comma and trim, filter empty
+            return val.split(",").map(s => s.trim()).filter(Boolean);
+        }
+        if (val == null) return [];
+        // fallback: wrap in array
+        return [val];
+    };
+
     const handleProfileChange = (e) => {
         const { name, value } = e.target;
         setProfileForm((prev) => ({ ...prev, [name]: value }));
@@ -121,9 +134,9 @@ export default function ProfileModal({
 
             Swal.fire({ icon: "success", title: "บันทึกสำเร็จ" });
             closeModal();
-        } catch(e) {
+        } catch (e) {
             console.log(e);
-            
+
             Swal.fire({ icon: "error", title: "บันทึกไม่สำเร็จ" });
         } finally {
             setSavingProfile(false);
@@ -201,9 +214,43 @@ export default function ProfileModal({
         }
     };
 
+    // --- New: state for add-inputs (temporary input values) ---
+    const [newDisease, setNewDisease] = useState("");
+    const [newFoodAllergy, setNewFoodAllergy] = useState("");
+    const [newDrugAllergy, setNewDrugAllergy] = useState("");
+
+    // helper: add item to array field in profileForm (handles string -> array fallback)
+    const addArrayItem = (field, value) => {
+        const val = value?.trim();
+        if (!val) return;
+        setProfileForm(prev => {
+            const current = Array.isArray(prev[field])
+                ? prev[field]
+                : (typeof prev[field] === "string" ? prev[field].split(",").map(s => s.trim()).filter(Boolean) : (prev[field] ? [prev[field]] : []));
+            const updated = [...current, val];
+            return { ...prev, [field]: updated };
+        });
+
+        // clear the corresponding new input
+        if (field === "diseases") setNewDisease("");
+        if (field === "foodAllergies") setNewFoodAllergy("");
+        if (field === "drugAllergies") setNewDrugAllergy("");
+    };
+
+    const removeArrayItem = (field, index) => {
+        setProfileForm(prev => {
+            const current = Array.isArray(prev[field])
+                ? prev[field]
+                : (typeof prev[field] === "string" ? prev[field].split(",").map(s => s.trim()).filter(Boolean) : []);
+            const updated = current.filter((_, i) => i !== index);
+            return { ...prev, [field]: updated };
+        });
+    };
+
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-    // const avatarSrc = resolveAvatarUrl(profileForm.avatar) || navy;
+    // ensure preview src exists
+    const avatarSrc = resolveAvatarUrl(profileForm?.avatar) ? `${resolveAvatarUrl(profileForm?.avatar)}?v=${avatarVersion}` : navy;
 
     return (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -232,7 +279,7 @@ export default function ProfileModal({
                             <img
                                 src={`${resolveAvatarUrl(profileForm.avatar)}?v=${avatarVersion}` || navy}
                                 className="w-28 h-28 rounded-full border border-gray-200 object-cover cursor-pointer"
-                                onClick={() => setIsPreviewOpen(true)}   
+                                onClick={() => setIsPreviewOpen(true)}
                             />
 
                             <input
@@ -321,6 +368,149 @@ export default function ProfileModal({
                                 </div>
                             </div>
                         ))}
+
+                        {/* --- Medical info (updated to use arrays) --- */}
+                        <div className="flex flex-col border border-gray-200 p-4 rounded-2xl shadow-sm gap-2 text-sm text-gray-700">
+                            <p className="font-semibold text-gray-800 mb-3">ข้อมูลด้านการแพทย์</p>
+
+                            {/* Diseases */}
+                            <div className="grid sm:grid-cols-2 gap-4 items-end">
+                                <div className="flex flex-col">
+                                    <label className="text-sm text-gray-600">โรคประจำตัว</label>
+                                    <input
+                                        type="text"
+                                        name="diseaseInput"
+                                        value={newDisease}
+                                        onChange={(e) => setNewDisease(e.target.value)}
+                                        placeholder="ระบุโรคประจำตัว เช่น ความดัน"
+                                        className="w-full border border-gray-300 rounded-xl px-3 py-2 mt-1"
+                                    />
+
+                                    {/* show existing items as pills */}
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {ensureArrayField("diseases").map((d, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
+                                                <span>{d}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeArrayItem("diseases", idx)}
+                                                    className="p-1 rounded-full hover:bg-gray-200"
+                                                    aria-label={`ลบ ${d}`}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => addArrayItem("diseases", newDisease)}
+                                        className="border border-gray-300 cursor-pointer rounded-xl px-4 py-2 h-full"
+                                    >
+                                        เพิ่ม +
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Food allergies */}
+                            <div className="grid sm:grid-cols-2 gap-4 items-end">
+                                <div className="flex flex-col">
+                                    <label className="text-sm text-gray-600">แพ้อาหาร</label>
+                                    <input
+                                        type="text"
+                                        name="foodAllergyInput"
+                                        value={newFoodAllergy}
+                                        onChange={(e) => setNewFoodAllergy(e.target.value)}
+                                        placeholder="ระบุอาหารที่แพ้ เช่น กุ้ง, ถั่ว"
+                                        className="w-full border border-gray-300 rounded-xl px-3 py-2 mt-1"
+                                    />
+
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {ensureArrayField("foodAllergies").map((f, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
+                                                <span>{f}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeArrayItem("foodAllergies", idx)}
+                                                    className="p-1 rounded-full hover:bg-gray-200"
+                                                    aria-label={`ลบ ${f}`}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => addArrayItem("foodAllergies", newFoodAllergy)}
+                                        className="border border-gray-300 cursor-pointer rounded-xl px-4 py-2 h-full"
+                                    >
+                                        เพิ่ม +
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Drug allergies */}
+                            <div className="grid sm:grid-cols-2 gap-4 items-end">
+                                <div className="flex flex-col">
+                                    <label className="text-sm text-gray-600">แพ้ยา</label>
+                                    <input
+                                        type="text"
+                                        name="drugAllergyInput"
+                                        value={newDrugAllergy}
+                                        onChange={(e) => setNewDrugAllergy(e.target.value)}
+                                        placeholder="ระบุยาที่แพ้ เช่น Sulfa, Pennicillin"
+                                        className="w-full border border-gray-300 rounded-xl px-3 py-2 mt-1"
+                                    />
+
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {ensureArrayField("drugAllergies").map((d, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
+                                                <span>{d}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeArrayItem("drugAllergies", idx)}
+                                                    className="p-1 rounded-full hover:bg-gray-200"
+                                                    aria-label={`ลบ ${d}`}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => addArrayItem("drugAllergies", newDrugAllergy)}
+                                        className="border border-gray-300 cursor-pointer rounded-xl px-4 py-2 h-full"
+                                    >
+                                        เพิ่ม +
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid items-end">
+                                <div className="flex flex-col">
+                                    <label className="text-sm text-gray-600">ข้อมูลเพิ่มเติมด้านการแพทย์</label>
+                                    <textarea
+                                        type="text"
+                                        name="medicalHistory"
+                                        value={profileForm["medicalHistory"]}
+                                        onChange={handleProfileChange}
+                                        className="w-full border border-gray-300 rounded-xl px-3 py-2 mt-1"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Update password */}
                         <div className="border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-col gap-4">
                             <div>
