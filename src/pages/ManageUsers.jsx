@@ -376,13 +376,14 @@ export default function ManageUsers() {
             (acc, user) => {
                 const role = (user.role || "").toUpperCase();
                 if (role === "ADMIN") acc.admin += 1;
-                else if (role === "TEACHER" || role === "SUB_ADMIN") acc.teacher += 1;
+                else if (role === "SUB_ADMIN") acc.subAdmin += 1;
+                else if (role === "TEACHER") acc.teacher += 1;
                 else if (role === "STUDENT") acc.student += 1;
                 else acc.others += 1;
                 acc.total += 1;
                 return acc;
             },
-            { total: 0, admin: 0, teacher: 0, student: 0, others: 0 }
+            { total: 0, admin: 0, teacher: 0, subAdmin: 0, student: 0, others: 0 }
         );
     }, [users]);
 
@@ -804,10 +805,11 @@ const mapUserToForm = (data = {}) => ({
                 </p>
             </header>
 
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <SummaryCard label="ผู้ใช้ทั้งหมด" value={stats.total} accent="from-blue-500 to-blue-700" />
                 <SummaryCard label="ผู้ดูแลระบบ" value={stats.admin} accent="from-purple-500 to-purple-700" />
                 <SummaryCard label="ครูผู้สอน" value={stats.teacher} accent="from-green-500 to-emerald-600" />
+                <SummaryCard label="หัวหน้าหมวดวิชา" value={stats.subAdmin} accent="from-cyan-500 to-sky-600" />
                 <SummaryCard label="นักเรียน" value={stats.student} accent="from-amber-500 to-yellow-500" />
             </section>
 
