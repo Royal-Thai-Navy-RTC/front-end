@@ -22,6 +22,9 @@ export default function FormEvaluateStudent() {
         sections: []
     };
 
+    // console.log(editTemplate);
+
+
     /* -------- Load templates from API -------- */
     useEffect(() => {
         const fetchTemplates = async () => {
@@ -44,6 +47,8 @@ export default function FormEvaluateStudent() {
     };
 
     const handleDelete = (id) => {
+        const token = localStorage.getItem("token");
+
         Swal.fire({
             icon: "warning",
             title: "ยืนยันการลบ",
@@ -51,69 +56,96 @@ export default function FormEvaluateStudent() {
             showCancelButton: true,
             confirmButtonText: "ลบ",
             cancelButtonText: "ยกเลิก",
-        }).then((res) => {
-            if (res.isConfirmed) {
-                setListEvaluate((prev) => prev.filter((t) => t.id !== id));
-                Swal.fire("ลบสำเร็จ", "", "success");
+        }).then(async (res) => {
+            if (!res.isConfirmed) return;
+
+            try {
+                setSaving(true);
+                const response = await axios.delete(
+                    `/api/admin/student-evaluation-templates/${id}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+
+                const message = response.data?.message || "ลบสำเร็จ";
+                setListEvaluate(prev => prev.filter(item => item.id !== id));
+
+                Swal.fire({
+                    icon: "success",
+                    title: message,
+                    timer: 2000
+                });
+
+            } catch (error) {
+                Swal.fire({
+                    icon: "error",
+                    title: "ลบไม่สำเร็จ",
+                    text: error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
+                    timer: 3000,
+                });
+            } finally {
+                setSaving(false);
             }
         });
     };
 
     const openEdit = (template) => {
-        setEditTemplate(JSON.parse(JSON.stringify(template))); // deep clone
+        setEditTemplate(JSON.parse(JSON.stringify(template)));
         setOpenForm(true);
     };
 
-    const closeEditModal = () => {
-        setOpenForm(false);
-        setEditTemplate(null);
-    };
-
-    const handleSaveEdit = () => {
+    // console.log(listEvaluate);
+    const onSave = async () => {
+        const token = localStorage.getItem("token");
         setSaving(true);
 
-        setTimeout(() => {
-            setSaving(false);
-            setOpenForm(false);
-
-            // update list
-            setListEvaluate((prev) =>
-                prev.map((item) => (item.id === editTemplate.id ? editTemplate : item))
-            );
-
-            Swal.fire("บันทึกสำเร็จ", "", "success");
-        }, 1000);
-    };
-    console.log(listEvaluate);
-    
-    const onSave = () => {
-        setSaving(true);
-
-        if (showCreateModal) {
-            // กรณีสร้างใหม่
-            setTimeout(() => {
-                setSaving(false);
-                setOpenForm(false);
-                setShowCreateModal(false);
-
-                const newItem = { ...editTemplate, id: Date.now() };
-                setListEvaluate(prev => [...prev, newItem]);
-                Swal.fire("สร้างฟอร์มใหม่สำเร็จ", "", "success");
-            }, 1000);
-        } else {
-            // กรณีแก้ไข
-            setTimeout(() => {
-                setSaving(false);
-                setOpenForm(false);
-
-                setListEvaluate(prev =>
-                    prev.map(item => item.id === editTemplate.id ? editTemplate : item)
+        try {
+            if (showCreateModal) {
+                const response = await axios.post(
+                    `/api/admin/student-evaluation-templates`,
+                    editTemplate,
+                    { headers: { Authorization: `Bearer ${token}` } }
                 );
 
-                Swal.fire("บันทึกสำเร็จ", "", "success");
-            }, 1000);
+                // console.log(response.data);
+
+                const created = response.data?.template;
+                setListEvaluate(prev => [...prev, created]);
+
+                Swal.fire({ icon: "success", title: "สร้างแบบฟอร์มสำเร็จ", timer: 2000, });
+            } else {
+                const response = await axios.put(
+                    `/api/admin/student-evaluation-templates/${editTemplate.id}`,
+                    editTemplate,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+
+                const updated = response.data?.template;
+
+                setListEvaluate(prev =>
+                    prev.map(item => item.id === updated.id ? updated : item)
+                );
+
+                Swal.fire({ icon: "success", title: "บันทึกการแก้ไขสำเร็จ", timer: 2000, });
+            }
+
+            setSaving(false);
+            setOpenForm(false);
+            setShowCreateModal(false);
+            setEditTemplate(null);
+
+        } catch (error) {
+            console.error(error);
+
+            Swal.fire({
+                icon: "error",
+                title: "บันทึกไม่สำเร็จ",
+                text: error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
+                timer: 3000,
+            });
+
+            setSaving(false);
         }
-    }
+    };
 
     return (
         <div className="w-full flex flex-col gap-6">
@@ -148,8 +180,8 @@ export default function FormEvaluateStudent() {
                 </div>
 
                 {/* Templates */}
-                {listEvaluate.map(v => (
-                    <div key={v.id} className="border border-gray-400 rounded-xl p-4 bg-white hover:bg-gray-100 flex flex-col gap-3">
+                {listEvaluate.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(v => (
+                    <div key={v.id} className="border border-gray-400 rounded-xl p-4 bg-white mb-5 hover:bg-gray-100 flex flex-col gap-3">
                         {/* Header */}
                         <div className='flex flex-col sm:flex-row gap-3 sm:justify-between items-center cursor-pointer' onClick={() => toggleExpand(v.id)} >
                             <div className='flex flex-col w-full'>
@@ -214,34 +246,7 @@ export default function FormEvaluateStudent() {
                         setOpenForm(false);
                         setEditTemplate(null);
                     }}
-                    onSave={() => {
-                        setSaving(true);
-
-                        if (showCreateModal) {
-                            // กรณีสร้างใหม่
-                            setTimeout(() => {
-                                setSaving(false);
-                                setOpenForm(false);
-                                setShowCreateModal(false);
-
-                                const newItem = { ...editTemplate, id: Date.now() };
-                                setListEvaluate(prev => [...prev, newItem]);
-                                Swal.fire("สร้างฟอร์มใหม่สำเร็จ", "", "success");
-                            }, 1000);
-                        } else {
-                            // กรณีแก้ไข
-                            setTimeout(() => {
-                                setSaving(false);
-                                setOpenForm(false);
-
-                                setListEvaluate(prev =>
-                                    prev.map(item => item.id === editTemplate.id ? editTemplate : item)
-                                );
-
-                                Swal.fire("บันทึกสำเร็จ", "", "success");
-                            }, 1000);
-                        }
-                    }}
+                    onSave={onSave}
                     saving={saving}
                 />
             )}
