@@ -219,8 +219,9 @@ const getApproverDisplayName = (approver) => {
 
 export default function TeacherLeave() {
   const [role, setRole] = useState(() => getStoredRole());
+  const isSubAdmin = role === "SUB_ADMIN";
   const isOwner = role === "OWNER";
-  const isAdmin = role === "ADMIN" || isOwner;
+  const isAdmin = role === "ADMIN" || isOwner || isSubAdmin;
 
   // teacher state
   const [form, setForm] = useState(INITIAL_FORM);
