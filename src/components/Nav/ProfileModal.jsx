@@ -232,7 +232,7 @@ export default function ProfileModal({
         });
 
         // clear the corresponding new input
-        if (field === "diseases") setNewDisease("");
+        if (field === "chronicDiseases") setNewDisease("");
         if (field === "foodAllergies") setNewFoodAllergy("");
         if (field === "drugAllergies") setNewDrugAllergy("");
     };
@@ -388,12 +388,12 @@ export default function ProfileModal({
 
                                     {/* show existing items as pills */}
                                     <div className="flex flex-wrap gap-2 mt-2">
-                                        {ensureArrayField("diseases").map((d, idx) => (
+                                        {ensureArrayField("chronicDiseases").map((d, idx) => (
                                             <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
                                                 <span>{d}</span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeArrayItem("diseases", idx)}
+                                                    onClick={() => removeArrayItem("chronicDiseases", idx)}
                                                     className="p-1 rounded-full hover:bg-gray-200"
                                                     aria-label={`ลบ ${d}`}
                                                 >
@@ -407,7 +407,7 @@ export default function ProfileModal({
                                 <div className="flex items-center justify-end">
                                     <button
                                         type="button"
-                                        onClick={() => addArrayItem("diseases", newDisease)}
+                                        onClick={() => addArrayItem("chronicDiseases", newDisease)}
                                         className="border border-gray-300 cursor-pointer rounded-xl px-4 py-2 h-full"
                                     >
                                         เพิ่ม +
