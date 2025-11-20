@@ -14,6 +14,8 @@ export default function FormEvaluateStudent() {
     const [editTemplate, setEditTemplate] = useState(null);
     const [saving, setSaving] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [searchKey, setSearchKey] = useState("");
+
 
     const emptyTemplate = {
         id: null,
@@ -174,13 +176,18 @@ export default function FormEvaluateStudent() {
                 <div className="flex flex-col gap-2 mb-5">
                     <label className="text-sm text-gray-600">เลือกแบบฟอร์มที่ต้องการจัดการ</label>
                     <div className="relative">
-                        <input className='border border-gray-400 rounded-lg p-2 pr-10 w-full text-gray-700' placeholder='ชื่อแบบฟอร์ม...' />
+                        <input
+                            className='border border-gray-400 rounded-lg p-2 pr-10 w-full text-gray-700'
+                            placeholder='ชื่อแบบฟอร์ม...'
+                            value={searchKey}
+                            onChange={(e) => setSearchKey(e.target.value)}
+                        />
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
                     </div>
                 </div>
 
                 {/* Templates */}
-                {listEvaluate.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(v => (
+                {listEvaluate.filter(v => v.name.toLowerCase().includes(searchKey.toLowerCase())).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(v => (
                     <div key={v.id} className="border border-gray-400 rounded-xl p-4 bg-white mb-5 hover:bg-gray-100 flex flex-col gap-3">
                         {/* Header */}
                         <div className='flex flex-col sm:flex-row gap-3 sm:justify-between items-center cursor-pointer' onClick={() => toggleExpand(v.id)} >

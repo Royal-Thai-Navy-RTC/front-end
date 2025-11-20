@@ -1799,7 +1799,7 @@ const mapUserToForm = (data = {}) => ({
     );
 }
 
-function SummaryCard({ label, value, accent }) {
+function SummaryCard({ label, value, accent }) {   
     return (
         <div className={`rounded-2xl p-4 text-white shadow-lg bg-gradient-to-br ${accent}`}>
             <p className="text-sm text-white/80">{label}</p>
