@@ -207,7 +207,7 @@ const ActiveFiltersBar = ({ roleFilter, searchValue, onClearRoleFilter, onClearS
                     onClick={onClearSearch}
                     className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
                 >
-                    คำค้น: “{searchValue}”
+                    คำที่หา: “{searchValue}”
                     <span className="text-emerald-500 text-sm font-bold">×</span>
                 </button>
             )}
@@ -813,50 +813,64 @@ const mapUserToForm = (data = {}) => ({
                 <SummaryCard label="นักเรียน" value={stats.student} accent="from-amber-500 to-yellow-500" />
             </section>
 
-            <section className="bg-white rounded-2xl p-5 shadow flex flex-col gap-4">
-                <div className="flex flex-col gap-1">
-                    <p className="text-lg font-semibold text-gray-800">ค้นหาและกรองผู้ใช้</p>
-                    <p className="text-sm text-gray-500">เลือกบทบาทที่ต้องการและค้นหาผู้ใช้ตามชื่อ Username หรืออีเมล</p>
-                </div>
-                <div className="grid lg:grid-cols-4 gap-3">
-                    <select
-                        value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
-                        className="border rounded-xl px-3 py-3 text-base w-full focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
-                    >
-                        {ROLE_FILTERS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                    <div className="lg:col-span-2 flex items-center border rounded-xl px-3 py-1 focus-within:ring-2 focus-within:ring-blue-200 transition">
-                        <Search className="text-gray-400" size={20} />
-                        <input
-                            type="text"
-                            placeholder="ค้นหาข้อมูลผู้ใช้ (ชื่อ, ตำแหน่ง, เบอร์โทร...)"
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setPage(1);
-                            }}
-                            className="px-2 py-2 flex-1 focus:outline-none"
-                        />
+            <section className="bg-white rounded-2xl shadow px-4 py-4 flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <p className="text-base font-semibold text-gray-800">ค้นหาและกรองผู้ใช้</p>
+                        <p className="text-xs text-gray-500">เลือกบทบาทและระบุคำค้นเพื่อดูรายการที่ตรงที่สุด</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span className="inline-flex items-center gap-1">
+                            <span className="w-3 h-3 rounded-full bg-blue-500/30 border border-blue-400" />
+                            บทบาท
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                            <span className="w-3 h-3 rounded-full bg-emerald-500/30 border border-emerald-400" />
+                            คำค้น
+                        </span>
+                    </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 md:flex-row">
+                        <select
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            className="border rounded-xl px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+                        >
+                            {ROLE_FILTERS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="flex items-center border rounded-xl px-3 py-1 focus-within:ring-2 focus-within:ring-blue-200 transition w-full">
+                            <Search className="text-gray-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="ค้นหาชื่อ, Username, เบอร์โทร..."
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="px-2 py-2 flex-1 text-sm focus:outline-none"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
                         <button
                             onClick={handleClearSearch}
-                            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 transition w-full"
+                            className="px-3 py-2 rounded-xl border border-gray-300 text-gray-600 text-sm hover:bg-gray-50 transition"
                         >
                             ล้าง
                         </button>
                         <button
                             onClick={() => setReloadKey((prev) => prev + 1)}
                             disabled={loading}
-                            className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2 transition w-full"
+                            className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2 transition"
                         >
-                            <RefreshCw size={18} />
-                            รีเฟรช
+                            <RefreshCw size={16} />
+                            รีเฟรชข้อมูล
                         </button>
                     </div>
                 </div>
