@@ -16,7 +16,7 @@ export default function EvaluateStudent() {
     const [optionEvaluate, setOptionEvaluate] = useState([]);
     const [listEvaluate, setListEvaluate] = useState([]);
     const [formEvaluate, setFormEvaluate] = useState(null);
-    
+
     // Load form templates
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -54,8 +54,7 @@ export default function EvaluateStudent() {
         }));
     };
     // console.log(scores);
-    // console.log(listEvaluate);
-    
+    // console.log(formEvaluate);
 
     return (
         <div className="flex flex-col w-full gap-6">
@@ -141,19 +140,28 @@ export default function EvaluateStudent() {
                 ) : (
                     /* ถ้าเลือกฟอร์มแล้ว */
                     <div className='px-6 pt-4'>
-                        {formEvaluate.sections?.sort((a, b) => a.sectionOrder - b.sectionOrder).map((sec) => {
-                            const maxScore = sec.questions[0]?.maxScore || 5;
-                            return (
+                        {formEvaluate.sections
+                            ?.sort((a, b) => a.sectionOrder - b.sectionOrder)
+                            .map((sec) => (
                                 <table key={sec.id} className="w-full mb-6 border border-gray-400">
                                     {/* SECTION HEADER */}
                                     <thead className="bg-blue-800 text-white">
                                         <tr>
                                             <th className="text-left p-3 w-1/2">{sec.title}</th>
-                                            {Array.from({ length: maxScore }, (_, i) => (
-                                                <th key={i} className="text-center p-2 w-10">
-                                                    {i + 1}
-                                                </th>
-                                            ))}
+
+                                            {/* ใช้ maxScore ที่สูงที่สุดใน section เพื่อสร้างหัวตาราง */}
+                                            {Array.from(
+                                                {
+                                                    length: Math.max(
+                                                        ...sec.questions.map((q) => q.maxScore || 5)
+                                                    ),
+                                                },
+                                                (_, i) => (
+                                                    <th key={i} className="text-center p-2 w-10">
+                                                        {i + 1}
+                                                    </th>
+                                                )
+                                            )}
                                         </tr>
                                     </thead>
 
@@ -164,17 +172,28 @@ export default function EvaluateStudent() {
                                             .map((q) => (
                                                 <tr key={q.id} className="hover:bg-gray-200">
                                                     {/* คำถาม */}
-                                                    <td className="p-2 sm:p-3 text-sm sm:text-md">{q.prompt}</td>
+                                                    <td className="p-2 sm:p-3 text-sm sm:text-md">
+                                                        {q.prompt}
+                                                    </td>
+
                                                     {/* ช่องคะแนน */}
-                                                    {Array.from({ length: maxScore }, (_, i) => {
+                                                    {Array.from({ length: q.maxScore || 5 }, (_, i) => {
                                                         const scoreValue = i + 1;
                                                         const selected =
                                                             scores?.[sec.id]?.[q.id] === scoreValue;
 
                                                         return (
-                                                            <td key={i} className="text-center p-2" >
-                                                                <input type="checkbox" checked={selected}
-                                                                    onChange={ () => handleScore(sec.id, q.id, scoreValue) }
+                                                            <td key={i} className="text-center p-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selected}
+                                                                    onChange={() =>
+                                                                        handleScore(
+                                                                            sec.id,
+                                                                            q.id,
+                                                                            scoreValue
+                                                                        )
+                                                                    }
                                                                     className="size-4 sm:size-5 cursor-pointer"
                                                                 />
                                                             </td>
@@ -184,16 +203,13 @@ export default function EvaluateStudent() {
                                             ))}
                                     </tbody>
                                 </table>
-                            );
-                        })}
-                        <button
-                            className="px-4 py-2 rounded-xl w-full bg-blue-800 text-xl cursor-pointer text-white mt-4"
-                        // onClick={handleSave}
-                        // disabled={savingProfile}
-                        >
+                            ))}
+
+                        <button className="px-4 py-2 rounded-xl w-full bg-blue-800 text-xl cursor-pointer text-white mt-4">
                             บันทึกข้อมูล
                         </button>
                     </div>
+
                 )}
             </div>
         </div>
