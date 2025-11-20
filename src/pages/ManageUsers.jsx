@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { Users, RefreshCw, Search, Pencil, UserPlus } from "lucide-react";
+import { Users, RefreshCw, Search, Pencil, UserPlus, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import navy from "../assets/navy.png";
 
@@ -10,8 +10,29 @@ const ROLE_FILTERS = [
     { label: "ผู้ดูแลระบบ", value: "ADMIN" },
     { label: "ครูผู้สอน", value: "TEACHER" },
     { label: "นักเรียน", value: "STUDENT" },
-    { label: "ผู้ช่วยผู้ดูแลระบบ", value: "SUB_ADMIN" },
+    { label: "หัวหน้าหมวดวิชา", value: "SUB_ADMIN" },
 ];
+
+const ROLE_LABELS = {
+    ADMIN: "ผู้ดูแลระบบ",
+    OWNER: "ผู้บังคับบัญชา",
+    SUB_ADMIN: "หัวหน้าหมวดวิชา",
+    TEACHER: "ครูผู้สอน",
+    STUDENT: "นักเรียน",
+};
+
+const ROLE_FILTER_LABELS = {
+    ALL: "ทุกบทบาท",
+    ...ROLE_LABELS,
+};
+
+const ROLE_BADGE_STYLES = {
+    ADMIN: "bg-purple-50 text-purple-700 border-purple-200",
+    OWNER: "bg-amber-50 text-amber-700 border-amber-200",
+    SUB_ADMIN: "bg-sky-50 text-sky-700 border-sky-200",
+    TEACHER: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    STUDENT: "bg-blue-50 text-blue-700 border-blue-200",
+};
 
 const RANK_OPTIONS = [
     { value: "ADMIRAL", label: "พลเรือเอก" },
@@ -138,12 +159,61 @@ const getFullName = (user) => {
     return composed || "-";
 };
 
+const getRoleLabel = (role) => {
+    if (!role) return "-";
+    const normalized = role.toString().toUpperCase();
+    return ROLE_LABELS[normalized] || role;
+};
+
+const getRoleBadgeClasses = (role) => {
+    const normalized = (role || "").toString().toUpperCase();
+    const color = ROLE_BADGE_STYLES[normalized] || "bg-gray-50 text-gray-700 border-gray-200";
+    return `px-3 py-1 rounded-full text-xs font-semibold border ${color}`;
+};
+
 const SearchDetailField = ({ label, value }) => (
     <div className="flex flex-col gap-1 text-sm">
         <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</span>
         <span className="text-gray-900">{value}</span>
     </div>
 );
+
+const ActiveFiltersBar = ({ roleFilter, searchValue, onClearRoleFilter, onClearSearch }) => {
+    const hasRoleFilter = roleFilter !== "ALL";
+    const hasSearch = Boolean(searchValue);
+    if (!hasRoleFilter && !hasSearch) {
+        return (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
+                <span>กำลังแสดงทุกบทบาท</span>
+            </div>
+        );
+    }
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">ตัวกรองที่ใช้งาน</span>
+            {hasRoleFilter && (
+                <button
+                    type="button"
+                    onClick={onClearRoleFilter}
+                    className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition"
+                >
+                    บทบาท: {ROLE_FILTER_LABELS[roleFilter] || roleFilter}
+                    <span className="text-blue-500 text-sm font-bold">×</span>
+                </button>
+            )}
+            {hasSearch && (
+                <button
+                    type="button"
+                    onClick={onClearSearch}
+                    className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+                >
+                    คำค้น: “{searchValue}”
+                    <span className="text-emerald-500 text-sm font-bold">×</span>
+                </button>
+            )}
+        </div>
+    );
+};
 
 export default function ManageUsers() {
     const [users, setUsers] = useState([]);
@@ -168,6 +238,8 @@ export default function ManageUsers() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchError, setSearchError] = useState("");
+    const [previewImage, setPreviewImage] = useState("");
+    const [previewImageName, setPreviewImageName] = useState("");
     const pageSize = 10;
     const currentUser = getStoredUser();
     const currentUserId = currentUser?.id;
@@ -268,6 +340,28 @@ export default function ManageUsers() {
         () => filterUsersForDisplay(searchResults, roleFilter, currentUserId, currentUsername),
         [searchResults, roleFilter, currentUserId, currentUsername]
     );
+
+    const handleClearSearch = useCallback(() => {
+        setSearch("");
+        setPage(1);
+    }, []);
+
+    const handleClearRoleFilter = useCallback(() => {
+        setRoleFilter("ALL");
+        setPage(1);
+    }, []);
+
+    const handleOpenAvatarPreview = useCallback((user) => {
+        const targetName = getFullName(user);
+        const imageSrc = resolveAvatarUrl(user.avatar) || navy;
+        setPreviewImage(imageSrc);
+        setPreviewImageName(targetName);
+    }, []);
+
+    const handleCloseAvatarPreview = useCallback(() => {
+        setPreviewImage("");
+        setPreviewImageName("");
+    }, []);
 
     const isSearchMode = Boolean(debouncedSearch);
     const activeUsers = isSearchMode ? filteredSearchResults : filteredUsers;
@@ -749,7 +843,7 @@ const mapUserToForm = (data = {}) => ({
                     </div>
                     <div className="flex gap-2">
                         <button
-                            onClick={() => setSearch("")}
+                            onClick={handleClearSearch}
                             className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 transition w-full"
                         >
                             ล้าง
@@ -764,6 +858,12 @@ const mapUserToForm = (data = {}) => ({
                         </button>
                     </div>
                 </div>
+                <ActiveFiltersBar
+                    roleFilter={roleFilter}
+                    searchValue={debouncedSearch}
+                    onClearRoleFilter={handleClearRoleFilter}
+                    onClearSearch={handleClearSearch}
+                />
             </section>
 
             {isSearchMode && (
@@ -801,10 +901,10 @@ const mapUserToForm = (data = {}) => ({
                                             <div>
                                                 <p className="text-base font-semibold text-gray-900">{getFullName(user)}</p>
                                                 <p className="text-sm text-gray-500">
-                                                    {rankLabel} · {formatDisplayValue(user.position || user.role)}
+                                                    {rankLabel} · {formatDisplayValue(user.position || getRoleLabel(user.role))}
                                                 </p>
                                             </div>
-                                            <div className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700">
+                                            <div className={getRoleBadgeClasses(user.role)}>
                                                 {formatDisplayValue(user.username)}
                                             </div>
                                         </div>
@@ -814,7 +914,10 @@ const mapUserToForm = (data = {}) => ({
                                                 <SearchDetailField label="นามสกุล" value={formatDisplayValue(user.lastName)} />
                                                 <SearchDetailField label="ที่อยู่" value={formatDisplayValue(user.fullAddress)} />
                                                 <SearchDetailField label="การศึกษา" value={formatDisplayValue(user.education)} />
-                                                <SearchDetailField label="ตำแหน่ง/หน้าที่" value={formatDisplayValue(user.position)} />
+                                                <SearchDetailField
+                                                    label="ตำแหน่ง/หน้าที่"
+                                                    value={formatDisplayValue(user.position || getRoleLabel(user.role))}
+                                                />
                                             </div>
                                             <div className="grid gap-3">
                                                 <SearchDetailField label="ประวัติสุขภาพ" value={formatDisplayValue(user.medicalHistory)} />
@@ -861,32 +964,31 @@ const mapUserToForm = (data = {}) => ({
                         Page {page} / {totalPages}
                     </span>
                 </div>
-                <div className="overflow-x-auto rounded-2xl border border-gray-100">
-                    <table className="min-w-full text-left text-gray-700 text-sm">
+                <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-100">
+                    <table className="min-w-full text-left text-gray-700 text-sm table-fixed">
                         <thead className="bg-gray-50 text-gray-600 uppercase tracking-wide text-xs">
                             <tr>
-                                <th className="p-4 text-center">รูป</th>
-                                <th className="p-4 text-center">ยศ</th>
-                                <th className="p-4">ชื่อ - นามสกุล</th>
-                                <th className="p-4">Username</th>
-                                <th className="p-4">อีเมล</th>
-                                <th className="p-4 text-center">บทบาท</th>
-                                <th className="p-4 text-center">แก้ไข</th>
-                                <th className="p-4 text-center">สถานะ</th>
-                                <th className="p-4 text-center">รายละเอียด</th>
+                                <th className="p-3 text-center w-20">รูป</th>
+                                <th className="p-3 text-center w-28">ยศ</th>
+                                <th className="p-3 w-[220px]">ชื่อ - นามสกุล</th>
+                                <th className="p-3 w-32 text-center">ชื่อผู้ใช้</th>
+                                <th className="p-3 w-48">อีเมล</th>
+                                <th className="p-3 text-center w-32">บทบาท</th>
+                                <th className="p-3 text-center w-36">สถานะ</th>
+                                <th className="p-3 text-center w-40">การจัดการ</th>
                             </tr>
                         </thead>
                     <tbody>
                             {listLoading && (
                                 <tr>
-                                    <td colSpan="9" className="text-center p-6 text-blue-600">
+                                    <td colSpan="8" className="text-center p-6 text-blue-600">
                                         กำลังโหลดข้อมูล...
                                     </td>
                                 </tr>
                             )}
                             {!listLoading && listError && (
                                 <tr>
-                                    <td colSpan="9" className="text-center p-6 text-red-500">
+                                    <td colSpan="8" className="text-center p-6 text-red-500">
                                         {listError}
                                     </td>
                                 </tr>
@@ -898,42 +1000,46 @@ const mapUserToForm = (data = {}) => ({
                                 const rankLabel = RANK_OPTIONS.find((option) => option.value === (user.rank || "").toUpperCase())?.label || user.rank || "-";
                                 const isActive = user.isActive ?? true;
                                 return (
-                                    <tr key={user.id || user.username} className="border-t border-gray-100 hover:bg-blue-50/40 transition">
-                                        <td className="p-4 text-center">
-                                            <img
-                                                src={resolveAvatarUrl(user.avatar) || navy}
-                                                alt={fullName}
-                                                className="w-10 h-10 rounded-full object-cover border border-gray-200"
-                                            />
+                                    <tr
+                                        key={user.id || user.username}
+                                        className="border-t border-gray-100 hover:bg-blue-50/40 transition text-sm"
+                                    >
+                                        <td className="p-3 text-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenAvatarPreview(user)}
+                                                className="relative group mx-auto block rounded-full"
+                                                aria-label={`ดูรูปของ ${fullName}`}
+                                            >
+                                                <img
+                                                    src={resolveAvatarUrl(user.avatar) || navy}
+                                                    alt={fullName}
+                                                    className="w-10 h-10 rounded-full object-cover border border-gray-200 transition group-hover:scale-105"
+                                                />
+                                                <span className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white transition">
+                                                    ดูรูป
+                                                </span>
+                                            </button>
                                         </td>
-                                        <td className="p-4 text-center">
+                                        <td className="p-3 text-center">
                                             <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
                                                 {rankLabel || "-"}
                                             </span>
                                         </td>
-                                        <td className="p-4">
-                                            <p className="font-semibold">{fullName}</p>
-                                            <p className="text-xs text-gray-500">{user.department || "ไม่ระบุแผนก"}</p>
+                                        <td className="p-3">
+                                            <p className="font-semibold truncate">{fullName}</p>
+                                            <p className="text-[11px] text-gray-500">{user.department || "ไม่ระบุแผนก"}</p>
                                         </td>
-                                        <td className="p-4">{user.username || "-"}</td>
-                                        <td className="p-4">{user.email || "-"}</td>
-                                        <td className="p-4 text-center">
-                                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
-                                                {(user.role || "-").toString().toUpperCase()}
-                                            </span>
+                                        <td className="p-3 text-center break-all text-xs">{user.username || "-"}</td>
+                                        <td className="p-3">
+                                            <p className="text-xs break-all">{user.email || "-"}</p>
                                         </td>
-                                        <td className="p-4 text-center">
-                                            <button
-                                                onClick={() => openEditModal(user)}
-                                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-50 transition"
-                                            >
-                                                <Pencil size={14} />
-                                                แก้ไข
-                                            </button>
+                                        <td className="p-3 text-center">
+                                            <span className={getRoleBadgeClasses(user.role)}>{getRoleLabel(user.role)}</span>
                                         </td>
-                                        <td className="p-4 text-center">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <span className={`text-xs font-semibold ${isActive ? "text-emerald-600" : "text-red-500"}`}>
+                                        <td className="p-3 text-center">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className={`text-[11px] font-semibold ${isActive ? "text-emerald-600" : "text-red-500"}`}>
                                                     {isActive ? "เปิดใช้งานอยู่" : "ปิดการใช้งาน"}
                                                 </span>
                                                 <ToggleSwitch
@@ -943,26 +1049,133 @@ const mapUserToForm = (data = {}) => ({
                                                 />
                                             </div>
                                         </td>
-                                        <td className="p-4 text-center">
-                                            <Link
-                                                to={`/users/${user.id ?? user._id}`}
-                                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition"
-                                            >
-                                                ดูข้อมูล
-                                            </Link>
+                                        <td className="p-3 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => openEditModal(user)}
+                                                    className="inline-flex items-center justify-center rounded-full border border-blue-200 text-blue-700 p-2 hover:bg-blue-50 transition"
+                                                    aria-label="แก้ไข"
+                                                >
+                                                    <Pencil size={16} />
+                                                    <span className="sr-only">แก้ไข</span>
+                                                </button>
+                                                <Link
+                                                    to={`/users/${user.id ?? user._id}`}
+                                                    className="inline-flex items-center justify-center rounded-full border border-gray-200 text-gray-700 p-2 hover:bg-gray-50 transition"
+                                                    aria-label="ดูข้อมูล"
+                                                >
+                                                    <Eye size={16} />
+                                                    <span className="sr-only">ดูข้อมูล</span>
+                                                </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
                             })}
                             {!listLoading && !listError && paginated.length === 0 && (
                                 <tr>
-                                        <td colSpan="9" className="text-center p-6 text-gray-400">
+                                        <td colSpan="8" className="text-center p-6 text-gray-400">
                                         ไม่พบข้อมูลผู้ใช้
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
+                </div>
+                <div className="md:hidden flex flex-col gap-3">
+                    {listLoading && <p className="text-center text-blue-600 py-4 text-sm font-medium">กำลังโหลดข้อมูล...</p>}
+                    {!listLoading && listError && (
+                        <p className="text-center text-red-500 py-4 text-sm font-medium">{listError}</p>
+                    )}
+                    {!listLoading &&
+                        !listError &&
+                        paginated.map((user) => {
+                            const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "-";
+                            const rankLabel =
+                                RANK_OPTIONS.find((option) => option.value === (user.rank || "").toUpperCase())?.label ||
+                                user.rank ||
+                                "-";
+                            const isActive = user.isActive ?? true;
+                            return (
+                                <article
+                                    key={user.id || user.username}
+                                    className="rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col gap-3"
+                                >
+                                    <div className="flex gap-3 items-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleOpenAvatarPreview(user)}
+                                            className="relative group rounded-full"
+                                            aria-label={`ดูรูปของ ${fullName}`}
+                                        >
+                                            <img
+                                                src={resolveAvatarUrl(user.avatar) || navy}
+                                                alt={fullName}
+                                                className="w-14 h-14 rounded-full object-cover border border-gray-200"
+                                            />
+                                            <span className="absolute inset-0 rounded-full bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white transition">
+                                                ดูรูป
+                                            </span>
+                                        </button>
+                                        <div className="flex-1">
+                                            <p className="font-semibold text-gray-900">{fullName}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {rankLabel} · {user.department || "ไม่ระบุแผนก"}
+                                            </p>
+                                        </div>
+                                        <span className={getRoleBadgeClasses(user.role)}>{getRoleLabel(user.role)}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 text-xs text-gray-600">
+                                        <div>
+                                            <p className="font-semibold text-gray-500">Username</p>
+                                            <p className="text-gray-900">{user.username || "-"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-gray-500">อีเมล</p>
+                                            <p className="text-gray-900 break-all">{user.email || "-"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-gray-500">สถานะ</p>
+                                            <p className={isActive ? "text-emerald-600 font-semibold" : "text-red-500 font-semibold"}>
+                                                {isActive ? "เปิดใช้งานอยู่" : "ปิดการใช้งาน"}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-gray-500">เบอร์โทร</p>
+                                            <p className="text-gray-900">{user.phone || "-"}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2 w-full">
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => openEditModal(user)}
+                                                className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-xl border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-50 transition"
+                                                aria-label="แก้ไข"
+                                            >
+                                                <Pencil size={16} />
+                                                <span className="sr-only">แก้ไข</span>
+                                            </button>
+                                            <Link
+                                                to={`/users/${user.id ?? user._id}`}
+                                                className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition"
+                                                aria-label="ดูข้อมูล"
+                                            >
+                                                <Eye size={16} />
+                                                <span className="sr-only">ดูข้อมูล</span>
+                                            </Link>
+                                        </div>
+                                        <ToggleSwitch
+                                            isActive={isActive}
+                                            disabled={actionUserId === (user.id ?? user._id)}
+                                            onToggle={() => handleToggleStatus(user)}
+                                        />
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    {!listLoading && !listError && paginated.length === 0 && (
+                        <p className="text-center text-gray-400 py-4 text-sm">ไม่พบข้อมูลผู้ใช้</p>
+                    )}
                 </div>
                 <div className="flex flex-wrap justify-center sm:justify-between items-center mt-6 gap-2 text-sm">
                     <button
@@ -1380,6 +1593,27 @@ const mapUserToForm = (data = {}) => ({
                     </div>
                 </div>
             )}
+            {previewImage && (
+                <div
+                    className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={handleCloseAvatarPreview}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl p-4 flex flex-col items-center gap-4 max-w-lg w-full"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img src={previewImage} alt={previewImageName} className="w-full rounded-xl object-contain" />
+                        <p className="text-sm text-gray-600">{previewImageName || "รูปผู้ใช้"}</p>
+                        <button
+                            type="button"
+                            onClick={handleCloseAvatarPreview}
+                            className="px-5 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                        >
+                            ปิดภาพ
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -1403,8 +1637,12 @@ function ToggleSwitch({ isActive, disabled, onToggle }) {
                 disabled={disabled}
                 onChange={onToggle}
             />
-            <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-emerald-500 transition-colors"></div>
-            <div className={`absolute left-1 top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${isActive ? "translate-x-7" : ""}`}></div>
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-emerald-500 transition-colors"></div>
+            <div
+                className={`absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                    isActive ? "translate-x-5" : ""
+                }`}
+            ></div>
         </label>
     );
 }
