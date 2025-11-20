@@ -82,6 +82,69 @@ const getCurrentRole = (storedUser) => {
     return (storedUser?.role || directRole || "guest").toString().toUpperCase();
 };
 
+const extractUsers = (payload) => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.data?.items)) return payload.data.items;
+    if (Array.isArray(payload?.items)) return payload.items;
+    return [];
+};
+
+const filterUsersForDisplay = (users = [], roleFilter = "ALL", currentUserId, currentUsername) => {
+    const normalizedUsername = (currentUsername || "").toString().toLowerCase();
+    return users.filter((user) => {
+        const candidateId = user?.id ?? user?._id;
+        const userRole = (user?.role || "").toString().toUpperCase();
+        const username = (user?.username || "").toString().toLowerCase();
+        const isSelf =
+            (currentUserId != null && candidateId === currentUserId) ||
+            (!!normalizedUsername && username === normalizedUsername);
+        if (isSelf) return false;
+        if (roleFilter !== "ALL" && userRole !== roleFilter) return false;
+        return true;
+    });
+};
+
+const formatDisplayValue = (value) => {
+    if (value === null || value === undefined) return "-";
+    const text = value.toString().trim();
+    return text || "-";
+};
+
+const formatListValue = (value) => {
+    if (!value) return "-";
+    if (Array.isArray(value)) {
+        return value.length ? value.join(", ") : "-";
+    }
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (!trimmed) return "-";
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+                return parsed.length ? parsed.join(", ") : "-";
+            }
+        } catch {
+            // ignore parse error and fall through
+        }
+        return trimmed;
+    }
+    return formatDisplayValue(value);
+};
+
+const getFullName = (user) => {
+    const composed = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+    return composed || "-";
+};
+
+const SearchDetailField = ({ label, value }) => (
+    <div className="flex flex-col gap-1 text-sm">
+        <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</span>
+        <span className="text-gray-900">{value}</span>
+    </div>
+);
+
 export default function ManageUsers() {
     const [users, setUsers] = useState([]);
     const [roleFilter, setRoleFilter] = useState("ALL");
@@ -101,6 +164,10 @@ export default function ManageUsers() {
     const [createForm, setCreateForm] = useState(CREATE_USER_DEFAULT);
     const [createAvatarPreview, setCreateAvatarPreview] = useState("");
     const [creatingUser, setCreatingUser] = useState(false);
+    const [searchResults, setSearchResults] = useState([]);
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [searchError, setSearchError] = useState("");
     const pageSize = 10;
     const currentUser = getStoredUser();
     const currentUserId = currentUser?.id;
@@ -128,12 +195,7 @@ export default function ManageUsers() {
                     params,
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                 });
-                const payload = Array.isArray(response.data)
-                    ? response.data
-                    : Array.isArray(response.data?.data)
-                        ? response.data.data
-                        : [];
-                setUsers(payload);
+                setUsers(extractUsers(response.data));
             } catch (err) {
                 const message = err.response?.data?.message || "ไม่สามารถดึงข้อมูลผู้ใช้ได้";
                 setError(message);
@@ -152,26 +214,68 @@ export default function ManageUsers() {
         fetchUsers();
     }, [roleFilter, reloadKey, isAdmin]);
 
-    const filteredUsers = useMemo(() => {
-        const keyword = search.toLowerCase();
-        return users.filter((user) => {
-            const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim().toLowerCase();
-            const username = (user.username || "").toLowerCase();
-            const email = (user.email || "").toLowerCase();
-            const isSelf =
-                (currentUserId != null && user.id === currentUserId) ||
-                (!!currentUsername && username === currentUsername.toLowerCase());
-            const matchesKeyword =
-                !keyword ||
-                fullName.includes(keyword) ||
-                username.includes(keyword) ||
-                email.includes(keyword);
-            return !isSelf && matchesKeyword;
-        });
-    }, [users, search, currentUserId, currentUsername]);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(search.trim());
+        }, 400);
+        return () => clearTimeout(handler);
+    }, [search]);
 
-    const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-    const paginated = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
+    useEffect(() => {
+        if (!isAdmin) return;
+        const keyword = debouncedSearch;
+        if (!keyword) {
+            setSearchResults([]);
+            setSearchError("");
+            setSearchLoading(false);
+            return;
+        }
+        let active = true;
+        const fetchSearch = async () => {
+            setSearchLoading(true);
+            setSearchError("");
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get("/api/admin/users/personal-search", {
+                    params: { q: keyword, limit: 50 },
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                });
+                if (!active) return;
+                setSearchResults(extractUsers(response.data));
+            } catch (err) {
+                if (!active) return;
+                const message = err.response?.data?.message || "ค้นหาผู้ใช้ไม่สำเร็จ";
+                setSearchError(message);
+                setSearchResults([]);
+            } finally {
+                // eslint-disable-next-line no-unsafe-finally
+                if (!active) return;
+                setSearchLoading(false);
+            }
+        };
+        fetchSearch();
+        return () => {
+            active = false;
+        };
+    }, [debouncedSearch, isAdmin]);
+
+    const filteredUsers = useMemo(
+        () => filterUsersForDisplay(users, roleFilter, currentUserId, currentUsername),
+        [users, roleFilter, currentUserId, currentUsername]
+    );
+
+    const filteredSearchResults = useMemo(
+        () => filterUsersForDisplay(searchResults, roleFilter, currentUserId, currentUsername),
+        [searchResults, roleFilter, currentUserId, currentUsername]
+    );
+
+    const isSearchMode = Boolean(debouncedSearch);
+    const activeUsers = isSearchMode ? filteredSearchResults : filteredUsers;
+    const listLoading = isSearchMode ? searchLoading : loading;
+    const listError = isSearchMode ? searchError : error;
+
+    const totalPages = Math.max(1, Math.ceil(activeUsers.length / pageSize));
+    const paginated = activeUsers.slice((page - 1) * pageSize, page * pageSize);
 
     const stats = useMemo(() => {
         return users.reduce(
@@ -634,7 +738,7 @@ const mapUserToForm = (data = {}) => ({
                         <Search className="text-gray-400" size={20} />
                         <input
                             type="text"
-                            placeholder="ค้นหาชื่อ, username หรืออีเมล..."
+                            placeholder="ค้นหาข้อมูลผู้ใช้ (ชื่อ, ตำแหน่ง, เบอร์โทร...)"
                             value={search}
                             onChange={(e) => {
                                 setSearch(e.target.value);
@@ -662,11 +766,96 @@ const mapUserToForm = (data = {}) => ({
                 </div>
             </section>
 
+            {isSearchMode && (
+                <section className="bg-white rounded-2xl p-5 shadow flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                        <p className="text-lg font-semibold text-gray-800">ผลการค้นหาข้อมูลผู้ใช้</p>
+                        <p className="text-sm text-gray-500">
+                            พบ {filteredSearchResults.length} รายการที่เกี่ยวข้องกับคำค้น "{debouncedSearch}"
+                        </p>
+                    </div>
+                    {listLoading ? (
+                        <p className="text-sm text-blue-600">กำลังค้นหาข้อมูล...</p>
+                    ) : listError ? (
+                        <p className="text-sm text-red-500">{listError}</p>
+                    ) : filteredSearchResults.length === 0 ? (
+                        <p className="text-sm text-gray-500">ไม่พบข้อมูลที่ตรงกับคำค้น</p>
+                    ) : (
+                        <div className="flex flex-col gap-4">
+                            {filteredSearchResults.map((user) => {
+                                const rankLabel =
+                                    RANK_OPTIONS.find(
+                                        (option) => option.value === (user.rank || "").toString().toUpperCase()
+                                    )?.label || formatDisplayValue(user.rank);
+                                const emergencyContactDisplay = user.emergencyContactName
+                                    ? `${formatDisplayValue(user.emergencyContactName)} (${formatDisplayValue(
+                                          user.emergencyContactPhone
+                                      )})`
+                                    : formatDisplayValue(user.emergencyContactPhone);
+                                return (
+                                    <article
+                                        key={user.id ?? user._id}
+                                        className="border border-gray-100 rounded-2xl p-4 shadow-sm flex flex-col gap-4"
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <div>
+                                                <p className="text-base font-semibold text-gray-900">{getFullName(user)}</p>
+                                                <p className="text-sm text-gray-500">
+                                                    {rankLabel} · {formatDisplayValue(user.position || user.role)}
+                                                </p>
+                                            </div>
+                                            <div className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700">
+                                                {formatDisplayValue(user.username)}
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <div className="grid gap-3">
+                                                <SearchDetailField label="ชื่อ" value={formatDisplayValue(user.firstName)} />
+                                                <SearchDetailField label="นามสกุล" value={formatDisplayValue(user.lastName)} />
+                                                <SearchDetailField label="ที่อยู่" value={formatDisplayValue(user.fullAddress)} />
+                                                <SearchDetailField label="การศึกษา" value={formatDisplayValue(user.education)} />
+                                                <SearchDetailField label="ตำแหน่ง/หน้าที่" value={formatDisplayValue(user.position)} />
+                                            </div>
+                                            <div className="grid gap-3">
+                                                <SearchDetailField label="ประวัติสุขภาพ" value={formatDisplayValue(user.medicalHistory)} />
+                                                <SearchDetailField label="ศาสนา" value={formatDisplayValue(user.religion)} />
+                                                <SearchDetailField label="ทักษะพิเศษ" value={formatDisplayValue(user.specialSkills)} />
+                                                <SearchDetailField
+                                                    label="อาชีพเสริม"
+                                                    value={formatDisplayValue(user.secondaryOccupation)}
+                                                />
+                                                <SearchDetailField label="ผู้ติดต่อฉุกเฉิน" value={emergencyContactDisplay} />
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <SearchDetailField label="อีเมล" value={formatDisplayValue(user.email)} />
+                                            <SearchDetailField label="โทรศัพท์" value={formatDisplayValue(user.phone)} />
+                                            <SearchDetailField
+                                                label="โรคประจำตัว"
+                                                value={formatListValue(user.chronicDiseases)}
+                                            />
+                                            <SearchDetailField
+                                                label="แพ้ยา"
+                                                value={formatListValue(user.drugAllergies)}
+                                            />
+                                            <SearchDetailField
+                                                label="แพ้อาหาร"
+                                                value={formatListValue(user.foodAllergies)}
+                                            />
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    )}
+                </section>
+            )}
+
             <section className="bg-white rounded-2xl p-5 shadow">
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <p className="text-lg font-semibold text-gray-800">รายชื่อผู้ใช้</p>
-                        <p className="text-sm text-gray-500">แสดงผล {paginated.length} รายการจากทั้งหมด {filteredUsers.length} รายการ</p>
+                        <p className="text-sm text-gray-500">แสดงผล {paginated.length} รายการจากทั้งหมด {activeUsers.length} รายการ</p>
                     </div>
                     <span className="text-sm text-gray-400">
                         Page {page} / {totalPages}
@@ -688,21 +877,23 @@ const mapUserToForm = (data = {}) => ({
                             </tr>
                         </thead>
                     <tbody>
-                            {loading && (
+                            {listLoading && (
                                 <tr>
                                     <td colSpan="9" className="text-center p-6 text-blue-600">
                                         กำลังโหลดข้อมูล...
                                     </td>
                                 </tr>
                             )}
-                            {!loading && error && (
+                            {!listLoading && listError && (
                                 <tr>
                                     <td colSpan="9" className="text-center p-6 text-red-500">
-                                        {error}
+                                        {listError}
                                     </td>
                                 </tr>
                             )}
-                            {!loading && !error && paginated.map((user) => {
+                            {!listLoading &&
+                                !listError &&
+                                paginated.map((user) => {
                                 const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "-";
                                 const rankLabel = RANK_OPTIONS.find((option) => option.value === (user.rank || "").toUpperCase())?.label || user.rank || "-";
                                 const isActive = user.isActive ?? true;
@@ -763,7 +954,7 @@ const mapUserToForm = (data = {}) => ({
                                     </tr>
                                 );
                             })}
-                            {!loading && !error && paginated.length === 0 && (
+                            {!listLoading && !listError && paginated.length === 0 && (
                                 <tr>
                                         <td colSpan="9" className="text-center p-6 text-gray-400">
                                         ไม่พบข้อมูลผู้ใช้
