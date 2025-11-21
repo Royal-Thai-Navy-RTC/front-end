@@ -96,16 +96,16 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
     () => [
       { path: "/home", label: "หน้าหลัก", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
       { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
-      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "sub_admin", "sub_admin", "owner"] },
+      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
       {
         label: "นักเรียน", roles: ["teacher", "admin", "sub_admin", "owner"], children: [
-          { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "sub_admin", "owner"] },
-          { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "admin"] },
+          { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
+          { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
         ]
       },
       {
         label: "ข้าราชการ", roles: ["teacher", "admin", "sub_admin", "owner"], children: [
-          { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "sub_admin", "owner"] },
+          { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner"] },
           { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", roles: ["admin", "owner"] },
         ]
