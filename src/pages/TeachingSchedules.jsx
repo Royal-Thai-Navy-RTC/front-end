@@ -80,7 +80,7 @@ export default function TeachingSchedules() {
       setFetchError("");
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("/api/admin/teaching-schedules", {
+        const response = await axios.get("/api/teaching-schedules", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         const payload = response.data?.data ?? response.data;
@@ -175,7 +175,7 @@ export default function TeachingSchedules() {
       }
       resetForm();
       setLoading(true);
-      const refresh = await axios.get("/api/admin/teaching-schedules", {
+      const refresh = await axios.get("/api/teaching-schedules", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const refreshed = refresh.data?.data ?? refresh.data ?? [];
