@@ -20,6 +20,8 @@ const normalizeUser = (data = {}) => {
 
 const educationOptions = [
   { value: "ปริญญาตรี", label: "ปริญญาตรี" },
+  { value: "ปริญญาโท", label: "ปริญญาโท" },
+  { value: "ปริญญาเอก", label: "ปริญญาเอก" },
   { value: "ประถม 6", label: "ประถม 6" },
   { value: "มัธยมศึกษาปีที่ 3", label: "มัธยมศึกษาปีที่ 3" },
   { value: "มัธยมศึกษาปีที่ 6", label: "มัธยมศึกษาปีที่ 6" },
