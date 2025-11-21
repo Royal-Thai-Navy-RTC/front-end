@@ -121,7 +121,7 @@ const router = createBrowserRouter([
                     </ProtectedRoute>)
             },
             {
-                path: "managemoldier",
+                path: "managesoldier",
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
                         <ManageSoldier />
