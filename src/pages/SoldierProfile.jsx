@@ -115,8 +115,45 @@ export default function RegisterSoldier() {
     // handle simple inputs
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        // เบอร์โทรศัพท์ 10 ตัว
+        if (name === "phone" || name === "emergencyContactPhone") {
+            const filtered = value.replace(/\D/g, ""); // เอาเฉพาะตัวเลข
+            if (filtered.length <= 10) {
+                setFormValues((prev) => ({ ...prev, [name]: filtered }));
+            }
+            return;
+        }
+
+        // เลขบัตรประชาชน 13 ตัว
+        if (name === "idCardNumber") {
+            const filtered = value.replace(/\D/g, "");
+            if (filtered.length <= 13) {
+                setFormValues((prev) => ({ ...prev, [name]: filtered }));
+            }
+            return;
+        }
+
+        // น้ำหนัก & ส่วนสูง ห้ามติดลบ
+        if (name === "weight" || name === "height") {
+            // อนุญาตค่าว่าง
+            if (value === "") {
+                setFormValues((prev) => ({ ...prev, [name]: "" }));
+                return;
+            }
+
+            // ไม่ให้ติดลบ + ต้องเป็นตัวเลข
+            const num = Number(value);
+            if (!isNaN(num) && num >= 0) {
+                setFormValues((prev) => ({ ...prev, [name]: value }));
+            }
+            return;
+        }
+
+        // default
         setFormValues((prev) => ({ ...prev, [name]: value }));
     };
+
 
     // handle profileForm text change (medicalHistory)
     const handleProfileChange = (e) => {
@@ -213,7 +250,7 @@ export default function RegisterSoldier() {
             fields: [
                 { name: "firstName", label: "ชื่อ", type: "text" },
                 { name: "lastName", label: "นามสกุล", type: "text" },
-                { name: "idCardNumber", label: "เลขบัตรประชาชน", type: "text" },
+                { name: "idCardNumber", label: "เลขบัตรประชาชน", type: "text", maxLength: 13 },
                 { name: "birthDate", label: "วันเกิด", type: "date" },
                 { name: "weight", label: "น้ำหนัก (กก.)", type: "number" },
                 { name: "height", label: "ส่วนสูง (ซม.)", type: "number" },
@@ -236,14 +273,14 @@ export default function RegisterSoldier() {
             title: "การติดต่อ",
             fields: [
                 { name: "email", label: "อีเมล", type: "email" },
-                { name: "phone", label: "เบอร์โทรศัพท์", type: "text" },
+                { name: "phone", label: "เบอร์โทรศัพท์", type: "text", maxLength: 10 },
             ],
         },
         {
             title: "ผู้ติดต่อฉุกเฉิน",
             fields: [
                 { name: "emergencyContactName", label: "ชื่อผู้ติดต่อฉุกเฉิน", type: "text" },
-                { name: "emergencyContactPhone", label: "เบอร์ผู้ติดต่อฉุกเฉิน", type: "text" },
+                { name: "emergencyContactPhone", label: "เบอร์ผู้ติดต่อฉุกเฉิน", type: "text", maxLength: 10 },
             ],
         },
     ];
@@ -332,6 +369,7 @@ export default function RegisterSoldier() {
                                                     <input
                                                         name={field.name}
                                                         type={field.type}
+                                                        maxLength={field.maxLength ?? undefined}
                                                         value={formValues[field.name] ?? ""}
                                                         onChange={handleChange}
                                                         className="w-full mt-1 border border-gray-500 rounded-xl px-3 py-2"

@@ -374,9 +374,9 @@ export default function ProfileModal({
                             <p className="font-semibold text-gray-800 mb-3">ข้อมูลด้านการแพทย์</p>
 
                             {/* Diseases */}
-                            <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                <div className="flex flex-col w-full">
-                                    <label className="text-sm text-gray-600">โรคประจำตัว</label>
+                            <div className="flex flex-col">
+                                <label className="text-sm text-gray-600">โรคประจำตัว</label>
+                                <div className="grid sm:grid-cols-2 gap-3 w-full">
                                     <input
                                         type="text"
                                         name="diseaseInput"
@@ -386,39 +386,37 @@ export default function ProfileModal({
                                         className="w-full border border-gray-300 rounded-xl px-3 py-2 mt-1"
                                     />
 
-                                    {/* show existing items as pills */}
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {ensureArrayField("chronicDiseases").map((d, idx) => (
-                                            <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
-                                                <span>{d}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeArrayItem("chronicDiseases", idx)}
-                                                    className="p-1 rounded-full hover:bg-gray-200"
-                                                    aria-label={`ลบ ${d}`}
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={() => addArrayItem("chronicDiseases", newDisease)}
-                                        className="border border-gray-300 cursor-pointer rounded-xl px-4 py-2 h-full"
+                                    <button type="button" onClick={() => addArrayItem("chronicDiseases", newDisease)}
+                                        className="border border-gray-300 cursor-pointer w-full sm:w-fit rounded-xl px-4 py-2 h-full"
                                     >
                                         เพิ่ม +
                                     </button>
                                 </div>
+                                {/* show existing items as pills */}
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {ensureArrayField("chronicDiseases").map((d, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
+                                            <span>{d}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeArrayItem("chronicDiseases", idx)}
+                                                className="p-1 rounded-full hover:bg-gray-200"
+                                                aria-label={`ลบ ${d}`}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+
+
                             </div>
 
                             {/* Food allergies */}
-                            <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                <div className="flex flex-col">
-                                    <label className="text-sm text-gray-600">แพ้อาหาร</label>
+                            <div className="flex flex-col">
+                                <label className="text-sm text-gray-600">แพ้อาหาร</label>
+
+                                <div className="grid sm:grid-cols-2 gap-3 w-full">
                                     <input
                                         type="text"
                                         name="foodAllergyInput"
@@ -428,72 +426,69 @@ export default function ProfileModal({
                                         className="w-full border border-gray-300 rounded-xl px-3 py-2 mt-1"
                                     />
 
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {ensureArrayField("foodAllergies").map((f, idx) => (
-                                            <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
-                                                <span>{f}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeArrayItem("foodAllergies", idx)}
-                                                    className="p-1 rounded-full hover:bg-gray-200"
-                                                    aria-label={`ลบ ${f}`}
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-end">
                                     <button
                                         type="button"
                                         onClick={() => addArrayItem("foodAllergies", newFoodAllergy)}
-                                        className="border border-gray-300 cursor-pointer rounded-xl px-4 py-2 h-full"
+                                        className="border border-gray-300 cursor-pointer w-full sm:w-fit rounded-xl px-4 py-2 h-full"
                                     >
                                         เพิ่ม +
                                     </button>
                                 </div>
+
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {ensureArrayField("foodAllergies").map((f, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
+                                            <span>{f}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeArrayItem("foodAllergies", idx)}
+                                                className="p-1 rounded-full hover:bg-gray-200"
+                                                aria-label={`ลบ ${f}`}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* Drug allergies */}
-                            <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                <div className="flex flex-col">
-                                    <label className="text-sm text-gray-600">แพ้ยา</label>
+                            <div className="flex flex-col">
+                                <label className="text-sm text-gray-600">แพ้ยา</label>
+
+                                <div className="grid sm:grid-cols-2 gap-3 w-full">
                                     <input
                                         type="text"
                                         name="drugAllergyInput"
                                         value={newDrugAllergy}
                                         onChange={(e) => setNewDrugAllergy(e.target.value)}
-                                        placeholder="ระบุยาที่แพ้ เช่น Sulfa, Pennicillin"
+                                        placeholder="ระบุยาที่แพ้ เช่น Sulfa, Penicillin"
                                         className="w-full border border-gray-300 rounded-xl px-3 py-2 mt-1"
                                     />
 
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {ensureArrayField("drugAllergies").map((d, idx) => (
-                                            <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
-                                                <span>{d}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeArrayItem("drugAllergies", idx)}
-                                                    className="p-1 rounded-full hover:bg-gray-200"
-                                                    aria-label={`ลบ ${d}`}
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-end">
                                     <button
                                         type="button"
                                         onClick={() => addArrayItem("drugAllergies", newDrugAllergy)}
-                                        className="border border-gray-300 cursor-pointer rounded-xl px-4 py-2 h-full"
+                                        className="border border-gray-300 cursor-pointer w-full sm:w-fit rounded-xl px-4 py-2 h-full"
                                     >
                                         เพิ่ม +
                                     </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {ensureArrayField("drugAllergies").map((d, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm">
+                                            <span>{d}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeArrayItem("drugAllergies", idx)}
+                                                className="p-1 rounded-full hover:bg-gray-200"
+                                                aria-label={`ลบ ${d}`}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 

@@ -96,7 +96,13 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
     () => [
       { path: "/home", label: "หน้าหลัก", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
       { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
-      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
+      // { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
+      {
+        label: "จัดการผู้ใช้", roles: ["admin", "owner"], children: [
+          { path: "/manage", label: "สิทธิผู้ใช้งาน", roles: ["admin", "owner"] },
+          { path: "/managemoldier", label: "พลทหาร", roles: ["admin", "owner", "sub_admin"] },
+        ]
+      },
       {
         label: "นักเรียน", roles: ["teacher", "admin", "sub_admin", "owner"], children: [
           { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
