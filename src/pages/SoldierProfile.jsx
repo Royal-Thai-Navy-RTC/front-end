@@ -295,7 +295,7 @@ export default function RegisterSoldier() {
 
                     {/* RIGHT: form */}
                     <div className="lg:flex-1 bg-white rounded-2xl shadow p-6">
-                        <div className="space-y-6">
+                        <div className="space-y-6 flex flex-col w-full">
                             {/* dynamic sections */}
                             {profileSections.map((sec, idx) => (
                                 <div key={idx} className="border border-gray-200 rounded-xl p-4">
@@ -444,8 +444,7 @@ export default function RegisterSoldier() {
 
                                     <div className="flex flex-wrap gap-2 mt-2">
                                         {ensureArrayField("drugAllergies").map((d, i) => (
-                                            <span
-                                                key={i}
+                                            <span key={i}
                                                 className="flex items-center gap-2 bg-gray-300 text-gray-800 px-3 py-1 rounded-full text-sm"
                                             >
                                                 <span>{d}</span>
@@ -477,15 +476,13 @@ export default function RegisterSoldier() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end">
-                                <button
-                                    onClick={handleRegister}
-                                    disabled={loading}
-                                    className={`px-6 py-3 rounded-xl text-white ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-700 hover:bg-blue-800"}`}
-                                >
-                                    {loading ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
-                                </button>
-                            </div>
+                            <button
+                                onClick={handleRegister}
+                                disabled={loading}
+                                className={`px-6 py-3 rounded-xl text-white w-full ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-700 hover:bg-blue-800"}`}
+                            >
+                                {loading ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
+                            </button>
                         </div>
                     </div>
                 </div>
