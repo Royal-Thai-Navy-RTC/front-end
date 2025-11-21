@@ -32,7 +32,7 @@ export default function PublicTeachingSchedules() {
       setLoading(true);
       setFetchError("");
       try {
-        const response = await axios.get("/api/admin/teaching-schedules");
+        const response = await axios.get("/api/teaching-schedules");
         const payload = response.data?.data ?? response.data;
         const parsed = Array.isArray(payload) ? payload : payload?.items || [];
         setSchedules(parsed);
