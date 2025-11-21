@@ -15,6 +15,8 @@ import TeacherLeave from "./pages/TeacherLeave";
 import EvaluateStudent from "./pages/EvaluateStudent";
 import ListStudent from "./pages/ListStudent";
 import FormEvaluateStudent from "./pages/FormEvaluateStudent";
+import SoilderProfile from "./pages/SoldierProfile";
+import LayoutSoilder from "./layout/LayoutSoilder";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -98,6 +100,11 @@ const router = createBrowserRouter([
                     </ProtectedRoute>
                 )
             },
+        ]
+    },
+    {
+        path: "", element: <LayoutSoilder />, children: [
+            { path: "soilderprofile", element: <SoilderProfile /> },
         ]
     }
 ]);

@@ -375,7 +375,7 @@ export default function ProfileModal({
 
                             {/* Diseases */}
                             <div className="grid sm:grid-cols-2 gap-4 items-end">
-                                <div className="flex flex-col">
+                                <div className="flex flex-col w-full">
                                     <label className="text-sm text-gray-600">โรคประจำตัว</label>
                                     <input
                                         type="text"

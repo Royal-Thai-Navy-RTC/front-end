@@ -26,9 +26,10 @@ export default function EvaluateStudent() {
                 const response = await axios.get("/api/admin/student-evaluation-templates", {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-
                 const data = response.data?.data || [];
                 setListEvaluate(data);
+                // console.log(response);
+                
 
                 const mapped = data.map(f => ({ label: f.name, value: f.id }));
                 setOptionEvaluate(mapped);
