@@ -17,7 +17,9 @@ import ListStudent from "./pages/ListStudent";
 import FormEvaluateStudent from "./pages/FormEvaluateStudent";
 import SoilderProfile from "./pages/SoldierProfile";
 import LayoutSoilder from "./layout/LayoutSoilder";
+import TeachingSchedules from "./pages/TeachingSchedules";
 import EvaluationDashboard from "./pages/EvaluationDashboard";
+import PublicTeachingSchedules from "./pages/PublicTeachingSchedules";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -29,6 +31,7 @@ const router = createBrowserRouter([
             { path: "register", element: <Register /> },
             { path: "home", element: <Home /> },
             { path: "history", element: <History /> },
+            { path: "public-teaching-schedules", element: <PublicTeachingSchedules /> },
             {
                 path: "listteacher",
                 element: (
@@ -106,6 +109,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
                         <FormEvaluateStudent />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "teaching-schedules",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
+                        <TeachingSchedules />
                     </ProtectedRoute>
                 )
             },

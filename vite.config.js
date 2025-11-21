@@ -8,6 +8,7 @@ export default defineConfig({
   build: { outDir: "./dist" },
   plugins: [react(), tailwindcss()],
   server: {
+    allowedHosts: ["rtcas.pargorn.com"],
     proxy: {
       "/api": {
         target: "https://api.pargorn.com/api/",
