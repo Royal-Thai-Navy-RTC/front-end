@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { Users, RefreshCw, Search, Pencil, UserPlus, Eye } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import navy from "../assets/navy.png";
 
 const ROLE_FILTERS = [
@@ -52,17 +52,6 @@ const RANK_OPTIONS = [
     { value: "ABLE_SEAMAN", label: "จ่าตรี" },
     { value: "SEAMAN_RECRUIT", label: "พลฯ" },
 ];
-
-const normalizeRankValue = (rank) => {
-    if (!rank) return "SEAMAN_RECRUIT";
-    const rankString = rank.toString().trim();
-    const normalizedValue = rankString.replace(/\s+/g, "_").replace(/-+/g, "_").toUpperCase();
-    const matchByValue = RANK_OPTIONS.find((option) => option.value === normalizedValue);
-    if (matchByValue) return matchByValue.value;
-    const matchByLabel = RANK_OPTIONS.find((option) => option.label === rankString);
-    if (matchByLabel) return matchByLabel.value;
-    return "SEAMAN_RECRUIT";
-};
 
 const CREATE_USER_DEFAULT = {
     rank: "SEAMAN_RECRUIT",
@@ -216,6 +205,7 @@ const ActiveFiltersBar = ({ roleFilter, searchValue, onClearRoleFilter, onClearS
 };
 
 export default function ManageUsers() {
+    const { rankOptions = [], divisionOptions = [], religionOptions = [] } = useOutletContext?.() || {};
     const [users, setUsers] = useState([]);
     const [roleFilter, setRoleFilter] = useState("ALL");
     const [search, setSearch] = useState("");
@@ -253,6 +243,17 @@ export default function ManageUsers() {
         if (value.startsWith("data:")) return value;
         return resolveAvatarUrl(value);
     }, [createAvatarPreview, createForm.profileImage]);
+    const rankSelectOptions = rankOptions.length ? rankOptions : RANK_OPTIONS;
+    const getRankLabel = useCallback(
+        (rank) => {
+            const normalized = (rank || "").toString();
+            const match = rankSelectOptions.find(
+                (option) => option.value === normalized || option.label === normalized
+            );
+            return match?.label || rank || "-";
+        },
+        [rankSelectOptions]
+    );
 
     useEffect(() => {
         if (!isAdmin) return;
@@ -476,7 +477,8 @@ const mapUserToForm = (data = {}) => ({
     username: data.username || "",
     email: data.email || "",
     phone: data.phone || "",
-    rank: normalizeRankValue(data.rank),
+    rank: data.rank || "",
+    division: data.division || "",
     role: (data.role || "STUDENT").toUpperCase(),
     isActive: data.isActive ?? true,
     birthDate: data.birthDate || "",
@@ -492,6 +494,7 @@ const mapUserToForm = (data = {}) => ({
     foodAllergies: normalizeTextList(data.foodAllergies),
     specialSkills: data.specialSkills || "",
     secondaryOccupation: data.secondaryOccupation || "",
+    notes: data.notes || "",
     avatar: data.avatar || "",
     password: "",
 });
@@ -550,9 +553,11 @@ const mapUserToForm = (data = {}) => ({
         const keysToCompare = [
             "firstName",
             "lastName",
+            "username",
             "email",
             "phone",
             "rank",
+            "division",
             "role",
             "isActive",
             "fullAddress",
@@ -568,6 +573,7 @@ const mapUserToForm = (data = {}) => ({
             "foodAllergies",
             "specialSkills",
             "secondaryOccupation",
+            "notes",
         ];
 
         keysToCompare.forEach((key) => {
@@ -944,10 +950,7 @@ const mapUserToForm = (data = {}) => ({
                     ) : (
                         <div className="flex flex-col gap-4">
                             {filteredSearchResults.map((user) => {
-                                const rankLabel =
-                                    RANK_OPTIONS.find(
-                                        (option) => option.value === (user.rank || "").toString().toUpperCase()
-                                    )?.label || formatDisplayValue(user.rank);
+                                const rankLabel = getRankLabel(user.rank);
                                 const emergencyContactDisplay = user.emergencyContactName
                                     ? `${formatDisplayValue(user.emergencyContactName)} (${formatDisplayValue(
                                           user.emergencyContactPhone
@@ -1058,7 +1061,7 @@ const mapUserToForm = (data = {}) => ({
                                 !listError &&
                                 paginated.map((user) => {
                                 const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "-";
-                                const rankLabel = RANK_OPTIONS.find((option) => option.value === (user.rank || "").toUpperCase())?.label || user.rank || "-";
+                                const rankLabel = getRankLabel(user.rank);
                                 const isActive = user.isActive ?? true;
                                 return (
                                     <tr
@@ -1152,10 +1155,7 @@ const mapUserToForm = (data = {}) => ({
                         !listError &&
                         paginated.map((user) => {
                             const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "-";
-                            const rankLabel =
-                                RANK_OPTIONS.find((option) => option.value === (user.rank || "").toUpperCase())?.label ||
-                                user.rank ||
-                                "-";
+                            const rankLabel = getRankLabel(user.rank);
                             const isActive = user.isActive ?? true;
                             return (
                                 <article
@@ -1340,7 +1340,7 @@ const mapUserToForm = (data = {}) => ({
                                             className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                         >
                                             <option value="">-- เลือกยศ --</option>
-                                            {RANK_OPTIONS.map((option) => (
+                                            {rankSelectOptions.map((option) => (
                                                 <option key={option.value} value={option.value}>
                                                     {option.label}
                                                 </option>
@@ -1537,6 +1537,30 @@ const mapUserToForm = (data = {}) => ({
                                     </label>
                                 </div>
                                 <label className="flex flex-col gap-1 text-sm">
+                                    <span>ชื่อผู้ใช้ (Username)</span>
+                                    <input
+                                        type="text"
+                                        name="username"
+                                        value={editForm.username}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>บทบาท</span>
+                                    <select
+                                        name="role"
+                                        value={editForm.role}
+                                        onChange={handleEditChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    >
+                                        <option value="ADMIN">ADMIN</option>
+                                        <option value="TEACHER">TEACHER</option>
+                                        <option value="STUDENT">STUDENT</option>
+                                        <option value="SUB_ADMIN">SUB_ADMIN</option>
+                                    </select>
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
                                     <span>ชื่อ</span>
                                     <input
                                         type="text"
@@ -1557,24 +1581,46 @@ const mapUserToForm = (data = {}) => ({
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
-                                    <span>อีเมล</span>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={editForm.email}
+                                    <span>ยศ / ตำแหน่ง</span>
+                                    <select
+                                        name="rank"
+                                        value={editForm.rank}
                                         onChange={handleEditChange}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    />
+                                    >
+                                        <option value="">-- เลือกยศ --</option>
+                                        {rankSelectOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
-                                    <span>เบอร์โทรศัพท์</span>
-                                    <input
-                                        type="tel"
-                                        name="phone"
-                                        value={editForm.phone}
-                                        onChange={handleEditChange}
-                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    />
+                                    <span>หมวดวิชา</span>
+                                    {divisionOptions.length ? (
+                                        <select
+                                            name="division"
+                                            value={editForm.division}
+                                            onChange={handleEditChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        >
+                                            <option value="">-- เลือกหมวดวิชา --</option>
+                                            {divisionOptions.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            name="division"
+                                            value={editForm.division}
+                                            onChange={handleEditChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    )}
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
                                     <span>วันเกิด</span>
@@ -1608,41 +1654,49 @@ const mapUserToForm = (data = {}) => ({
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
                                     <span>ศาสนา</span>
+                                    {religionOptions.length ? (
+                                        <select
+                                            name="religion"
+                                            value={editForm.religion}
+                                            onChange={handleEditChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        >
+                                            <option value="">-- เลือกศาสนา --</option>
+                                            {religionOptions.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            name="religion"
+                                            value={editForm.religion}
+                                            onChange={handleEditChange}
+                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        />
+                                    )}
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm">
+                                    <span>อีเมล</span>
                                     <input
-                                        type="text"
-                                        name="religion"
-                                        value={editForm.religion}
+                                        type="email"
+                                        name="email"
+                                        value={editForm.email}
                                         onChange={handleEditChange}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
-                                    <span>ยศ / ตำแหน่ง</span>
-                                    <select
-                                        name="rank"
-                                        value={editForm.rank}
+                                    <span>เบอร์โทรศัพท์</span>
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        value={editForm.phone}
                                         onChange={handleEditChange}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    >
-                                        {RANK_OPTIONS.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label className="flex flex-col gap-1 text-sm">
-                                    <span>Role</span>
-                                    <select
-                                        name="role"
-                                        value={editForm.role}
-                                        onChange={handleEditChange}
-                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                    >
-                                        <option value="ADMIN">ADMIN</option>
-                                        <option value="TEACHER">TEACHER</option>
-                                        <option value="STUDENT">STUDENT</option>
-                                    </select>
+                                    />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm sm:col-span-2">
                                     <span>ที่อยู่</span>
@@ -1679,57 +1733,64 @@ const mapUserToForm = (data = {}) => ({
                                         name="medicalHistory"
                                         value={editForm.medicalHistory}
                                         onChange={handleEditChange}
-                                        rows={2}
+                                        rows={3}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-                                    <span>โรคประจำตัว (คั่นด้วย ,)</span>
-                                    <textarea
+                                    <span>โรคประจำตัว</span>
+                                    <input
                                         name="chronicDiseases"
                                         value={editForm.chronicDiseases}
                                         onChange={handleEditChange}
-                                        rows={2}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-                                    <span>แพ้ยา (คั่นด้วย ,)</span>
-                                    <textarea
+                                    <span>แพ้ยา</span>
+                                    <input
                                         name="drugAllergies"
                                         value={editForm.drugAllergies}
                                         onChange={handleEditChange}
-                                        rows={2}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-                                    <span>แพ้อาหาร (คั่นด้วย ,)</span>
-                                    <textarea
+                                    <span>แพ้อาหาร</span>
+                                    <input
                                         name="foodAllergies"
                                         value={editForm.foodAllergies}
                                         onChange={handleEditChange}
-                                        rows={2}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm sm:col-span-2">
                                     <span>ทักษะพิเศษ</span>
-                                    <textarea
+                                    <input
                                         name="specialSkills"
                                         value={editForm.specialSkills}
                                         onChange={handleEditChange}
-                                        rows={2}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        placeholder="ระบุ เช่น ว่ายน้ำ, ภาษาอังกฤษ"
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm sm:col-span-2">
                                     <span>อาชีพเสริม</span>
-                                    <textarea
+                                    <input
                                         name="secondaryOccupation"
                                         value={editForm.secondaryOccupation}
                                         onChange={handleEditChange}
-                                        rows={2}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                        placeholder="เช่น ช่างภาพ, นักเขียน"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+                                    <span>หมายเหตุ</span>
+                                    <textarea
+                                        name="notes"
+                                        value={editForm.notes}
+                                        onChange={handleEditChange}
+                                        rows={3}
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     />
                                 </label>

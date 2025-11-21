@@ -2,6 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from "react-router-dom";
 import { Edit, Search } from "lucide-react";
 import axios from "axios";
+import navy from "../assets/navy.png";
+
+const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || "https://api.pargorn.com";
+const resolveAvatarUrl = (value = "") => {
+    if (!value) return "";
+    if (value.startsWith("http://") || value.startsWith("https://")) return value;
+    const path = value.startsWith("/") ? value : `/${value}`;
+    return `${API_BASE_URL}${path}`;
+};
 
 export default function Listteacher() {
     const [search, setSearch] = useState("");
@@ -45,7 +54,7 @@ export default function Listteacher() {
         const keyword = search.toLowerCase();
         return users.filter((user) => {
             const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim().toLowerCase();
-            const subject = (user.subject || user.department || "").toLowerCase();
+            const subject = (user.division || "").toLowerCase();
             return (
                 fullName.includes(keyword) ||
                 subject.includes(keyword) ||
@@ -84,30 +93,40 @@ export default function Listteacher() {
     };
 
     return (
-        <div className="flex flex-col w-full gap-6">
-            <section className="bg-white rounded-2xl shadow p-6">
-                <div className="flex flex-col gap-4">
-                    <div>
-                        <p className="text-sm text-gray-500">รายชื่อครูผู้สอน</p>
-                        <h1 className="text-3xl font-bold text-blue-900">Teacher Directory</h1>
+        <div className="flex flex-col w-full gap-5">
+            <section className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+                <div className="p-5 flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Teacher Directory</p>
+                            <h1 className="text-xl font-semibold text-gray-900">รายชื่อครูผู้สอน</h1>
+                            <p className="text-sm text-gray-500">ค้นหาครูผู้สอนและหมวดวิชาที่รับผิดชอบ</p>
+                        </div>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full self-start sm:self-center">
+                            แสดง {filtered.length} รายการ
+                        </span>
                     </div>
+
                     <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="flex flex-1 items-center border rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-blue-200 transition">
-                            <Search className="text-gray-400" size={20} />
+                        <div className="flex flex-1 items-center border rounded-lg px-3 py-2 focus-within:ring-1 focus-within:ring-blue-300 transition">
+                            <Search className="text-gray-400" size={18} />
                             <input
                                 type="text"
-                                placeholder="ค้นหาชื่อหรือวิชา..."
+                                placeholder="ค้นหาชื่อหรือหมวดวิชา..."
                                 value={search}
                                 onChange={(e) => {
                                     setSearch(e.target.value);
                                     setPage(1);
                                 }}
-                                className="px-2 py-1 flex-1 focus:outline-none"
+                                className="px-2 py-1 flex-1 text-sm focus:outline-none"
                             />
                         </div>
                         <button
-                            onClick={() => setSearch("")}
-                            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+                            onClick={() => {
+                                setSearch("");
+                                setPage(1);
+                            }}
+                            className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition"
                         >
                             ล้างการค้นหา
                         </button>
@@ -115,14 +134,14 @@ export default function Listteacher() {
                 </div>
             </section>
 
-            <section className="bg-white rounded-2xl shadow p-5 overflow-x-auto">
-                <table className="min-w-full border-collapse text-left text-gray-700">
-                    <thead className="bg-blue-50 text-blue-700 font-semibold">
+            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 overflow-x-auto">
+                <table className="min-w-full border-collapse text-left text-gray-700 text-sm">
+                    <thead className="bg-gray-50 text-gray-600 font-semibold">
                         <tr>
-                            <th className="p-3 border-b text-center w-16">ลำดับ</th>
-                            <th className="p-3 border-b">ชื่อ-นามสกุล</th>
+                            <th className="p-3 border-b text-center w-14">#</th>
+                            <th className="p-3 border-b w-[240px]">ชื่อ-นามสกุล</th>
                             <th className="p-3 border-b">วิชาที่รับผิดชอบ / หน่วย</th>
-                            <th className="p-3 border-b text-center">แบบประเมิน</th>
+                            <th className="p-3 border-b text-center w-36">แบบประเมิน</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -142,17 +161,30 @@ export default function Listteacher() {
                         )}
                         {!loading && !error && paginated.map((user, i) => {
                             const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username || "-";
-                            const subject = user.subject || user.department || "-";
+                            const subject = user.division || "-";
                             const teacherId = user.id ?? user._id ?? null;
+                            const avatarSrc = resolveAvatarUrl(user.avatar) || navy;
                             return (
-                                <tr key={user.id ?? `${user.username}-${i}`} className="hover:bg-blue-50 transition">
-                                    <td className="p-3 border-b text-center font-semibold text-gray-500">{(page - 1) * pageSize + i + 1}</td>
+                                <tr key={user.id ?? `${user.username}-${i}`} className="hover:bg-blue-50/50 transition">
+                                    <td className="p-3 border-b text-center font-semibold text-gray-500 text-xs">{(page - 1) * pageSize + i + 1}</td>
                                     <td className="p-3 border-b">
-                                        <p className="font-semibold text-gray-900">{fullName}</p>
-                                        <p className="text-xs text-gray-500">Username: {user.username || "-"}</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-full bg-blue-100 border border-blue-200 overflow-hidden flex items-center justify-center">
+                                                <img
+                                                    src={avatarSrc}
+                                                    alt={fullName}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = navy; }}
+                                                />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <p className="font-semibold text-gray-900 leading-tight text-sm">{fullName}</p>
+                                                <p className="text-xs text-gray-500">Username: {user.username || "-"}</p>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td className="p-3 border-b">
-                                        <span className="inline-flex px-3 py-1 rounded-full bg-blue-50 text-sm text-blue-700">
+                                        <span className="inline-flex px-3 py-1 rounded-full bg-blue-50 text-xs text-blue-700 border border-blue-100">
                                             {subject}
                                         </span>
                                     </td>
@@ -160,7 +192,7 @@ export default function Listteacher() {
                                         <Link
                                             to="/evaluateteachers"
                                             state={{ userId: teacherId, fallback: user }}
-                                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+                                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
                                         >
                                             <Edit size={16} />
                                             ประเมิน
