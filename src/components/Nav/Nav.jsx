@@ -108,6 +108,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
           { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner"] },
           { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", roles: ["admin", "owner"] },
+          { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", roles: ["admin", "owner", "sub_admin", "teacher"] },
         ]
       },
     ],

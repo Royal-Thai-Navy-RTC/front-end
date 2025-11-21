@@ -1,219 +1,298 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useOutletContext } from "react-router-dom";
 import axios from "axios";
+import Swal from "sweetalert2";
 
 export default function EvaluateStudent() {
-    const { divisionOptions } = useOutletContext();
-    const { state } = useLocation();
-    const battalion = state?.battalion;
-    const company = state?.company;
+  const { divisionOptions } = useOutletContext();
+  const { state } = useLocation();
+  const battalion = state?.battalion;
+  const company = state?.company;
 
-    // Dropdown state
-    const [searchSubject, setSearchSubject] = useState("");
-    const [searchForm, setSearchForm] = useState("");
+  const [searchSubject, setSearchSubject] = useState("");
+  const [searchForm, setSearchForm] = useState("");
+  const [optionEvaluate, setOptionEvaluate] = useState([]);
+  const [listEvaluate, setListEvaluate] = useState([]);
+  const [formEvaluate, setFormEvaluate] = useState(null);
+  const [evaluationDate, setEvaluationDate] = useState("");
+  const [summary, setSummary] = useState("");
+  const [overallScore, setOverallScore] = useState("");
+  const [saving, setSaving] = useState(false);
 
-    // Data from API
-    const [optionEvaluate, setOptionEvaluate] = useState([]);
-    const [listEvaluate, setListEvaluate] = useState([]);
-    const [formEvaluate, setFormEvaluate] = useState(null);
-
-    // Load form templates
-    useEffect(() => {
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
         const token = localStorage.getItem("token");
-
-        const fetchTemplates = async () => {
-            try {
-                const response = await axios.get("/api/admin/student-evaluation-templates", {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                const data = response.data?.data || [];
-                setListEvaluate(data);
-                // console.log(response);
-                
-
-                const mapped = data.map(f => ({ label: f.name, value: f.id }));
-                setOptionEvaluate(mapped);
-
-            } catch (err) {
-                console.log("Error loading templates", err);
-            }
-        };
-
-        fetchTemplates();
-    }, []);
-
-    // Score state
-    const [scores, setScores] = useState({});
-
-    const handleScore = (sectionId, questionId, value) => {
-        setScores(prev => ({
-            ...prev,
-            [sectionId]: {
-                ...prev[sectionId],
-                [questionId]: value,
-            },
-        }));
+        const response = await axios.get("/api/admin/student-evaluation-templates", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = response.data?.data || [];
+        setListEvaluate(data);
+        const mapped = data.map((f) => ({ label: f.name, value: f.id }));
+        setOptionEvaluate(mapped);
+      } catch (err) {
+        console.log("Error loading templates", err);
+      }
     };
-    // console.log(scores);
-    // console.log(formEvaluate);
+    fetchTemplates();
+  }, []);
 
-    return (
-        <div className="flex flex-col w-full gap-6">
-            {/* HEADER */}
-            <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-2">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+  const [scores, setScores] = useState({});
 
-                    <div className='flex flex-col'>
-                        <h1 className="text-3xl font-bold text-blue-900">กองร้อย {battalion}</h1>
-                        <p className="text-xl text-gray-500">กองพันที่ {company}</p>
-                    </div>
+  const answerList = useMemo(() => {
+    if (!formEvaluate) return [];
+    const collected = [];
+    formEvaluate.sections?.forEach((sec) => {
+      sec.questions?.forEach((q) => {
+        const val = scores?.[sec.id]?.[q.id];
+        if (val != null && val !== "") {
+          collected.push({ questionId: q.id, score: Number(val) });
+        }
+      });
+    });
+    return collected;
+  }, [formEvaluate, scores]);
 
-                    {/* SELECT BOXES */}
-                    <div className="flex flex-col sm:flex-row gap-3 text-gray-600">
-                        {/* เลือกวิชา */}
-                        <select
-                            name="subject"
-                            value={searchSubject}
-                            onChange={(e) => setSearchSubject(e.target.value)}
-                            className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48"
-                        >
-                            <option value="">-- หมวดวิชา --</option>
-                            {divisionOptions.map((v) => (
-                                <option key={v.value} value={v.value}>{v.label}</option>
-                            ))}
-                        </select>
+  const computedOverall = useMemo(() => {
+    if (!answerList.length) return 0;
+    const total = answerList.reduce((sum, a) => sum + Number(a.score || 0), 0);
+    return Math.round((total / answerList.length) * 10) / 10;
+  }, [answerList]);
 
-                        {/* เลือกแบบฟอร์ม */}
-                        <select name="form" value={searchForm}
-                            onChange={(e) => {
-                                const formId = e.target.value;
-                                setSearchForm(formId);
+  const handleScore = (sectionId, questionId, value) => {
+    setScores((prev) => ({
+      ...prev,
+      [sectionId]: { ...prev[sectionId], [questionId]: value },
+    }));
+  };
 
-                                const selectedForm = listEvaluate.find(f => f.id == formId);
-                                setFormEvaluate(selectedForm || null);
-                            }}
-                            className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-60" >
-                            <option value="">-- แบบฟอร์มการประเมิน --</option>
-                            {optionEvaluate.map((v) => (
-                                <option key={v.value} value={v.value}>{v.label}</option>
-                            ))}
-                        </select>
 
-                    </div>
-                </div>
+  const handleSubmit = async () => {
+    if (!formEvaluate) {
+      Swal.fire({ icon: "warning", title: "กรุณาเลือกแบบฟอร์ม" });
+      return;
+    }
+    if (!searchSubject) {
+      Swal.fire({ icon: "warning", title: "กรุณาเลือกหมวดวิชา" });
+      return;
+    }
+    if (!evaluationDate) {
+      Swal.fire({ icon: "warning", title: "กรุณาเลือกช่วงประเมิน" });
+      return;
+    }
+    if (!answerList.length) {
+      Swal.fire({ icon: "warning", title: "ยังไม่ได้ให้คะแนน" });
+      return;
+    }
 
-                {/* SCORE SUMMARY */}
-                <div className="grid sm:grid-cols-4 gap-3 text-white text-start">
-                    <div className='flex flex-col p-2 pl-4 bg-green-500 rounded-2xl'>
-                        <p className='text-sm'>คะแนนรวม</p>
-                        <p className='text-4xl'>60</p>
-                        <p className='text-sm'>จากทุกหัวข้อ</p>
-                    </div>
-                    <div className='flex flex-col p-2 pl-4 bg-yellow-500 rounded-2xl'>
-                        <p className='text-sm'>คะแนนเฉลี่ย</p>
-                        <p className='text-4xl'>70</p>
-                        <p className='text-sm'>จากทุกหัวข้อ</p>
-                    </div>
-                    <div className='flex flex-col p-2 pl-4 bg-orange-500 rounded-2xl'>
-                        <p className='text-sm'>คะแนนวิชา</p>
-                        <p className='text-4xl'>80</p>
-                        <p className='text-sm'>จากทุกหัวข้อ</p>
-                    </div>
-                    <div className='flex flex-col p-2 pl-4 bg-red-500 rounded-2xl'>
-                        <p className='text-sm'>คะแนนวินัย</p>
-                        <p className='text-4xl'>90</p>
-                        <p className='text-sm'>จากทุกหมวดวิชา</p>
-                    </div>
-                </div>
-            </section>
+    const payload = {
+      templateId: formEvaluate.id,
+      subject: searchSubject,
+      companyCode: company != null ? String(company) : "",
+      battalionCode: battalion != null ? String(battalion) : "",
+      evaluationPeriod: evaluationDate,
+      summary: summary || "",
+      overallScore: Number(overallScore || computedOverall || 0),
+      answers: answerList,
+    };
 
-            {/* FORM CONTENT */}
-            <div className="bg-white shadow rounded-2xl flex flex-col pb-5">
-                <h2 className='bg-blue-800 p-3 text-white rounded-t-2xl text-xl sm:text-2xl font-bold'>
-                    {formEvaluate?.name || "แบบฟอร์มการประเมิน"}
-                </h2>
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post("/api/student-evaluations", payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      Swal.fire({ icon: "success", title: "บันทึกแบบประเมินสำเร็จ" });
+      setSummary("");
+      setOverallScore("");
+      setEvaluationDate("");
+      setScores({});
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "บันทึกไม่สำเร็จ",
+        text: err?.response?.data?.message || err?.message || "เกิดข้อผิดพลาด กรุณาลองใหม่",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
-                {/* ถ้ายังไม่เลือกฟอร์ม */}
-                {!formEvaluate ? (
-                    <p className='text-center sm:text-xl text-blue-800 mt-5 w-full'>
-                        โปรดเลือก แบบฟอร์มการประเมิน
-                    </p>
-                ) : (
-                    /* ถ้าเลือกฟอร์มแล้ว */
-                    <div className='px-6 pt-4'>
-                        {formEvaluate.sections
-                            ?.sort((a, b) => a.sectionOrder - b.sectionOrder)
-                            .map((sec) => (
-                                <table key={sec.id} className="w-full mb-6 border border-gray-400">
-                                    {/* SECTION HEADER */}
-                                    <thead className="bg-blue-800 text-white">
-                                        <tr>
-                                            <th className="text-left p-3 w-1/2">{sec.title}</th>
+  return (
+    <div className="flex flex-col w-full gap-6">
+      <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col">
+            <h1 className="text-3xl font-bold text-blue-900">กองร้อย {battalion}</h1>
+            <p className="text-xl text-gray-500">กองพันที่ {company}</p>
+          </div>
 
-                                            {/* ใช้ maxScore ที่สูงที่สุดใน section เพื่อสร้างหัวตาราง */}
-                                            {Array.from(
-                                                {
-                                                    length: Math.max(
-                                                        ...sec.questions.map((q) => q.maxScore || 5)
-                                                    ),
-                                                },
-                                                (_, i) => (
-                                                    <th key={i} className="text-center p-2 w-10">
-                                                        {i + 1}
-                                                    </th>
-                                                )
-                                            )}
-                                        </tr>
-                                    </thead>
+          <div className="flex flex-col sm:flex-row gap-3 text-gray-600">
+            <select
+              name="subject"
+              value={searchSubject}
+              onChange={(e) => setSearchSubject(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48"
+            >
+              <option value="">-- หมวดวิชา --</option>
+              {divisionOptions.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
 
-                                    {/* QUESTIONS */}
-                                    <tbody>
-                                        {sec.questions
-                                            ?.sort((a, b) => a.questionOrder - b.questionOrder)
-                                            .map((q) => (
-                                                <tr key={q.id} className="hover:bg-gray-200">
-                                                    {/* คำถาม */}
-                                                    <td className="p-2 sm:p-3 text-sm sm:text-md">
-                                                        {q.prompt}
-                                                    </td>
-
-                                                    {/* ช่องคะแนน */}
-                                                    {Array.from({ length: q.maxScore || 5 }, (_, i) => {
-                                                        const scoreValue = i + 1;
-                                                        const selected =
-                                                            scores?.[sec.id]?.[q.id] === scoreValue;
-
-                                                        return (
-                                                            <td key={i} className="text-center p-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={selected}
-                                                                    onChange={() =>
-                                                                        handleScore(
-                                                                            sec.id,
-                                                                            q.id,
-                                                                            scoreValue
-                                                                        )
-                                                                    }
-                                                                    className="size-4 sm:size-5 cursor-pointer"
-                                                                />
-                                                            </td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
-                            ))}
-
-                        <button className="px-4 py-2 rounded-xl w-full bg-blue-800 text-xl cursor-pointer text-white mt-4">
-                            บันทึกข้อมูล
-                        </button>
-                    </div>
-
-                )}
-            </div>
+            <select
+              name="form"
+              value={searchForm}
+              onChange={(e) => {
+                const formId = e.target.value;
+                setSearchForm(formId);
+                const selectedForm = listEvaluate.find((f) => f.id == formId);
+                setFormEvaluate(selectedForm || null);
+              }}
+              className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-60"
+            >
+              <option value="">-- แบบฟอร์มการประเมิน --</option>
+              {optionEvaluate.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-    );
-}
+      </section>
 
+      <div className="bg-white shadow rounded-2xl flex flex-col pb-5">
+        <h2 className="bg-blue-800 p-3 text-white rounded-t-2xl text-xl sm:text-2xl font-bold">
+          {formEvaluate?.name || "แบบฟอร์มการประเมิน"}
+        </h2>
+
+        {!formEvaluate ? (
+          <p className="text-center sm:text-xl text-blue-800 mt-5 w-full">
+            โปรดเลือก แบบฟอร์มการประเมิน
+          </p>
+        ) : (
+          <div className="px-6 pt-4">
+            {formEvaluate.sections
+              ?.sort((a, b) => a.sectionOrder - b.sectionOrder)
+              .map((sec) => (
+                <div
+                  key={sec.id}
+                  className="w-full mb-6 border border-gray-200 rounded-2xl overflow-hidden shadow-sm"
+                >
+                  <div className="bg-blue-800 text-white px-4 py-3 font-semibold">
+                    {sec.title}
+                  </div>
+
+                  <div className="flex flex-col gap-3 p-4 bg-white">
+                    {sec.questions
+                      ?.sort((a, b) => a.questionOrder - b.questionOrder)
+                      .map((q) => {
+                        const maxScore = q.maxScore || 5;
+                        const currentScore = scores?.[sec.id]?.[q.id];
+                        return (
+                          <div
+                            key={q.id}
+                            className="border border-gray-100 rounded-xl p-3 flex flex-col gap-2"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <p className="font-semibold text-gray-900">
+                                  {q.prompt}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  อยู่ในหมวด: {sec.title}
+                                </p>
+                              </div>
+                              <div className="text-right min-w-[90px]">
+                                <p className="text-xs text-gray-500">ได้</p>
+                                <p className="text-lg font-bold text-blue-800">
+                                  {currentScore ?? "-"} / {maxScore}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {Array.from({ length: maxScore }, (_, i) => {
+                                const scoreValue = i + 1;
+                                const selected =
+                                  scores?.[sec.id]?.[q.id] === scoreValue;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={scoreValue}
+                                    onClick={() =>
+                                      handleScore(sec.id, q.id, scoreValue)
+                                    }
+                                    className={`px-3 py-1 rounded-lg border text-sm transition ${
+                                      selected
+                                        ? "bg-blue-600 text-white border-blue-600"
+                                        : "bg-white text-gray-700 border-gray-200 hover:border-blue-300"
+                                    }`}
+                                  >
+                                    {scoreValue} คะแนน
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              ))}
+
+            <div className="grid sm:grid-cols-2 gap-4 mt-4">
+              <label className="flex flex-col text-sm text-gray-700">
+                <span>ช่วงประเมิน</span>
+                <input
+                  type="date"
+                  value={evaluationDate}
+                  onChange={(e) => setEvaluationDate(e.target.value)}
+                  className="border rounded-xl px-3 py-2 mt-1"
+                />
+              </label>
+              <label className="flex flex-col text-sm text-gray-700">
+                <span>คะแนนรวม/เฉลี่ย</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={overallScore || computedOverall}
+                  onChange={(e) => setOverallScore(e.target.value)}
+                  className="border rounded-xl px-3 py-2 mt-1"
+                />
+                <span className="text-xs text-gray-500 mt-1">
+                  ตั้งค่าเองได้ หากเว้นว่างจะใช้ค่าเฉลี่ยอัตโนมัติ
+                </span>
+              </label>
+            </div>
+
+            <label className="flex flex-col text-sm text-gray-700 mt-3">
+              <span>สรุปผลการประเมิน</span>
+              <textarea
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                rows={3}
+                className="border rounded-xl px-3 py-2 mt-1"
+                placeholder="สรุปข้อสังเกตหรือข้อแนะนำ"
+              />
+            </label>
+
+            <button
+              className="px-4 py-2 rounded-xl w-full bg-blue-800 text-lg cursor-pointer text-white mt-4 disabled:opacity-60"
+              onClick={handleSubmit}
+              disabled={saving}
+            >
+              {saving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
