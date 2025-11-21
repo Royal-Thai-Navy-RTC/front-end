@@ -3,7 +3,19 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { Loader2, LogOut, Menu, UserRoundPen, X } from "lucide-react";
+import {
+  Loader2,
+  LogOut,
+  Menu,
+  UserRoundPen,
+  X,
+  Home,
+  Clock3,
+  Settings2,
+  CalendarClock,
+  ClipboardList,
+  GraduationCap,
+} from "lucide-react";
 import logo from "../../assets/logo.png";
 import navy from "../../assets/navy.png";
 import ProfileModal from "./ProfileModal";
@@ -11,12 +23,26 @@ import { mapProfileToForm, editableKeys } from "./profileUtils";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
 
+const ROLE_LABELS = {
+  admin: "ผู้ดูแลระบบ",
+  owner: "ผู้บังคับบัญชา",
+  sub_admin: "หัวหน้าหมวดวิชา",
+  teacher: "ครูผู้สอน",
+  student: "นักเรียน",
+};
+
 /* --- UTILITIES --- */
 const resolveAvatarUrl = (value = "") => {
   if (!value) return "";
   if (value.startsWith("http://") || value.startsWith("https://")) return value;
   const path = value.startsWith("/") ? value : `/${value}`;
   return `${API_BASE_URL}${path}`;
+};
+
+const getRoleLabel = (role) => {
+  if (!role) return "-";
+  const key = role.toString().toLowerCase();
+  return ROLE_LABELS[key] || role.toString().toUpperCase();
 };
 
 const PASSWORD_FORM_DEFAULT = {
@@ -107,16 +133,16 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       },
       {
         label: "นักเรียน", roles: ["teacher", "admin", "sub_admin", "owner"], children: [
-          { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
-          { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
+          { path: "/listteacher", label: "ประเมินผู้สอน", icon: ClipboardList, roles: ["admin", "owner"] },
+          { path: "/liststudent", label: "ประเมินนักเรียน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
         ]
       },
       {
         label: "ข้าราชการ", roles: ["teacher", "admin", "sub_admin", "owner"], children: [
-          { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
-          { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner"] },
-          { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", roles: ["admin", "owner"] },
-          { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", roles: ["admin", "owner", "sub_admin", "teacher"] },
+          { path: "/teacher-report", label: "แจ้งยอดนักเรียน", icon: ClipboardList, roles: ["admin", "owner", "teacher", "sub_admin"] },
+          { path: "/teacher-leave", label: "แจ้งการลา", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"] },
+          { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", icon: ClipboardList, roles: ["admin", "owner"] },
+          { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", icon: CalendarClock, roles: ["admin", "owner", "sub_admin", "teacher"] },
         ]
       },
     ],
@@ -197,10 +223,12 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   /* --- RENDER NAV LINK (NO CHILDREN) --- */
   const renderNavLink = (item) => {
     const isActive = location.pathname.startsWith(item.path);
+    const Icon = item.icon;
     return (
       <Link key={item.label}
         to={item.path}
-        className={`text-sm font-medium transition-colors ${isActive ? "text-blue-800" : "text-gray-600 hover:text-blue-700"}`}>
+        className={`text-sm font-medium transition-colors flex items-center gap-2 ${isActive ? "text-blue-800" : "text-gray-600 hover:text-blue-700"}`}>
+        {Icon && <Icon size={16} />}
         {item.label}
       </Link>
     );
@@ -232,7 +260,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                     renderNavLink(item)
                   ) : (
                     <div key={item.label} className="relative group">
-                      <button className="text-sm font-medium text-gray-600 hover:text-blue-700 flex items-center gap-1">
+                      <button className="text-sm font-medium text-gray-600 hover:text-blue-700 flex items-center gap-2">
+                        {item.icon && <item.icon size={16} />}
                         {item.label}
                         <ChevronDownIcon />
                       </button>
@@ -243,8 +272,9 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                           <Link
                             key={child.label}
                             to={child.path}
-                            className="block px-3 py-2 text-sm hover:bg-gray-50 rounded-lg"
+                            className="block px-3 py-2 text-sm hover:bg-gray-50 rounded-lg flex items-center gap-2 text-gray-700"
                           >
+                            {child.icon && <child.icon size={14} />}
                             {child.label}
                           </Link>
                         ))}
@@ -267,8 +297,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                   {profileMenuOpen && (
                     <div ref={dropdownRef} className="absolute right-0 mt-3 w-60 bg-white border border-gray-200 shadow-xl rounded-2xl p-3 flex flex-col gap-1">
                       <div className="px-2 pb-3 border-b border-gray-400">
-                        <p className="text-sm font-semibold">{user.firstName || user.username}</p>
-                        <p className="text-xs text-gray-500">{user.role.toUpperCase()}</p>
+                        <p className="text-sm font-semibold">{user.rank} {user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-gray-500">{getRoleLabel(user.role)}</p>
                       </div>
 
                       <button onClick={openProfileModal} className="px-3 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2">
