@@ -20,6 +20,7 @@ import LayoutSoilder from "./layout/LayoutSoilder";
 import TeachingSchedules from "./pages/TeachingSchedules";
 import EvaluationDashboard from "./pages/EvaluationDashboard";
 import PublicTeachingSchedules from "./pages/PublicTeachingSchedules";
+import ManageSoldier from "./pages/ManageSoldier";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -117,6 +118,13 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
                         <TeachingSchedules />
+                    </ProtectedRoute>)
+            },
+            {
+                path: "managemoldier",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
+                        <ManageSoldier />
                     </ProtectedRoute>
                 )
             },
