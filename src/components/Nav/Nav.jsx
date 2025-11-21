@@ -57,8 +57,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       title: "ข้อมูลเพิ่มเติม", fields: [
         { name: "position", label: "ตำแหน่ง/หน้าที่", type: "text" },
         { name: "division", label: "หมวดวิชา", type: "select", option: divisionOptions },
-        { name: "division", label: "ศาสนา", type: "select", option: religionOptions },
-        { name: "division", label: "ความสามารถพิเศษ", type: "input", placeholder:"ระบุ เช่น ว่ายน้ำ, ภาษาอังกฤษ" },
+        { name: "religion", label: "ศาสนา", type: "select", option: religionOptions },
+        { name: "specialSkills", label: "ความสามารถพิเศษ", type: "input", placeholder:"ระบุ เช่น ว่ายน้ำ, ภาษาอังกฤษ" },
         { name: "secondaryOccupation", label: "อาชีพเสริม", type: "input", placeholder:"" },
         { name: "notes", label: "หมายเหตุเพิ่มเติม", type: "textarea",placeholder:"..." },
       ],
