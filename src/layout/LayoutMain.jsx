@@ -1,9 +1,8 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import bg from "../assets/bg-sea.jpg";
 import Nav from "../components/Nav/Nav";
-import { useNavigate } from "react-router-dom";
 
 const getStoredUser = () => {
   try {
@@ -75,6 +74,7 @@ const religionOptions = [
 ];
 
 export default function LayoutMain() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(() => normalizeUser(getStoredUser()));
 
   const handleProfileUpdated = useCallback((updated, options = {}) => {
@@ -125,8 +125,16 @@ export default function LayoutMain() {
       localStorage.setItem("role", role);
       localStorage.setItem("token", data?.accessToken);
       localStorage.setItem("refreshToken", data?.refreshToken);
-    } catch {
-      // ignore fetch errors silently
+    } catch (error) {
+      if (error?.response?.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("role");
+        localStorage.removeItem("user");
+        setUser({ role: "guest" });
+        window.dispatchEvent(new Event("auth-change"));
+        navigate("/login");
+      }
     }
   };
   // update Role and token
