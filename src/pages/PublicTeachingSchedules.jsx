@@ -108,7 +108,7 @@ export default function PublicTeachingSchedules() {
               SCHEDULE
             </span>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">ปฏิทินตารางสอน</h1>
-            <p className="text-sm text-gray-500">มุมมองรายเดือนแบบรวม (สำหรับผู้ใช้ทั่วไป)</p>
+            <p className="text-sm text-gray-500">มุมมองรายเดือนแบบรวม</p>
           </div>
         </div>
       </section>
