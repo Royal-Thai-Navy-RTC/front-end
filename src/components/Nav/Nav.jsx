@@ -15,6 +15,7 @@ import {
   CalendarClock,
   ClipboardList,
   GraduationCap,
+  BookOpen,
 } from "lucide-react";
 import logo from "../../assets/logo.png";
 import navy from "../../assets/navy.png";
@@ -121,6 +122,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   const pages = useMemo(
     () => [
       { path: "/home", label: "หน้าหลัก", icon: Home, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
+      { path: "/library", label: "ห้องสมุด", icon: BookOpen, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
       { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
       { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
       {
