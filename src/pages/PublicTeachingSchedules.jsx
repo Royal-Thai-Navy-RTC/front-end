@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import TeachingScheduleCalendar from "../components/TeachingScheduleCalendar";
 
+const CACHE_KEY = "public-teaching-schedules";
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 นาที
+
 const formatRange = (start, end) => {
   if (!start) return "-";
   const startDate = new Date(start);
@@ -29,13 +32,33 @@ export default function PublicTeachingSchedules() {
 
   useEffect(() => {
     const fetchSchedules = async () => {
-      setLoading(true);
       setFetchError("");
+      // check cache
+      try {
+        const cachedRaw = localStorage.getItem(CACHE_KEY);
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw);
+          if (cached?.timestamp && Date.now() - cached.timestamp < CACHE_TTL_MS && Array.isArray(cached.data)) {
+            setSchedules(cached.data);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // ignore cache error
+      }
+
+      setLoading(true);
       try {
         const response = await axios.get("/api/teaching-schedules");
         const payload = response.data?.data ?? response.data;
         const parsed = Array.isArray(payload) ? payload : payload?.items || [];
         setSchedules(parsed);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: parsed }));
+        } catch {
+          // ignore cache write errors
+        }
       } catch (err) {
         const msg = err?.response?.data?.message || "ไม่สามารถดึงตารางสอนได้";
         setFetchError(msg);
