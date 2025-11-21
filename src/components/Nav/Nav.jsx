@@ -96,7 +96,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
     () => [
       { path: "/home", label: "หน้าหลัก", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
       { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
-      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
+      // { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
       { path: "/teaching-schedules", label: "จัดการตารางสอน", roles: ["admin", "owner"] },
       // { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
       {

@@ -4,6 +4,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { X } from "lucide-react";
+import addressData from "../assets/address-data.json"
 
 const initialFormValues = {
     // basic
@@ -22,16 +23,13 @@ const initialFormValues = {
     religion: "",
     canSwim: "",
     specialSkills: "",
-    // contact
     email: "",
     phone: "",
     emergencyContactName: "",
     emergencyContactPhone: "",
-    // avatar path (string) will hold uploaded path/URL if saved to server
     avatar: "",
-    // medical-text (optional)
     medicalHistory: "",
-    // arrays will be managed in profileForm state below
+    zipCode: "",
 };
 
 export default function RegisterSoldier() {
@@ -43,6 +41,8 @@ export default function RegisterSoldier() {
 
     // single form state for simple fields
     const [formValues, setFormValues] = useState(initialFormValues);
+    const [zipCode, setZipCode] = useState("");
+
 
     // profileForm holds arrays and medicalHistory (so we can manage them separately or merge before submit)
     const [profileForm, setProfileForm] = useState({
@@ -134,6 +134,55 @@ export default function RegisterSoldier() {
             return;
         }
 
+        // เมื่อเลือกจังหวัด → เคลียร์อำเภอ + ตำบล
+        if (name === "province") {
+            const filteredDistricts = addressData
+                .filter((i) => i.district.province.id === Number(value))
+                .reduce((acc, curr) => {
+                    if (!acc.some((i) => i.id === curr.district.id)) acc.push(curr.district);
+                    return acc;
+                }, []);
+
+            setFormValues((prev) => ({
+                ...prev,
+                province: value,
+                district: "",
+                subdistrict: "",
+                zipCode: ""                         // ✅ reset zipCode
+            }));
+            return;
+        }
+
+        // เมื่อเลือกอำเภอ → เคลียร์ตำบล
+        if (name === "district") {
+            const filteredSubdistrict = addressData
+                .filter((i) => i.district.id === Number(value))
+                .map((i) => ({ id: i.id, name_th: i.name_th }));
+
+            setFormValues((prev) => ({
+                ...prev,
+                district: value,
+                subdistrict: "",
+                zipCode: ""
+            }));
+            return;
+        }
+
+
+        if (name === "subdistrict") {
+            const selected = addressData.find(
+                (i) => i.id === Number(value)
+            );
+
+            setFormValues((prev) => ({
+                ...prev,
+                subdistrict: value,
+                zipCode: selected?.zip_code || ""
+            }));
+            return;
+        }
+
+
         // น้ำหนัก & ส่วนสูง ห้ามติดลบ
         if (name === "weight" || name === "height") {
             // อนุญาตค่าว่าง
@@ -183,7 +232,6 @@ export default function RegisterSoldier() {
             // });
             // return res.data?.path || res.data?.avatar || null;
 
-            // For now we simulate: return object URL (or you can skip server upload)
             return null;
         } catch (err) {
             console.error("avatar upload err", err);
@@ -243,7 +291,44 @@ export default function RegisterSoldier() {
         }
     };
 
-    // sections to auto-render (uses educationOptions, religionOptions if provided)
+    // --- ADDRESS DROPDOWN LOGIC (NEW) --- //
+
+    // แยกจังหวัด
+    const provinceOptions = [
+        ...new Map(
+            addressData.map((i) => [i.district.province.id, {
+                value: i.district.province.id,
+                label: i.district.province.name_th
+            }])
+        ).values()
+    ];
+
+    // ดึงอำเภอตามจังหวัด
+    const districtOptions = formValues.province
+        ? [
+            ...new Map(
+                addressData
+                    .filter((i) => i.district.province.id === Number(formValues.province))
+                    .map((i) => [i.district.id, {
+                        value: i.district.id,
+                        label: i.district.name_th
+                    }])
+            ).values()
+        ]
+        : [];
+
+    // ดึงตำบลตามอำเภอ
+    const subdistrictOptions = formValues.district
+        ? addressData
+            .filter((i) => i.district.id === Number(formValues.district))
+            .map((i) => ({
+                value: i.id,
+                label: i.name_th
+            }))
+        : [];
+
+
+
     const profileSections = [
         {
             title: "ข้อมูลส่วนตัว",
@@ -267,6 +352,16 @@ export default function RegisterSoldier() {
                     ],
                 },
                 { name: "specialSkills", label: "ความสามารถพิเศษ", type: "text" },
+            ],
+        },
+        {
+            title: "ที่อยู่",
+            fields: [
+                { name: "addressDetail", label: "บ้านเลขที่ / รายละเอียดที่อยู่", type: "text" },
+                { name: "province", label: "จังหวัด", type: "select", option: provinceOptions },
+                { name: "district", label: "อำเภอ", type: "select", option: districtOptions },
+                { name: "subdistrict", label: "ตำบล", type: "select", option: subdistrictOptions },
+                { name: "zipCode", label: "รหัสไปรษณีย์", type: "text" },
             ],
         },
         {
@@ -372,6 +467,7 @@ export default function RegisterSoldier() {
                                                         maxLength={field.maxLength ?? undefined}
                                                         value={formValues[field.name] ?? ""}
                                                         onChange={handleChange}
+                                                        readOnly={field.name === "zipCode"}
                                                         className="w-full mt-1 border border-gray-500 rounded-xl px-3 py-2"
                                                     />
                                                 )}
