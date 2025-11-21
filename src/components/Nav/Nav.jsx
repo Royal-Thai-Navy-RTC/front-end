@@ -120,25 +120,23 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   /* --- PAGES (WITH DROPDOWN SUPPORT) --- */
   const pages = useMemo(
     () => [
-      { path: "/home", label: "หน้าหลัก", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
-      { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
-      // { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
-      { path: "/teaching-schedules", label: "จัดการตารางสอน", roles: ["admin", "owner"] },
-      // { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
+      { path: "/home", label: "หน้าหลัก", icon: Home, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
+      { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
+      { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
       {
-        label: "จัดการผู้ใช้", roles: ["admin", "owner"], children: [
-          { path: "/manage", label: "สิทธิผู้ใช้งาน", roles: ["admin", "owner"] },
-          { path: "/managesoldier", label: "พลทหาร", roles: ["admin", "owner", "sub_admin"] },
+        label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"], children: [
+          { path: "/manage", label: "สิทธิผู้ใช้งาน", icon: Settings2, roles: ["admin", "owner"] },
+          { path: "/managesoldier", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
       },
       {
-        label: "นักเรียน", roles: ["teacher", "admin", "sub_admin", "owner"], children: [
+        label: "นักเรียน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
           { path: "/listteacher", label: "ประเมินผู้สอน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/liststudent", label: "ประเมินนักเรียน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
         ]
       },
       {
-        label: "ข้าราชการ", roles: ["teacher", "admin", "sub_admin", "owner"], children: [
+        label: "ข้าราชการ", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
           { path: "/teacher-report", label: "แจ้งยอดนักเรียน", icon: ClipboardList, roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/teacher-leave", label: "แจ้งการลา", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"] },
           { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", icon: ClipboardList, roles: ["admin", "owner"] },
@@ -330,7 +328,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
 
             {visibleItems.map(item =>
               !item.children ? (
-                <Link key={item.label} to={item.path} className="py-2 text-gray-700" onClick={() => setMenuOpen(false)}>
+                <Link key={item.label} to={item.path} className="py-2 text-gray-700 flex items-center gap-2" onClick={() => setMenuOpen(false)}>
+                  {item.icon && <item.icon size={16} />}
                   {item.label}
                 </Link>
               ) : (
@@ -341,21 +340,18 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                     }
                     className="flex items-center w-full py-2 relative"
                   >
-                    {/* Label อยู่กลาง */}
-                    <div className="absolute left-1/2 -translate-x-1/2">
-                      {item.label}
+                    <div className="flex items-center gap-2 mx-auto">
+                      {item.icon && <item.icon size={16} />}
+                      <span>{item.label}</span>
                     </div>
-
-                    {/* Icon ชิดขวา */}
-                    <div className="ml-auto">
-                      <ChevronDownIcon open={openDropdown === item.label} />
-                    </div>
+                    <ChevronDownIcon open={openDropdown === item.label} />
                   </button>
 
                   {openDropdown === item.label && (
                     <div className="pl-4 flex flex-col gap-2 bg-gray-200">
                       {item.children.map(child => (
-                        <Link key={child.label} to={child.path} className="py-1  text-gray-700" onClick={() => setMenuOpen(false)}>
+                        <Link key={child.label} to={child.path} className="py-1  text-gray-700 flex items-center gap-2" onClick={() => setMenuOpen(false)}>
+                          {child.icon && <child.icon size={14} />}
                           {child.label}
                         </Link>
                       ))}
