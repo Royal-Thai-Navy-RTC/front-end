@@ -44,6 +44,12 @@ const featureSections = [
         description: "พื้นที่สอบและทดสอบศักยภาพผ่านระบบออนไลน์",
         picture: exam,
       },
+      {
+        title: "ตารางสอน",
+        path: "/public-teaching-schedules",
+        description: "ดูตารางสอนล่าสุด เปิดให้นักเรียนและผู้ใช้ทั่วไปเข้าดูได้",
+        picture: book,
+      },
     ],
   },
 ];

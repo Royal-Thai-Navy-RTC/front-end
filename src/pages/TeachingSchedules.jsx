@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin from "@fullcalendar/interaction";
+import TeachingScheduleCalendar from "../components/TeachingScheduleCalendar";
 
 const formatTeacher = (teacher) => {
   if (!teacher) return "-";
@@ -118,35 +116,6 @@ export default function TeachingSchedules() {
     };
     fetchTeachers();
   }, []);
-
-  const calendarEvents = useMemo(() => {
-    return schedules.map((item, idx) => {
-      const start =
-        item.start ||
-        item.date ||
-        item.time ||
-        item.beginDate ||
-        item.beginTime ||
-        new Date().toISOString();
-      const end = item.end || item.finish || item.endTime || null;
-      return {
-        id: item.id || `event-${idx}`,
-        title: item.title || item.subject || "ไม่ระบุวิชา",
-        start,
-        end,
-        allDay: Boolean(item.allDay),
-        color: item.color || "#2563eb",
-        backgroundColor: item.color || "#2563eb",
-        borderColor: item.color || "#2563eb",
-        extendedProps: {
-          teacher: formatTeacher(item.teacher),
-          division: item.division || item.category,
-          location: item.location || "-",
-          description: item.description,
-        },
-      };
-    });
-  }, [schedules]);
 
   const sortedSchedules = useMemo(() => {
     return [...schedules].sort((a, b) => {
@@ -624,42 +593,8 @@ export default function TeachingSchedules() {
                   </span>
                 </div>
                 <div className="overflow-x-auto px-2 pb-2">
-                  <FullCalendar
-                    plugins={[dayGridPlugin, interactionPlugin]}
-                    initialView="dayGridMonth"
-                    buttonText={{ today: "วันนี้" }}
-                    headerToolbar={{
-                      left: "prev,next today",
-                      center: "title",
-                      right: "",
-                    }}
-                locale="th"
-                height="auto"
-                events={calendarEvents}
-                eventContent={(arg) => (
-                  <div
-                    className="text-[11px] leading-tight rounded-sm px-1 py-0.5 text-white"
-                    style={{
-                      backgroundColor: arg.event.extendedProps.backgroundColor || arg.event.backgroundColor || arg.event.color || "#2563eb",
-                      border: "none",
-                    }}
-                  >
-                    <p className="font-semibold">{arg.event.title}</p>
-                    {arg.event.extendedProps.teacher && (
-                      <p className="opacity-90">{arg.event.extendedProps.teacher}</p>
-                    )}
-                  </div>
-                )}
-                eventDidMount={(info) => {
-                  const color = info.event.extendedProps.backgroundColor || info.event.backgroundColor || info.event.color;
-                  if (color) {
-                    info.el.style.backgroundColor = color;
-                    info.el.style.borderColor = color;
-                    info.el.style.color = "#fff";
-                  }
-                }}
-              />
-            </div>
+                  <TeachingScheduleCalendar schedules={schedules} />
+                </div>
               </div>
             </div>
           </>

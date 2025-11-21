@@ -19,6 +19,7 @@ import SoilderProfile from "./pages/SoldierProfile";
 import LayoutSoilder from "./layout/LayoutSoilder";
 import TeachingSchedules from "./pages/TeachingSchedules";
 import EvaluationDashboard from "./pages/EvaluationDashboard";
+import PublicTeachingSchedules from "./pages/PublicTeachingSchedules";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
             { path: "register", element: <Register /> },
             { path: "home", element: <Home /> },
             { path: "history", element: <History /> },
+            { path: "public-teaching-schedules", element: <PublicTeachingSchedules /> },
             {
                 path: "listteacher",
                 element: (
