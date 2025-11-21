@@ -23,12 +23,26 @@ import { mapProfileToForm, editableKeys } from "./profileUtils";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
 
+const ROLE_LABELS = {
+  admin: "ผู้ดูแลระบบ",
+  owner: "ผู้บังคับบัญชา",
+  sub_admin: "หัวหน้าหมวดวิชา",
+  teacher: "ครูผู้สอน",
+  student: "นักเรียน",
+};
+
 /* --- UTILITIES --- */
 const resolveAvatarUrl = (value = "") => {
   if (!value) return "";
   if (value.startsWith("http://") || value.startsWith("https://")) return value;
   const path = value.startsWith("/") ? value : `/${value}`;
   return `${API_BASE_URL}${path}`;
+};
+
+const getRoleLabel = (role) => {
+  if (!role) return "-";
+  const key = role.toString().toLowerCase();
+  return ROLE_LABELS[key] || role.toString().toUpperCase();
 };
 
 const PASSWORD_FORM_DEFAULT = {
@@ -276,8 +290,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                   {profileMenuOpen && (
                     <div ref={dropdownRef} className="absolute right-0 mt-3 w-60 bg-white border border-gray-200 shadow-xl rounded-2xl p-3 flex flex-col gap-1">
                       <div className="px-2 pb-3 border-b border-gray-400">
-                        <p className="text-sm font-semibold">{user.firstName || user.username}</p>
-                        <p className="text-xs text-gray-500">{user.role.toUpperCase()}</p>
+                        <p className="text-sm font-semibold">{user.rank} {user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-gray-500">{getRoleLabel(user.role)}</p>
                       </div>
 
                       <button onClick={openProfileModal} className="px-3 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2">
@@ -309,8 +323,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
 
             {visibleItems.map(item =>
               !item.children ? (
-                <Link key={item.label} to={item.path} className="py-2 text-gray-700 flex items-center gap-2" onClick={() => setMenuOpen(false)}>
-                  {item.icon && <item.icon size={16} />}
+                <Link key={item.label} to={item.path} className="py-2 text-gray-700" onClick={() => setMenuOpen(false)}>
                   {item.label}
                 </Link>
               ) : (
@@ -321,18 +334,21 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                     }
                     className="flex items-center w-full py-2 relative"
                   >
-                    <div className="flex items-center gap-2 mx-auto">
-                      {item.icon && <item.icon size={16} />}
-                      <span>{item.label}</span>
+                    {/* Label อยู่กลาง */}
+                    <div className="absolute left-1/2 -translate-x-1/2">
+                      {item.label}
                     </div>
-                    <ChevronDownIcon open={openDropdown === item.label} />
+
+                    {/* Icon ชิดขวา */}
+                    <div className="ml-auto">
+                      <ChevronDownIcon open={openDropdown === item.label} />
+                    </div>
                   </button>
 
                   {openDropdown === item.label && (
                     <div className="pl-4 flex flex-col gap-2 bg-gray-200">
                       {item.children.map(child => (
-                        <Link key={child.label} to={child.path} className="py-1 text-gray-700 flex items-center gap-2" onClick={() => setMenuOpen(false)}>
-                          {child.icon && <child.icon size={14} />}
+                        <Link key={child.label} to={child.path} className="py-1  text-gray-700" onClick={() => setMenuOpen(false)}>
                           {child.label}
                         </Link>
                       ))}
