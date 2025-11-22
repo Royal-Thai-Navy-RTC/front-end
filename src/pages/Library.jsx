@@ -16,6 +16,8 @@ export default function Library() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ id: null, title: "", description: "", category: "", fileUrl: "", coverUrl: "", isActive: true });
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const role = (localStorage.getItem("role") || "").toUpperCase();
   const isAdminOwner = role === "ADMIN" || role === "OWNER";
@@ -24,6 +26,31 @@ export default function Library() {
     if (isAdminOwner) return items;
     return items.filter((item) => item.isActive !== false);
   }, [items, isAdminOwner]);
+
+  const categories = useMemo(() => {
+    const list = Array.from(new Set(visibleItems.map((i) => i.category).filter(Boolean)));
+    return list;
+  }, [visibleItems]);
+
+  const filteredItems = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    return visibleItems.filter((item) => {
+      const matchCategory = categoryFilter === "all" || (item.category || "").toLowerCase() === categoryFilter;
+      const matchSearch =
+        !keyword ||
+        (item.title || "").toLowerCase().includes(keyword) ||
+        (item.description || "").toLowerCase().includes(keyword) ||
+        (item.category || "").toLowerCase().includes(keyword);
+      return matchCategory && matchSearch;
+    });
+  }, [visibleItems, search, categoryFilter]);
+
+  const latestItem = useMemo(() => {
+    if (!visibleItems.length) return null;
+    return [...visibleItems].sort(
+      (a, b) => new Date(b?.updatedAt || b?.createdAt || 0).getTime() - new Date(a?.updatedAt || a?.createdAt || 0).getTime()
+    )[0];
+  }, [visibleItems]);
 
   const fetchLibrary = useCallback(async () => {
     setLoading(true);
@@ -145,141 +172,230 @@ export default function Library() {
   };
 
   return (
-    <div className="w-full flex flex-col gap-6">
-      <section className="bg-white rounded-2xl shadow p-6 sm:p-8">
-        <div className="flex flex-col gap-2 text-center">
-          <p className="text-sm uppercase tracking-[0.35em] text-blue-500 font-semibold">Library</p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-blue-900">ห้องสมุดความรู้</h1>
-          <p className="text-sm text-gray-500">เอกสาร คู่มือ และสื่อการเรียนรู้สำหรับกำลังพล</p>
-          {loading && <p className="text-xs text-blue-600 mt-1">กำลังโหลด...</p>}
-          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-          {isAdminOwner && (
-            <div className="flex justify-center mt-3">
-              <button
-                onClick={() => openModal()}
-                className="px-4 py-2 rounded-xl bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 shadow"
-              >
-                เพิ่มหนังสือ/เอกสาร
-              </button>
+    <div className="w-full flex flex-col gap-8">
+      <section className="relative overflow-visible rounded-3xl bg-white/85 backdrop-blur border border-blue-50 shadow-xl z-0">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_20%,rgba(14,116,144,0.08),transparent_40%)]" />
+        <div className="pointer-events-none absolute -right-16 -bottom-16 w-72 h-72 bg-blue-100/50 blur-3xl rounded-full -z-10" />
+        <div className="relative z-0 grid gap-5 lg:grid-cols-[1.4fr_1fr] px-6 sm:px-10 py-6 text-slate-800">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] ring-1 ring-blue-100">
+              คลังหนังสือ
             </div>
-          )}
+            <h1 className="text-3xl sm:text-[34px] lg:text-[36px] font-bold leading-tight text-slate-900">
+              คลังหนังสือ กำลังพล
+              <span className="block text-blue-700 text-base sm:text-lg font-semibold mt-2">หนังสือดิจิทัล คู่มือ และสื่อการเรียนรู้</span>
+            </h1>
+            <p className="text-sm sm:text-base text-slate-600 max-w-3xl">
+              เข้าถึงคลังหนังสือดิจิทัลมาตรฐานศูนย์ฝึกทหารใหม่ จัดหมวดหมู่ชัดเจน ดาวน์โหลดง่าย พร้อมข้อมูลครบถ้วนสำหรับการฝึกและพัฒนากำลังพล
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-sm text-blue-800 ring-1 ring-blue-100">
+                <span className="text-lg">📚</span>
+                <span>รายการทั้งหมด {visibleItems.length} เล่ม</span>
+              </div>
+              <div className="flex items-center gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-sm text-blue-800 ring-1 ring-blue-100">
+                <span className="text-lg">⚡</span>
+                <span>อัปเดตล่าสุด {formatDate(visibleItems[0]?.updatedAt || visibleItems[0]?.createdAt)}</span>
+              </div>
+              {isAdminOwner && (
+                <button
+                  onClick={() => openModal()}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-blue-700 text-white px-4 py-2 text-sm font-semibold shadow-lg hover:-translate-y-0.5 transition"
+                >
+                  ➕ เพิ่มหนังสือ
+                </button>
+              )}
+            </div>
+            {loading && <p className="text-xs text-blue-700">กำลังโหลดข้อมูล...</p>}
+            {error && <p className="text-xs text-amber-600">เกิดข้อผิดพลาด: {error}</p>}
+          </div>
+          <div className="relative">
+            <div className="absolute inset-4 rounded-3xl bg-gradient-to-br from-blue-50 via-white to-white blur-xl" />
+            <div className="relative h-full bg-white/90 backdrop-blur-sm rounded-3xl border border-blue-100 p-4 grid gap-3 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-blue-800 uppercase tracking-wide">หนังสือล่าสุด</div>
+                <div className="text-[10px] px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">ใหม่</div>
+              </div>
+              <div className="grid grid-cols-[72px_1fr] gap-3 items-center">
+                <div className="w-full h-24 rounded-2xl bg-blue-50 border border-blue-100 overflow-hidden">
+                  {latestItem?.coverUrl ? (
+                    <img src={latestItem.coverUrl} alt={latestItem.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-blue-400">No cover</div>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-wide text-blue-700">{latestItem?.category || "ทั่วไป"}</p>
+                  <p className="text-base font-semibold text-slate-900 line-clamp-2">{latestItem?.title || "เลือกอ่านหนังสือที่คุณสนใจ"}</p>
+                  <p className="text-xs text-slate-600 line-clamp-2">{latestItem?.description || "เข้าถึงเนื้อหาคุณภาพได้ทุกที่ ทุกเวลา"}</p>
+                  {latestItem?.fileUrl && (
+                    <a
+                      className="inline-flex items-center gap-2 text-xs text-blue-700 underline decoration-blue-300 decoration-1 underline-offset-4"
+                      href={latestItem.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      อ่านเลย ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center text-[11px] text-blue-800">
+                <div className="rounded-2xl bg-blue-50 border border-blue-100 px-3 py-2">
+                  <p className="uppercase tracking-wide text-blue-500">รายการ</p>
+                  <p className="text-base font-bold">{visibleItems.length}</p>
+                </div>
+                <div className="rounded-2xl bg-blue-50 border border-blue-100 px-3 py-2">
+                  <p className="uppercase tracking-wide text-blue-500">หมวด</p>
+                  <p className="text-base font-bold">{categories.length || 1}</p>
+                </div>
+                <div className="rounded-2xl bg-blue-50 border border-blue-100 px-3 py-2">
+                  <p className="uppercase tracking-wide text-blue-500">ต่อหน้า</p>
+                  <p className="text-base font-bold">{pageInfo.pageSize}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl shadow p-6 border border-gray-100 flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sm:p-8 space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-base font-semibold text-gray-800">รายการห้องสมุด</p>
-            <p className="text-xs text-gray-500">
-              ทั้งหมด {visibleItems.length} รายการ {isAdminOwner ? "(รวมที่ไม่เผยแพร่)" : ""}
+            <p className="text-lg font-semibold text-gray-900">เลือกหนังสือที่ใช่</p>
+            <p className="text-sm text-gray-500">
+              ทั้งหมด {filteredItems.length} รายการ {isAdminOwner ? "(รวมรายการที่ยังไม่เผยแพร่)" : ""}
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-50 text-gray-700 border border-gray-200">
-              แสดงล่าสุด {pageInfo.pageSize} รายการ
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="ค้นหาชื่อหนังสือ คำอธิบาย หรือหมวดหมู่"
+                className="w-64 sm:w-72 rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300"
+              />
+              <span className="absolute right-3 top-2.5 text-gray-400 text-sm">⌕</span>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <button
+                onClick={() => setCategoryFilter("all")}
+                className={`px-3 py-2 rounded-2xl border text-sm transition ${
+                  categoryFilter === "all" ? "bg-indigo-600 text-white border-indigo-600 shadow" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                ทั้งหมด
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat.toLowerCase())}
+                  className={`px-3 py-2 rounded-2xl border text-sm transition ${
+                    categoryFilter === cat.toLowerCase() ? "bg-indigo-600 text-white border-indigo-600 shadow" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {visibleItems.length === 0 && !loading && !error && (
-          <p className="text-sm text-gray-500 text-center py-6">ยังไม่มีรายการห้องสมุด</p>
+        {filteredItems.length === 0 && !loading && !error && (
+          <div className="text-center py-12 rounded-2xl border border-dashed border-gray-200 bg-gray-50">
+            <p className="text-base font-semibold text-gray-700">ยังไม่มีรายการที่ตรงเงื่อนไข</p>
+            <p className="text-sm text-gray-500 mt-1">ลองค้นหาคำอื่น หรือเลือกหมวดหมู่ “ทั้งหมด”</p>
+          </div>
         )}
 
-        <div className="overflow-x-auto rounded-2xl border border-gray-100">
-          <table className="min-w-full text-sm text-gray-700">
-            <thead className="bg-gray-50 text-gray-600 uppercase tracking-wide text-xs">
-              <tr>
-                <th className="p-3 text-left w-16">ปก</th>
-                <th className="p-3 text-left">ชื่อเรื่อง</th>
-                <th className="p-3 text-left w-32">หมวดหมู่</th>
-                <th className="p-3 text-left w-32">อัปเดตล่าสุด</th>
-                {isAdminOwner && <th className="p-3 text-left w-28">สถานะ</th>}
-                <th className="p-3 text-left w-32">ไฟล์</th>
-                {isAdminOwner && <th className="p-3 text-left w-32">จัดการ</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {visibleItems.map((doc, idx) => (
-                <tr key={doc.id || `lib-${idx}`} className="hover:bg-gray-50 transition">
-                  <td className="p-3">
-                    {doc.coverUrl ? (
-                      <img src={doc.coverUrl} alt={doc.title} className="w-14 h-14 rounded-lg object-cover border border-gray-200" />
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {(loading ? Array.from({ length: 6 }) : filteredItems).map((doc, idx) => {
+            const showSkeleton = loading;
+            const key = doc?.id || `lib-card-${idx}`;
+            return (
+              <div
+                key={key}
+                className="relative group h-full rounded-3xl border border-gray-100 bg-white shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-xl transition"
+              >
+                <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-r from-indigo-50 via-white to-purple-50 opacity-80" />
+                <div className="relative grid grid-cols-[110px_1fr] gap-4 p-5">
+                  <div className="w-full h-36 rounded-2xl bg-gray-100 overflow-hidden border border-gray-200">
+                    {showSkeleton ? (
+                      <div className="h-full w-full animate-pulse bg-gray-200" />
+                    ) : doc?.coverUrl ? (
+                      <img src={doc.coverUrl} alt={doc.title} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center text-[11px] text-gray-400">
-                        ไม่มีปก
-                      </div>
+                      <div className="flex h-full items-center justify-center text-xs text-gray-400">ไม่มีปก</div>
                     )}
-                  </td>
-                  <td className="p-3">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-gray-900">{doc.title || "ไม่ระบุชื่อ"}</span>
-                      {doc.description && <span className="text-xs text-gray-500 line-clamp-2">{doc.description}</span>}
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <span className="inline-flex px-2 py-1 rounded-full bg-gray-100 border border-gray-200 text-[12px] text-gray-700">
-                      {doc.category || "ไม่ระบุ"}
-                    </span>
-                  </td>
-                  <td className="p-3 text-[12px] text-gray-600">{formatDate(doc.updatedAt || doc.createdAt)}</td>
-                  {isAdminOwner && (
-                    <td className="p-3">
-                      {doc.isActive === false ? (
-                        <span className="inline-flex px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[12px]">
-                          ไม่เผยแพร่
-                        </span>
-                      ) : (
-                        <span className="inline-flex px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[12px]">
-                          เผยแพร่
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <p className="text-[12px] uppercase tracking-wide text-gray-500">
+                          {showSkeleton ? <span className="inline-block h-3 w-20 bg-gray-200 animate-pulse rounded" /> : doc?.category || "ทั่วไป"}
+                        </p>
+                        <h3 className="text-lg font-semibold text-gray-900 leading-tight line-clamp-2">
+                          {showSkeleton ? <span className="inline-block h-4 w-32 bg-gray-200 animate-pulse rounded" /> : doc?.title || "ไม่ระบุชื่อ"}
+                        </h3>
+                      </div>
+                      {isAdminOwner && !showSkeleton && (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold border ${
+                            doc?.isActive === false
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          }`}
+                        >
+                          {doc?.isActive === false ? "ไม่เผยแพร่" : "เผยแพร่"}
                         </span>
                       )}
-                    </td>
-                  )}
-                  <td className="p-3">
-                    {doc.fileUrl ? (
-                      <a
-                        className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white text-gray-800 border border-gray-200 font-semibold hover:-translate-y-px hover:shadow-sm transition text-xs"
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <span className="text-gray-500">📄</span>
-                        <span>เปิดไฟล์</span>
-                        <span className="text-gray-400 text-[11px]">↗</span>
-                      </a>
-                    ) : (
-                      <span className="text-gray-400 text-xs">ไม่มีไฟล์</span>
-                    )}
-                  </td>
-                  {isAdminOwner && (
-                    <td className="p-3">
-                      <div className="flex items-center gap-2 text-xs">
-                        <button
-                          onClick={() => openModal(doc)}
-                          className="px-3 py-1 rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50"
+                    </div>
+                    <p className="text-sm text-gray-600 line-clamp-3">
+                      {showSkeleton ? <span className="inline-block h-3 w-full bg-gray-200 animate-pulse rounded" /> : doc?.description || "ยังไม่มีคำอธิบาย"}
+                    </p>
+                    <div className="flex items-center gap-2 text-[12px] text-gray-500">
+                      <span>อัปเดต {showSkeleton ? "-" : formatDate(doc?.updatedAt || doc?.createdAt)}</span>
+                    </div>
+                    <div className="mt-auto flex flex-wrap gap-2">
+                      {showSkeleton ? (
+                        <span className="inline-block h-9 w-24 bg-gray-200 animate-pulse rounded-xl" />
+                      ) : doc?.fileUrl ? (
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700 transition"
                         >
-                          แก้ไข
-                        </button>
-                        <button
-                          onClick={() => handleDelete(doc.id)}
-                          className="px-3 py-1 rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
-                        >
-                          ลบ
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-              {visibleItems.length === 0 && (
-                <tr>
-                  <td colSpan={isAdminOwner ? 7 : 6} className="text-center py-6 text-gray-500 text-sm">
-                    ไม่พบข้อมูล
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                          อ่านเลย ↗
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 rounded-2xl bg-gray-100 px-4 py-2 text-sm text-gray-500 border border-dashed border-gray-200">
+                          ไม่มีไฟล์
+                        </span>
+                      )}
+                      {isAdminOwner && !showSkeleton && (
+                        <div className="flex items-center gap-2 ml-auto">
+                          <button
+                            onClick={() => openModal(doc)}
+                            className="rounded-xl border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition"
+                          >
+                            แก้ไข
+                          </button>
+                          <button
+                            onClick={() => handleDelete(doc.id)}
+                            className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 transition"
+                          >
+                            ลบ
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 

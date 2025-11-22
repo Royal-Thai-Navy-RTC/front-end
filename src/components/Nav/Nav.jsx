@@ -239,7 +239,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   ------------------------------------------------------------ */
   return (
     <>
-      <nav className="bg-white w-full shadow-md p-3 transition-all duration-300">
+      <nav className="relative z-30 bg-white w-full shadow-md p-3 transition-all duration-300">
         <div className="mx-auto flex justify-between items-center">
 
           {/* LOGO */}
