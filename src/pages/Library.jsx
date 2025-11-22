@@ -9,6 +9,8 @@ const formatDate = (value) => {
 };
 
 export default function Library() {
+  const CACHE_KEY = "libraryCache";
+  const CACHE_TTL_MS = 15 * 60 * 1000;
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -55,29 +57,72 @@ export default function Library() {
   const fetchLibrary = useCallback(async () => {
     setLoading(true);
     setError("");
+    const includeInactive = isAdminOwner ? true : undefined;
+
+    // อ่าน cache เพื่อหลีกเลี่ยงการยิง request ถี่ ๆ (เก็บ 15 นาที)
+    try {
+      const cachedRaw = localStorage.getItem(CACHE_KEY);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        const isValid =
+          cached &&
+          cached.timestamp &&
+          Date.now() - cached.timestamp < CACHE_TTL_MS &&
+          cached.includeInactive === Boolean(includeInactive);
+        if (isValid) {
+          setItems(Array.isArray(cached.items) ? cached.items : []);
+          setPageInfo((prev) => ({
+            page: cached.pageInfo?.page ?? prev.page,
+            pageSize: cached.pageInfo?.pageSize ?? prev.pageSize,
+            total: cached.pageInfo?.total ?? cached.items?.length ?? prev.total,
+            totalPages: cached.pageInfo?.totalPages ?? prev.totalPages,
+          }));
+          setLoading(false);
+          return;
+        }
+      }
+    } catch {
+      // ignore cache errors
+    }
+
     try {
       const res = await axios.get("/api/library", {
         params: {
           page: pageInfo.page,
           pageSize: pageInfo.pageSize,
-          includeInactive: isAdminOwner ? true : undefined,
+          includeInactive,
         },
       });
       const payload = res.data?.data ?? res.data?.items ?? res.data ?? [];
       setItems(Array.isArray(payload) ? payload : []);
-      setPageInfo((prev) => ({
-        page: res.data?.page ?? prev.page,
-        pageSize: res.data?.pageSize ?? prev.pageSize,
+      const nextPageInfo = {
+        page: res.data?.page ?? pageInfo.page,
+        pageSize: res.data?.pageSize ?? pageInfo.pageSize,
         total: res.data?.total ?? payload.length,
-        totalPages: res.data?.totalPages ?? prev.totalPages,
-      }));
+        totalPages: res.data?.totalPages ?? pageInfo.totalPages,
+      };
+      setPageInfo(nextPageInfo);
+
+      try {
+        localStorage.setItem(
+          CACHE_KEY,
+          JSON.stringify({
+            timestamp: Date.now(),
+            includeInactive: Boolean(includeInactive),
+            items: Array.isArray(payload) ? payload : [],
+            pageInfo: nextPageInfo,
+          })
+        );
+      } catch {
+        // ignore cache write errors
+      }
     } catch (err) {
       setError(err?.response?.data?.message || "ไม่สามารถโหลดรายการห้องสมุดได้");
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [isAdminOwner, pageInfo.page, pageInfo.pageSize]);
+  }, [CACHE_TTL_MS, isAdminOwner, pageInfo.page, pageInfo.pageSize, pageInfo.totalPages]);
 
   useEffect(() => {
     fetchLibrary();
@@ -132,11 +177,13 @@ export default function Library() {
         const res = await axios.put(`/api/library/${form.id}`, payload, { headers });
         const updated = res.data?.item ?? res.data?.data ?? res.data ?? { ...payload, id: form.id };
         setItems((prev) => prev.map((it) => (it.id === form.id ? { ...it, ...updated } : it)));
+        localStorage.removeItem(CACHE_KEY);
         Swal.fire({ icon: "success", title: "อัปเดตสำเร็จ", timer: 1400, showConfirmButton: false });
       } else {
         const res = await axios.post("/api/library", payload, { headers });
         const created = res.data?.item ?? res.data?.data ?? res.data ?? { ...payload, id: Date.now().toString() };
         setItems((prev) => [created, ...prev]);
+        localStorage.removeItem(CACHE_KEY);
         Swal.fire({ icon: "success", title: "เพิ่มรายการสำเร็จ", timer: 1400, showConfirmButton: false });
       }
       fetchLibrary();
@@ -164,6 +211,7 @@ export default function Library() {
     try {
       await axios.delete(`/api/library/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       setItems((prev) => prev.filter((it) => it.id !== id));
+      localStorage.removeItem(CACHE_KEY);
       Swal.fire({ icon: "success", title: "ลบสำเร็จ", timer: 1200, showConfirmButton: false });
       fetchLibrary();
     } catch (err) {

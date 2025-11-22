@@ -239,7 +239,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   ------------------------------------------------------------ */
   return (
     <>
-      <nav className="relative z-30 bg-white w-full shadow-md p-3 transition-all duration-300">
+      <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-blue-100 shadow-lg p-3 transition-all duration-300">
         <div className="mx-auto flex justify-between items-center">
 
           {/* LOGO */}
@@ -266,13 +266,13 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                         <ChevronDownIcon />
                       </button>
 
-                      <div className="absolute left-0 mt-2 bg-white shadow-lg border border-gray-300 rounded-xl w-44 p-2 
-                      opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                      <div className="absolute left-0 mt-2 bg-white shadow-2xl border border-blue-100 rounded-2xl w-48 p-3 
+                      opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-40">
                         {item.children.map(child => (
                           <Link
                             key={child.label}
                             to={child.path}
-                            className="block px-3 py-2 text-sm hover:bg-gray-50 rounded-lg flex items-center gap-2 text-gray-700"
+                            className="block px-3 py-2 text-sm hover:bg-blue-50 rounded-xl flex items-center gap-2 text-gray-700"
                           >
                             {child.icon && <child.icon size={14} />}
                             {child.label}
@@ -284,7 +284,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                 )}
 
                 {/* PROFILE */}
-                <div className="relative">
+                <div className="relative z-40">
                   <button
                     ref={avatarButtonRef}
                     onClick={() => setProfileMenuOpen(prev => !prev)}
@@ -295,8 +295,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                   </button>
 
                   {profileMenuOpen && (
-                    <div ref={dropdownRef} className="absolute right-0 mt-3 w-60 bg-white border border-gray-200 shadow-xl rounded-2xl p-3 flex flex-col gap-1">
-                      <div className="px-2 pb-3 border-b border-gray-400">
+                    <div ref={dropdownRef} className="absolute right-0 mt-3 w-60 bg-white/95 backdrop-blur border border-blue-100 shadow-2xl rounded-2xl p-3 flex flex-col gap-1 z-50">
+                      <div className="px-2 pb-3 border-b border-gray-200">
                         <p className="text-sm font-semibold">{user.rank} {user.firstName} {user.lastName}</p>
                         <p className="text-xs text-gray-500">{getRoleLabel(user.role)}</p>
                       </div>
@@ -325,12 +325,13 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
 
         {/* MOBILE MENU */}
         {isAuthenticated && (
-          <div className={`md:hidden transition-all duration-500 overflow-hidden flex flex-col items-center gap-3 
-            bg-white ${menuOpen ? "max-h-[520px] py-4 mt-3" : "max-h-0 py-0"}`}>
+          <div className={`md:hidden transition-all duration-500 flex flex-col items-center gap-3 
+            bg-white/95 backdrop-blur border border-blue-100 shadow-lg rounded-2xl 
+            ${menuOpen ? "max-h-[70vh] py-4 mt-3 overflow-y-auto overscroll-contain" : "max-h-0 py-0 overflow-hidden"}`}>
 
             {visibleItems.map(item =>
               !item.children ? (
-                <Link key={item.label} to={item.path} className="py-2 text-gray-700 flex items-center gap-2" onClick={() => setMenuOpen(false)}>
+                <Link key={item.label} to={item.path} className="w-11/12 py-3 text-gray-700 flex items-center gap-2 justify-center rounded-xl hover:bg-blue-50" onClick={() => setMenuOpen(false)}>
                   {item.icon && <item.icon size={16} />}
                   {item.label}
                 </Link>
@@ -340,7 +341,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                     onClick={() =>
                       setOpenDropdown(openDropdown === item.label ? null : item.label)
                     }
-                    className="flex items-center w-full py-2 relative"
+                    className="flex items-center w-full py-3 relative rounded-xl border border-blue-50 hover:bg-blue-50"
                   >
                     <div className="flex items-center gap-2 mx-auto">
                       {item.icon && <item.icon size={16} />}
@@ -350,9 +351,9 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                   </button>
 
                   {openDropdown === item.label && (
-                    <div className="pl-4 flex flex-col gap-2 bg-gray-200">
+                    <div className="pl-4 flex flex-col gap-2 bg-blue-50 rounded-xl py-2 mt-2">
                       {item.children.map(child => (
-                        <Link key={child.label} to={child.path} className="py-1  text-gray-700 flex items-center gap-2" onClick={() => setMenuOpen(false)}>
+                        <Link key={child.label} to={child.path} className="py-2 px-3 text-gray-700 flex items-center gap-2 rounded-lg hover:bg-white" onClick={() => setMenuOpen(false)}>
                           {child.icon && <child.icon size={14} />}
                           {child.label}
                         </Link>
@@ -363,8 +364,8 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
               )
             )}
 
-            <button onClick={openProfileModal} className="w-11/12 border border-gray-300 py-2 rounded-xl">แก้ไขข้อมูลส่วนตัว</button>
-            <button onClick={handleLogout} className="w-11/12 bg-red-600 text-white py-2 rounded-xl">ออกจากระบบ</button>
+            <button onClick={openProfileModal} className="w-11/12 border border-blue-100 py-3 rounded-xl text-gray-800 hover:bg-blue-50">แก้ไขข้อมูลส่วนตัว</button>
+            <button onClick={handleLogout} className="w-11/12 bg-red-600 text-white py-3 rounded-xl">ออกจากระบบ</button>
           </div>
         )}
       </nav>
