@@ -262,7 +262,9 @@ export default function Library() {
             <div className="relative h-full bg-white/90 backdrop-blur-sm rounded-3xl border border-blue-100 p-4 grid gap-3 shadow-lg">
               <div className="flex items-center justify-between">
                 <div className="text-xs text-blue-800 uppercase tracking-wide">หนังสือล่าสุด</div>
-                <div className="text-[10px] px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">ใหม่</div>
+                <div className="text-[10px] px-2 py-1 rounded-full bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 text-white border border-blue-600 shadow-md animate-pulse">
+                  ใหม่
+                </div>
               </div>
               <div className="grid grid-cols-[72px_1fr] gap-3 items-center">
                 <div className="w-full h-24 rounded-2xl bg-blue-50 border border-blue-100 overflow-hidden">
