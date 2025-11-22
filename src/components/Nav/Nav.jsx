@@ -225,11 +225,14 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
     const isActive = location.pathname.startsWith(item.path);
     const Icon = item.icon;
     return (
-      <Link key={item.label}
+      <Link
+        key={item.label}
         to={item.path}
-        className={`text-sm font-medium transition-colors flex items-center gap-2 ${isActive ? "text-blue-800" : "text-gray-600 hover:text-blue-700"}`}>
-        {Icon && <Icon size={16} />}
-        {item.label}
+        aria-label={item.label}
+        className={`text-sm font-medium transition-colors flex items-center gap-2 ${isActive ? "text-blue-800" : "text-gray-600 hover:text-blue-700"}`}
+      >
+        {Icon && <Icon size={18} />}
+        <span className="hidden lg:inline">{item.label}</span>
       </Link>
     );
   };
@@ -260,9 +263,12 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                     renderNavLink(item)
                   ) : (
                     <div key={item.label} className="relative group">
-                      <button className="text-sm font-medium text-gray-600 hover:text-blue-700 flex items-center gap-2">
-                        {item.icon && <item.icon size={16} />}
-                        {item.label}
+                      <button
+                        aria-label={item.label}
+                        className="text-sm font-medium text-gray-600 hover:text-blue-700 flex items-center gap-2"
+                      >
+                        {item.icon && <item.icon size={18} />}
+                        <span className="hidden lg:inline">{item.label}</span>
                         <ChevronDownIcon />
                       </button>
 
