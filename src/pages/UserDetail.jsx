@@ -25,6 +25,7 @@ const APPROVAL_STATUS_META = {
   PENDING: { label: "รอดำเนินการ", color: "text-amber-600", dot: "bg-amber-400" },
   APPROVED: { label: "อนุมัติแล้ว", color: "text-emerald-600", dot: "bg-emerald-500" },
   REJECTED: { label: "ไม่อนุมัติ", color: "text-rose-600", dot: "bg-rose-500" },
+  CANCEL: { label: "ยกเลิกแล้ว", color: "text-rose-700", dot: "bg-rose-500" },
 };
 
 const APPROVAL_UNKNOWN = { label: "ยังไม่มีข้อมูล", color: "text-slate-500", dot: "bg-slate-300" };
@@ -73,6 +74,7 @@ const formatDateTime = (value) => {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
+    timeZone: "Asia/Bangkok",
   }).format(d);
 };
 
@@ -191,6 +193,7 @@ export default function UserDetail() {
   const adminApprovalMeta = APPROVAL_STATUS_META[lastLeave?.adminApprovalStatus] || APPROVAL_UNKNOWN;
   const ownerApprovalMeta = APPROVAL_STATUS_META[lastLeave?.ownerApprovalStatus] || APPROVAL_UNKNOWN;
   const showAdminApproval = lastLeave?.leaveType !== "OFFICIAL_DUTY" && !lastLeave?.isOfficialDuty;
+  const isCancelledLeave = lastLeave?.status?.toString().toUpperCase() === "CANCEL";
 
   const summaryChartOptions = useMemo(
     () => ({
@@ -387,10 +390,15 @@ export default function UserDetail() {
                   formatValue(lastLeave.status)
                 )}
               </p>
-              <div className="mt-2 grid sm:grid-cols-2 gap-2">
-                {showAdminApproval && <ApprovalStep label="ผู้ดูแล (Admin)" meta={adminApprovalMeta} />}
-                <ApprovalStep label="ผู้บังคับบัญชา (Owner)" meta={ownerApprovalMeta} />
-              </div>
+              {lastLeave?.status?.toString().toUpperCase() === "CANCEL" && (
+                <p className="text-[11px] text-rose-600 mt-1">ยกเลิกโดยผู้ยื่นคำขอ</p>
+              )}
+              {!isCancelledLeave && (
+                <div className="mt-2 grid sm:grid-cols-2 gap-2">
+                  {showAdminApproval && <ApprovalStep label="ผู้ดูแล (Admin)" meta={adminApprovalMeta} />}
+                  <ApprovalStep label="ผู้บังคับบัญชา (Owner)" meta={ownerApprovalMeta} />
+                </div>
+              )}
             </div>
           )}
         </div>

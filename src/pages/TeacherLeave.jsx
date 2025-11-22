@@ -105,10 +105,23 @@ const normalizeSummary = (payload) => {
 const formatDateRange = (start, end) => {
   if (!start) return "-";
   const startDate = new Date(start);
-  const startText = startDate.toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" });
+  if (Number.isNaN(startDate.getTime())) return "-";
+  const startText = startDate.toLocaleString("th-TH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   if (!end) return startText;
   const endDate = new Date(end);
-  const endText = endDate.toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" });
+  const endText = endDate.toLocaleString("th-TH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   return `${startText} - ${endText}`;
 };
 
@@ -117,6 +130,14 @@ const formatDateTime = (value) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "-";
   return parsed.toLocaleString("th-TH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+};
+
+const toInputDateTime = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 };
 
 const getLeaveTypeLabel = (value) => LEAVE_TYPES.find((type) => type.value === value)?.label || value || "-";
@@ -130,6 +151,8 @@ const getStatusLabel = (status) => {
       return "ไม่อนุมัติ";
     case "ACTIVE":
       return "กำลังลา";
+    case "CANCEL":
+      return "ยกเลิกแล้ว";
     default:
       return status;
   }
@@ -186,12 +209,14 @@ const APPROVAL_STATUS_META = {
   PENDING: { label: "รอดำเนินการ", color: "text-amber-600", dot: "bg-amber-400" },
   APPROVED: { label: "อนุมัติแล้ว", color: "text-emerald-600", dot: "bg-emerald-500" },
   REJECTED: { label: "ไม่อนุมัติ", color: "text-rose-600", dot: "bg-rose-500" },
+  CANCEL: { label: "ยกเลิกแล้ว", color: "text-rose-700", dot: "bg-rose-500" },
 };
 
 const mapApprovalStatus = (value, fallback = "PENDING") => {
   if (!value) return fallback;
   const normalized = value.toString().trim().toUpperCase();
   if (normalized === "ACTIVE") return "APPROVED";
+  if (normalized === "CANCEL") return "CANCEL";
   if (normalized === "IN_PROGRESS") return "PENDING";
   if (["PENDING", "APPROVED", "REJECTED"].includes(normalized)) return normalized;
   return fallback;
@@ -226,6 +251,7 @@ export default function TeacherLeave() {
   // teacher state
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [cancelingId, setCancelingId] = useState(null);
   const [leaves, setLeaves] = useState([]);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
   const isOfficialDutyForm = isOfficialDutyLeave(form.leaveType);
@@ -414,6 +440,40 @@ export default function TeacherLeave() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCancelLeave = async (leaveId) => {
+    if (!leaveId || isAdmin) return;
+    const leave = leaves.find((l) => l.id === leaveId || l._id === leaveId);
+    if (leave && leave.status && mapApprovalStatus(leave.status, "PENDING") !== "PENDING") {
+      Swal.fire({ icon: "info", title: "ยกเลิกไม่ได้", text: "ยกเลิกได้เฉพาะคำขอที่ยังรอดำเนินการ" });
+      return;
+    }
+    const ok = await Swal.fire({
+      icon: "warning",
+      title: "ยืนยันยกเลิกคำขอลา",
+      text: "ต้องการยกเลิกคำขอนี้หรือไม่?",
+      showCancelButton: true,
+      confirmButtonText: "ยืนยันยกเลิก",
+      cancelButtonText: "กลับ",
+      confirmButtonColor: "#dc2626",
+    });
+    if (!ok.isConfirmed) return;
+
+    setCancelingId(leaveId);
+    try {
+      await axios.patch(`/api/teacher/leaves/${leaveId}/cancel`, {}, { headers });
+      Swal.fire({ icon: "success", title: "ยกเลิกคำขอแล้ว", timer: 1200, showConfirmButton: false });
+      fetchLeaves();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "ยกเลิกไม่สำเร็จ",
+        text: error?.response?.data?.message || "เกิดข้อผิดพลาด กรุณาลองใหม่",
+      });
+    } finally {
+      setCancelingId(null);
     }
   };
 
@@ -798,22 +858,22 @@ export default function TeacherLeave() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span>วันเริ่มลา</span>
+              <span>วันเริ่มลา (ระบุวันที่และเวลา)</span>
               <input
-                type="date"
+                type="datetime-local"
                 name="startDate"
-                value={form.startDate}
+                value={toInputDateTime(form.startDate)}
                 onChange={handleChange}
                 className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span>วันสิ้นสุด</span>
+              <span>วันสิ้นสุด (ระบุวันที่และเวลา)</span>
               <input
-                type="date"
+                type="datetime-local"
                 name="endDate"
-                value={form.endDate}
-                min={form.startDate || undefined}
+                value={toInputDateTime(form.endDate)}
+                min={form.startDate ? toInputDateTime(form.startDate) : undefined}
                 onChange={handleChange}
                 className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
@@ -871,6 +931,18 @@ export default function TeacherLeave() {
           {leaves.map((leave) => {
             const official = isOfficialDutyLeave(leave.leaveType);
             const typeLabel = getLeaveTypeLabel(leave.leaveType);
+            const statusMapped = mapApprovalStatus(leave.status, "PENDING");
+            const isPending = statusMapped === "PENDING";
+            const statusMeta =
+              statusMapped === "APPROVED"
+                ? { bg: "bg-emerald-50", text: "text-emerald-700", label: "อนุมัติแล้ว" }
+                : statusMapped === "REJECTED"
+                ? { bg: "bg-rose-50", text: "text-rose-700", label: "ไม่อนุมัติ" }
+                : statusMapped === "ACTIVE"
+                ? { bg: "bg-blue-50", text: "text-blue-700", label: "กำลังลา" }
+                : statusMapped === "CANCEL"
+                ? { bg: "bg-slate-100", text: "text-rose-700", label: "ยกเลิกแล้ว" }
+                : { bg: "bg-amber-50", text: "text-amber-700", label: "รออนุมัติ" };
             return (
               <div
                 key={leave.id || leave._id || `${leave.leaveType}-${leave.startDate}-${leave.createdAt}`}
@@ -886,8 +958,8 @@ export default function TeacherLeave() {
                         ลาไปราชการ
                       </span>
                     )}
-                    <span className="text-sm px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">
-                      {leave.status ? getStatusLabel(leave.status) : "รออนุมัติ"}
+                    <span className={`text-sm px-3 py-1 rounded-full font-semibold ${statusMeta.bg} ${statusMeta.text}`}>
+                      {statusMeta.label}
                     </span>
                   </div>
                 </div>
@@ -897,6 +969,18 @@ export default function TeacherLeave() {
                   <p className="text-xs font-semibold text-gray-500 mb-2">ขั้นการอนุมัติ</p>
                   <LeaveApprovalSteps leave={leave} />
                 </div>
+                {isPending && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleCancelLeave(leave.id || leave._id)}
+                      disabled={cancelingId === (leave.id || leave._id)}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-60"
+                    >
+                      {cancelingId === (leave.id || leave._id) ? "กำลังยกเลิก..." : "ยกเลิกคำขอ"}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -935,8 +1019,9 @@ function AdminLeaveStatCard({ label, value, accent }) {
 function LeaveApprovalSteps({ leave, compact = false }) {
   if (!leave) return null;
   const overallStatus = mapApprovalStatus(leave.status, "PENDING");
-  const adminStatus = mapApprovalStatus(leave.adminApprovalStatus, overallStatus);
-  const ownerStatusFallback = adminStatus === "APPROVED" ? overallStatus : "PENDING";
+  const stepBaseline = overallStatus === "CANCEL" ? "PENDING" : overallStatus;
+  const adminStatus = mapApprovalStatus(leave.adminApprovalStatus, stepBaseline);
+  const ownerStatusFallback = adminStatus === "APPROVED" ? stepBaseline : "PENDING";
   const ownerStatus = mapApprovalStatus(leave.ownerApprovalStatus, ownerStatusFallback);
   const isOfficialDuty = isOfficialDutyLeave(leave.leaveType);
 
