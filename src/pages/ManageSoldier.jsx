@@ -70,7 +70,7 @@ const CREATE_USER_DEFAULT = {
     confirmPassword: "",
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com"
 const MAX_AVATAR_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const resolveAvatarUrl = (value) => {
     if (!value) return "";

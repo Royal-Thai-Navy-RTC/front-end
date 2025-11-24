@@ -5,7 +5,7 @@ import navy from "../assets/navy.png";
 import Swal from "sweetalert2";
 import ReactECharts from "echarts-for-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com"
 
 const resolveAvatarUrl = (value = "") => {
   if (!value) return "";

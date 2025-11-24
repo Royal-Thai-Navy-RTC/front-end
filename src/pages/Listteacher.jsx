@@ -4,7 +4,7 @@ import { Edit, Search } from "lucide-react";
 import axios from "axios";
 import navy from "../assets/navy.png";
 
-const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || "https://api.pargorn.com";
+const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || "https://api.pargorn.com"
 const resolveAvatarUrl = (value = "") => {
     if (!value) return "";
     if (value.startsWith("http://") || value.startsWith("https://")) return value;

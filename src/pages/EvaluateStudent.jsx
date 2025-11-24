@@ -66,6 +66,29 @@ export default function EvaluateStudent() {
     }));
   };
 
+  const handleInputScore = (e, sectionId, questionId, maxScore) => {
+    let v = e.target.value;
+
+    // อนุญาตให้ว่าง
+    if (v === "") {
+      handleScore(sectionId, questionId, "");
+      return;
+    }
+
+    // อนุญาตเฉพาะตัวเลข
+    if (!/^\d+$/.test(v)) return;
+
+    let num = Number(v);
+
+    // ห้ามต่ำกว่า 1
+    if (num < 1) num = 1;
+
+    // ห้ามมากกว่า maxScore
+    if (num > maxScore) num = maxScore;
+
+    handleScore(sectionId, questionId, num);
+  };
+
 
   const handleSubmit = async () => {
     if (!formEvaluate) {
@@ -117,6 +140,33 @@ export default function EvaluateStudent() {
       setSaving(false);
     }
   };
+
+  // รวมคะแนนทั้งหมดที่นักเรียนได้
+  const totalScore = useMemo(() => {
+    if (!answerList.length) return 0;
+    return answerList.reduce((sum, a) => sum + Number(a.score || 0), 0);
+  }, [answerList]);
+
+  // คะแนนเต็มทั้งหมด (รวม maxScore ทุกข้อ)
+  const totalMaxScore = useMemo(() => {
+    if (!formEvaluate) return 0;
+
+    let total = 0;
+    formEvaluate.sections?.forEach((sec) => {
+      sec.questions?.forEach((q) => {
+        total += Number(q.maxScore || 0);
+      });
+    });
+
+    return total;
+  }, [formEvaluate]);
+
+  // คิดเป็นร้อยละ (0 - 100)
+  const percentScore = useMemo(() => {
+    if (!totalMaxScore) return 0;
+    return Math.round((totalScore / totalMaxScore) * 1000) / 10; // ปัดทศนิยม 1 ตำแหน่ง
+  }, [totalScore, totalMaxScore]);
+
 
   return (
     <div className="flex flex-col w-full gap-6">
@@ -193,28 +243,59 @@ export default function EvaluateStudent() {
                         const maxScore = q.maxScore || 5;
                         const currentScore = scores?.[sec.id]?.[q.id];
                         return (
-                          <div
-                            key={q.id}
-                            className="border border-gray-100 rounded-xl p-3 flex flex-col gap-2"
-                          >
-                            <div className="flex items-start justify-between gap-3">
+                          <div key={q.id} className="border border-gray-300 rounded-xl p-3 flex flex-col gap-2">
+                            <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
                               <div className="flex-1">
                                 <p className="font-semibold text-gray-900">
                                   {q.prompt}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  อยู่ในหมวด: {sec.title}
+                                  หมวด: {sec.title}
                                 </p>
                               </div>
-                              <div className="text-right min-w-[90px]">
+                              <div className="flex flex-row sm:flex-col text-right items-center sm:items-end sm:justify-end min-w-[90px] gap-2">
                                 <p className="text-xs text-gray-500">ได้</p>
-                                <p className="text-lg font-bold text-blue-800">
+                                {/* เพิ่ม/ลดคะแนน */}
+                                <div className="flex items-center text-blue-800">
+                                  <input
+                                    type="text"
+                                    value={currentScore ?? ""}
+                                    onChange={(e) => handleInputScore(e, sec.id, q.id, maxScore)}
+                                    className="w-16 text-center border border-gray-400 rounded-l-lg py-1"
+                                    placeholder="0"
+                                  />
+
+                                  {/* ปุ่มเพิ่มคะแนน */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      let cur = Number(currentScore || 0);
+                                      const newVal = Math.min(maxScore, cur + 1);
+                                      handleScore(sec.id, q.id, newVal);
+                                    }}
+                                    className="px-3 py-1 border-y border-gray-400 hover:bg-gray-200"
+                                  >
+                                    +
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      let cur = Number(currentScore || 0);
+                                      const newVal = Math.max(1, cur - 1);
+                                      handleScore(sec.id, q.id, newVal);
+                                    }}
+                                    className="px-3 py-1 border rounded-r-lg border-gray-400 hover:bg-gray-200"
+                                  > - </button>
+                                </div>
+                                <span className="sm:text-lg font-bold text-blue-800">เต็ม {maxScore}</span>
+                                {/* <p className="text-lg font-bold text-blue-800">
                                   {currentScore ?? "-"} / {maxScore}
-                                </p>
+                                </p> */}
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
+
+                            {/* <div className="flex flex-wrap gap-2">
                               {Array.from({ length: maxScore }, (_, i) => {
                                 const scoreValue = i + 1;
                                 const selected =
@@ -236,9 +317,7 @@ export default function EvaluateStudent() {
                                   </button>
                                 );
                               })}
-                            </div>
-
-                            
+                            </div> */}
                           </div>
                         );
                       })}
@@ -247,6 +326,32 @@ export default function EvaluateStudent() {
               ))}
 
             <div className="grid sm:grid-cols-2 gap-4 mt-4">
+              {/* คะแนนรวม (Total Score) */}
+              <label className="flex flex-col text-sm text-gray-700">
+                <span>คะแนนรวม</span>
+                <p className="text-xl text-blue-800">{totalScore} / {totalMaxScore}</p>
+                <span className="text-xs text-gray-500 mt-1">
+                  รวมคะแนนทั้งหมดจากทุกข้อ
+                </span>
+              </label>
+
+              {/* คะแนนเฉลี่ย */}
+              <label className="flex flex-col text-sm text-gray-700">
+                <span>คะแนนเฉลี่ย</span>
+                <p className="text-xl text-blue-800">{computedOverall}</p>
+                <span className="text-xs text-gray-500 mt-1">
+                  คะแนนเฉลี่ยจากผลการประเมินทั้งหมด
+                </span>
+              </label>
+
+              {/* คิดเป็นร้อยละ */}
+              <label className="flex flex-col text-sm text-gray-700">
+                <span>คิดเป็นร้อยละ</span>
+                <p className="text-xl text-blue-800">{percentScore}%</p>
+                <span className="text-xs text-gray-500 mt-1">
+                  เปอร์เซ็นต์คะแนนที่ได้เมื่อเทียบกับคะแนนเต็ม
+                </span>
+              </label>
               <label className="flex flex-col text-sm text-gray-700">
                 <span>ช่วงประเมิน</span>
                 <input
@@ -255,20 +360,6 @@ export default function EvaluateStudent() {
                   onChange={(e) => setEvaluationDate(e.target.value)}
                   className="border rounded-xl px-3 py-2 mt-1"
                 />
-              </label>
-              <label className="flex flex-col text-sm text-gray-700">
-                <span>คะแนนรวม/เฉลี่ย</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={overallScore || computedOverall}
-                  onChange={(e) => setOverallScore(e.target.value)}
-                  className="border rounded-xl px-3 py-2 mt-1"
-                />
-                <span className="text-xs text-gray-500 mt-1">
-                  ตั้งค่าเองได้ หากเว้นว่างจะใช้ค่าเฉลี่ยอัตโนมัติ
-                </span>
               </label>
             </div>
 

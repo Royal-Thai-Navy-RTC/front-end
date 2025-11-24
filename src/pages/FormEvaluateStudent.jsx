@@ -16,16 +16,16 @@ export default function FormEvaluateStudent() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [searchKey, setSearchKey] = useState("");
 
-
+    /** TEMPLATE DEFAULT STRUCTURE */
     const emptyTemplate = {
         id: null,
         name: "",
         description: "",
+        type: "company",
+        battalionCount: 0,
+        teacherCount: 0,
         sections: []
     };
-
-    // console.log(editTemplate);
-
 
     /* -------- Load templates from API -------- */
     useEffect(() => {
@@ -71,18 +71,13 @@ export default function FormEvaluateStudent() {
                 const message = response.data?.message || "ลบสำเร็จ";
                 setListEvaluate(prev => prev.filter(item => item.id !== id));
 
-                Swal.fire({
-                    icon: "success",
-                    title: message,
-                    timer: 2000
-                });
+                Swal.fire({ icon: "success", title: message, timer: 2000 });
 
             } catch (error) {
                 Swal.fire({
                     icon: "error",
                     title: "ลบไม่สำเร็จ",
                     text: error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                    timer: 3000,
                 });
             } finally {
                 setSaving(false);
@@ -95,7 +90,7 @@ export default function FormEvaluateStudent() {
         setOpenForm(true);
     };
 
-    // console.log(listEvaluate);
+    /* SAVE TEMPLATE */
     const onSave = async () => {
         const token = localStorage.getItem("token");
         setSaving(true);
@@ -108,12 +103,10 @@ export default function FormEvaluateStudent() {
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
 
-                // console.log(response.data);
-
                 const created = response.data?.template;
                 setListEvaluate(prev => [...prev, created]);
 
-                Swal.fire({ icon: "success", title: "สร้างแบบฟอร์มสำเร็จ", timer: 2000, });
+                Swal.fire({ icon: "success", title: "สร้างแบบฟอร์มสำเร็จ", timer: 2000 });
             } else {
                 const response = await axios.put(
                     `/api/admin/student-evaluation-templates/${editTemplate.id}`,
@@ -127,26 +120,22 @@ export default function FormEvaluateStudent() {
                     prev.map(item => item.id === updated.id ? updated : item)
                 );
 
-                Swal.fire({ icon: "success", title: "บันทึกการแก้ไขสำเร็จ", timer: 2000, });
+                Swal.fire({ icon: "success", title: "บันทึกการแก้ไขสำเร็จ", timer: 2000 });
             }
 
-            setSaving(false);
             setOpenForm(false);
             setShowCreateModal(false);
             setEditTemplate(null);
 
         } catch (error) {
-            console.error(error);
-
             Swal.fire({
                 icon: "error",
                 title: "บันทึกไม่สำเร็จ",
                 text: error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง",
-                timer: 3000,
             });
-
-            setSaving(false);
         }
+
+        setSaving(false);
     };
 
     return (
@@ -155,30 +144,35 @@ export default function FormEvaluateStudent() {
             <header className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
                 <p className="text-sm text-gray-500">Evaluation Form Manager</p>
                 <h1 className="text-3xl font-bold text-blue-900">ระบบจัดการแบบฟอร์มประเมิน</h1>
-                <p className="text-gray-600 text-sm">
-                    สร้าง จัดการ และแก้ไขแบบฟอร์มการประเมิน
-                </p>
+                <p className="text-gray-600 text-sm">สร้าง จัดการ และแก้ไขแบบฟอร์มการประเมิน</p>
             </header>
 
             {/* --- LIST TEMPLATE --- */}
             <section className="bg-white rounded-2xl p-5 shadow flex flex-col">
+
                 {/* Search */}
                 <div className="flex flex-col sm:flex-row items-center justify-between">
                     <h2 className="text-xl font-bold text-blue-900">จัดการแบบฟอร์มประเมิน</h2>
-                    <button onClick={() => {
-                        setEditTemplate(JSON.parse(JSON.stringify(emptyTemplate))); // เคลียร์ template
-                        setShowCreateModal(true); // เปิด modal
-                        setOpenForm(true);
-                    }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 m-3 sm:m-0 w-full sm:w-fit" > + เพิ่มฟอร์มใหม่ </button>
+
+                    <button
+                        onClick={() => {
+                            setEditTemplate(JSON.parse(JSON.stringify(emptyTemplate)));
+                            setShowCreateModal(true);
+                            setOpenForm(true);
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 m-3 sm:m-0 w-full sm:w-fit"
+                    >
+                        + เพิ่มฟอร์มใหม่
+                    </button>
                 </div>
 
+                {/* Search Input */}
                 <div className="flex flex-col gap-2 mb-5">
                     <label className="text-sm text-gray-600">เลือกแบบฟอร์มที่ต้องการจัดการ</label>
                     <div className="relative">
                         <input
-                            className='border border-gray-400 rounded-lg p-2 pr-10 w-full text-gray-700'
-                            placeholder='ชื่อแบบฟอร์ม...'
+                            className="border border-gray-400 rounded-lg p-2 pr-10 w-full text-gray-700"
+                            placeholder="ชื่อแบบฟอร์ม..."
                             value={searchKey}
                             onChange={(e) => setSearchKey(e.target.value)}
                         />
@@ -186,64 +180,95 @@ export default function FormEvaluateStudent() {
                     </div>
                 </div>
 
-                {/* Templates */}
-                {listEvaluate.filter(v => v.name.toLowerCase().includes(searchKey.toLowerCase())).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(v => (
-                    <div key={v.id} className="border border-gray-400 rounded-xl p-4 bg-white mb-5 hover:bg-gray-100 flex flex-col gap-3">
-                        {/* Header */}
-                        <div className='flex flex-col sm:flex-row gap-3 sm:justify-between items-center cursor-pointer' onClick={() => toggleExpand(v.id)} >
-                            <div className='flex flex-col w-full'>
-                                <h3 className="text-xl sm:text-2xl font-bold text-blue-800">{v.name}</h3>
-                                <p className="text-gray-600 text-sm">{v.description}</p>
+                {/* LIST */}
+                {listEvaluate
+                    .filter(v => v.name.toLowerCase().includes(searchKey.toLowerCase()))
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .map(v => (
+                        <div
+                            key={v.id}
+                            className="border border-gray-400 rounded-xl p-4 bg-white mb-5 hover:bg-gray-100 flex flex-col gap-3"
+                        >
+                            {/* HEADER */}
+                            <div
+                                className="flex flex-col sm:flex-row gap-3 sm:justify-between items-center cursor-pointer"
+                                onClick={() => toggleExpand(v.id)}
+                            >
+                                <div className="flex flex-col w-full">
+                                    <h3 className="text-xl sm:text-2xl font-bold text-blue-800">{v.name}</h3>
+                                    <p className="text-gray-600 text-sm">{v.description}</p>
+                                    <p className="text-xs text-blue-700 font-semibold">
+                                        ประเภทฟอร์ม: {v.type === "company" ? "ประเมินกองร้อย" : "ประเมินกองพัน"}
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-3 min-w-fit">
+                                    <ChevronDownIcon open={expandedId === v.id} />
+
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); openEdit(v); }}
+                                        className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+                                    >
+                                        แก้ไขฟอร์ม
+                                    </button>
+
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(v.id); }}
+                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                    >
+                                        ลบฟอร์ม
+                                    </button>
+                                </div>
                             </div>
 
+                            {/* DETAILS */}
+                            <div className={`overflow-hidden transition-all duration-300 ${expandedId === v.id ? "max-h-[2000px] opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"}`}>
+                                <div className="border-t pt-3 border-gray-400">
 
-                            <div className="flex items-center gap-3 min-w-fit">
-                                <ChevronDownIcon open={expandedId === v.id} />
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); openEdit(v); }}
-                                    className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-                                >
-                                    แก้ไขฟอร์ม
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(v.id); }}
-                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                                >
-                                    ลบฟอร์ม
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className={`overflow-hidden transition-all duration-300 ${expandedId === v.id ? "max-h-[2000px] opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"}`}>
-                            <div className="border-t pt-3 border-gray-400">
-                                {v.sections
-                                    .sort((a, b) => a.sectionOrder - b.sectionOrder)
-                                    .map(section => (
-                                        <div key={section.id} className="mb-3">
-                                            <p className="font-bold text-blue-700">
-                                                {section.sectionOrder}. {section.title}
-                                            </p>
-
-                                            <ul className="pl-6 text-sm text-gray-700 list-decimal flex flex-col gap-1">
-                                                {section.questions.map((q, i) => (
-                                                    <li key={i} className='flex flex-col sm:flex-row sm:justify-between '>
-                                                        <p>{q.prompt}</p>
-                                                        <span className="text-blue-700 text-xs w-1/2 text-start font-semibold">
-                                                            คะแนนเต็ม {q.maxScore}
-                                                        </span>
-                                                    </li>
-                                                ))}
-                                            </ul>
+                                    {/* IF BATTALION */}
+                                    {v.type === "battalion" && (
+                                        <div className="mb-4 text-sm text-gray-700">
+                                            {/* <p>หัวข้อหมวด: {v.categoryTitle}</p> */}
+                                            <p>จำนวนกองพัน: {v.battalionCount}</p>
+                                            <p>จำนวนครูผู้ประเมิน: {v.teacherCount}</p>
+                                            {/* <p>คะแนนเต็มของหมวด: {v.sectionMaxScore}</p> */}
                                         </div>
-                                    ))}
+                                    )}
+
+                                    {/* SECTIONS */}
+                                    {v.sections
+                                        .sort((a, b) => a.sectionOrder - b.sectionOrder)
+                                        .map(section => (
+                                            <div key={section.id} className="mb-3">
+                                                <p className="font-bold text-blue-700">
+                                                    {section.sectionOrder}. {section.title}
+                                                </p>
+
+                                                {v.type === "company" ? (
+                                                    <ul className="pl-6 text-sm text-gray-700 list-decimal flex flex-col gap-1">
+                                                        {section.questions.map((q, i) => (
+                                                            <li key={i} className="flex flex-col sm:flex-row sm:justify-between">
+                                                                <p>{q.prompt}</p>
+                                                                <span className="text-blue-700 text-xs w-1/2 text-start font-semibold">
+                                                                    คะแนนเต็ม {q.maxScore}
+                                                                </span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <p className="text-sm text-gray-700 ml-6">
+                                                        คะแนนเต็มหมวด: {section.maxScore}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
             </section>
 
-            {/* --- CREATE MODAL (ใช้ตัวเดียวกับ EDIT) --- */}
+            {/* MODAL */}
             {openForm && editTemplate && (
                 <ModalEditForm
                     template={editTemplate}
@@ -257,8 +282,6 @@ export default function FormEvaluateStudent() {
                     saving={saving}
                 />
             )}
-
-
         </div>
     );
 }
@@ -272,8 +295,7 @@ function ChevronDownIcon({ open }) {
     );
 }
 
-/* -------------------- MODAL + componentForm -------------------- */
-
+/* -------------------- MODAL -------------------- */
 function ModalEditForm({ template, setTemplate, onClose, onSave, saving }) {
     return (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
@@ -309,8 +331,7 @@ function ModalEditForm({ template, setTemplate, onClose, onSave, saving }) {
     );
 }
 
-/* -------------------- FormEvaluate -------------------- */
-
+/* -------------------- FORM COMPONENT -------------------- */
 function FormEvaluate({ template, setTemplate }) {
     const [openSections, setOpenSections] = useState(
         template.sections.map(() => true)
@@ -324,32 +345,60 @@ function FormEvaluate({ template, setTemplate }) {
         });
     };
 
-    /* --- Update main fields --- */
     const updateField = (key, value) => {
-        setTemplate(prev => ({ ...prev, [key]: value }));
+        setTemplate(prev => {
+            if (key === "type") {
+
+                // เปลี่ยนเป็น กองร้อย → ต้องเพิ่ม questions
+                if (value === "company") {
+                    const newSections = prev.sections.map(sec => ({
+                        ...sec,
+                        questions: sec.questions ?? []
+                    }));
+
+                    return {
+                        ...prev,
+                        type: value,
+                        sections: newSections
+                    };
+                }
+
+                // เปลี่ยนเป็น กองพัน → ไม่มี questions, ไม่มี maxScore
+                if (value === "battalion") {
+                    const newSections = prev.sections.map(sec => ({
+                        id: sec.id,
+                        sectionOrder: sec.sectionOrder,
+                        title: sec.title
+                    }));
+
+                    return {
+                        ...prev,
+                        type: value,
+                        sections: newSections
+                    };
+                }
+            }
+
+            return { ...prev, [key]: value };
+        });
     };
 
-    /* --- Update section title --- */
+
+
+    /* SECTION EDIT */
     const updateSectionTitle = (idx, value) => {
         const newSections = [...template.sections];
         newSections[idx].title = value;
         setTemplate({ ...template, sections: newSections });
     };
 
-    /* --- Update question fields --- */
-    const updateQuestion = (sIdx, qIdx, key, value) => {
-        const newSections = [...template.sections];
-        newSections[sIdx].questions[qIdx][key] = value;
-        setTemplate({ ...template, sections: newSections });
-    };
-
-    /* --- Add new section --- */
     const addSection = () => {
         const newSection = {
             id: Date.now(),
             sectionOrder: template.sections.length + 1,
-            title: "หมวดใหม่",
-            questions: []
+            title: "",
+            maxScore: template.type === "battalion" ? template.sectionMaxScore : undefined,
+            questions: template.type === "company" ? [] : undefined
         };
 
         setTemplate(prev => ({
@@ -360,30 +409,28 @@ function FormEvaluate({ template, setTemplate }) {
         setOpenSections(prev => [...prev, true]);
     };
 
-    /* --- Remove section --- */
     const removeSection = (idx) => {
         const updated = template.sections.filter((_, i) => i !== idx);
-
         updated.forEach((s, i) => { s.sectionOrder = i + 1 });
 
         setTemplate(prev => ({ ...prev, sections: updated }));
-
         setOpenSections(prev => prev.filter((_, i) => i !== idx));
     };
 
-    /* --- Add question --- */
+    /* ADD QUESTION (Only company) */
     const addQuestion = (sIdx) => {
+        if (template.type !== "company") return;
+
         const newSections = [...template.sections];
         newSections[sIdx].questions.push({
             id: Date.now(),
-            prompt: "คำถามใหม่",
-            maxScore: 5
+            prompt: "",
+            maxScore: 1
         });
 
         setTemplate({ ...template, sections: newSections });
     };
 
-    /* --- Remove question --- */
     const removeQuestion = (sIdx, qIdx) => {
         const newSections = [...template.sections];
         newSections[sIdx].questions = newSections[sIdx].questions.filter((_, i) => i !== qIdx);
@@ -392,13 +439,27 @@ function FormEvaluate({ template, setTemplate }) {
 
     return (
         <div className="space-y-6">
+
+            {/* Type */}
+            <label className="flex flex-col text-sm">
+                <span>ประเภทฟอร์ม</span>
+                <select
+                    className="border rounded-xl px-3 py-2"
+                    value={template.type}
+                    onChange={(e) => updateField("type", e.target.value)}
+                >
+                    <option value="company">ประเมินกองร้อย</option>
+                    <option value="battalion">ประเมินกองพัน</option>
+                </select>
+            </label>
+
             {/* Name / Description */}
             <div className="grid grid-cols-1 gap-4">
                 <label className="flex flex-col text-sm">
                     <span>ชื่อแบบฟอร์ม</span>
                     <input
                         className="border rounded-xl px-3 py-2"
-                        value={template.name}
+                        value={template.name ?? ""}
                         onChange={(e) => updateField("name", e.target.value)}
                     />
                 </label>
@@ -407,45 +468,90 @@ function FormEvaluate({ template, setTemplate }) {
                     <span>คำอธิบาย</span>
                     <input
                         className="border rounded-xl px-3 py-2"
-                        value={template.description}
+                        value={template.description ?? ""}  
                         onChange={(e) => updateField("description", e.target.value)}
                     />
                 </label>
             </div>
 
-            {/* Add Section Button */}
-            <div className='w-full flex justify-start'>
-                <button className="px-4 py-2 self-end bg-blue-600 text-white rounded-lg hover:bg-blue-700" onClick={addSection} >
+            {/* ONLY BATTALION */}
+            {template.type === "battalion" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                    {/* <label className="flex flex-col text-sm">
+                        <span>หัวข้อหมวด</span>
+                        <input
+                            className="border rounded-xl px-3 py-2"
+                            value={template.categoryTitle}
+                            onChange={(e) => updateField("categoryTitle", e.target.value)}
+                        />
+                    </label> */}
+
+                    <label className="flex flex-col text-sm">
+                        <span>จำนวนกองพันที่ต้องการประเมิน</span>
+                        <input
+                            type="number"
+                            min={1}
+                            className="border rounded-xl px-3 py-2"
+                            value={template.battalionCount ?? 0}
+                            onChange={(e) => updateField("battalionCount", Number(e.target.value))}
+                        />
+                    </label>
+
+                    <label className="flex flex-col text-sm">
+                        <span>จำนวนครูผู้ประเมิน</span>
+                        <input
+                            type="number"
+                            min={1}
+                            className="border rounded-xl px-3 py-2"
+                            value={template.teacherCount ?? 0}
+                            onChange={(e) => updateField("teacherCount", Number(e.target.value))}
+                        />
+                    </label>
+                </div>
+            )}
+
+            {/* Add Section */}
+            <div className="w-full flex justify-start">
+                <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    onClick={addSection}
+                >
                     + เพิ่มหมวด (Section)
                 </button>
             </div>
 
-
             {/* Sections */}
             <div className="space-y-6">
                 {template.sections.map((sec, sIdx) => (
-                    <div key={sec.id} className="border border-gray-400 rounded-xl p-4 ">
+                    <div key={sec.id} className="border border-gray-400 rounded-xl p-4">
 
-                        {/* Header with Toggle */}
                         <div className="flex flex-col sm:flex-row gap-2 justify-between items-center mb-2">
                             <h4 className="font-bold sm:text-xl text-blue-700">
                                 หมวดที่ {sec.sectionOrder} : {sec.title}
                             </h4>
 
                             <div className="flex gap-3 items-center">
-                                <button onClick={() => toggleSection(sIdx)} className="rounded-lg hover:bg-gray-200 cursor-pointer text-sm px-4 py-1 bg-gray-300 text-gray-800">
+                                <button
+                                    onClick={() => toggleSection(sIdx)}
+                                    className="rounded-lg hover:bg-gray-200 cursor-pointer text-sm px-4 py-1 bg-gray-300 text-gray-800"
+                                >
                                     {openSections[sIdx] ? "ย่อ ▲" : "ขยาย ▼"}
                                 </button>
 
-                                <button className="rounded-lg hover:bg-red-400 cursor-pointer text-sm px-4 py-1 bg-red-500 text-white" onClick={() => removeSection(sIdx)} >
+                                <button
+                                    className="rounded-lg hover:bg-red-400 cursor-pointer text-sm px-4 py-1 bg-red-500 text-white"
+                                    onClick={() => removeSection(sIdx)}
+                                >
                                     ลบ
                                 </button>
                             </div>
                         </div>
 
-                        {/* Collapsible Content */}
+                        {/* SECTION BODY */}
                         <div className={`${openSections[sIdx] ? "block" : "hidden"} text-gray-800`}>
-                            {/* Section Title Edit */}
+
+                            {/* SECTION TITLE */}
                             <label className="flex flex-col text-sm mb-3">
                                 <span>ชื่อหมวด</span>
                                 <input
@@ -455,45 +561,77 @@ function FormEvaluate({ template, setTemplate }) {
                                 />
                             </label>
 
-                            {/* Questions */}
-                            <div className="space-y-3">
-                                {sec.questions.map((q, qIdx) => (
-                                    <div key={q.id} className="flex flex-col gap-2 border border-gray-400 p-3 rounded-lg bg-white">
-                                        <div className="flex justify-between">
-                                            <label className="text-">คำถาม</label>
-                                            <button className="text-sm rounded-lg cursor-pointer px-4 py-1 text-red-500 underline hover:no-underline" onClick={() => removeQuestion(sIdx, qIdx)} >
-                                                ลบ
-                                            </button>
-                                        </div>
+                            {/* IF BATTALION → SHOW ONLY MAX SCORE */}
+                            {template.type === "battalion" ? (
+                                <label className="flex flex-col text-sm">
+                                    <span>คะแนนเต็มของหมวด</span>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        className="border border-gray-400 rounded-lg px-3 py-2"
+                                        value={sec.maxScore}
+                                        onChange={(e) => {
+                                            const newSections = [...template.sections];
+                                            newSections[sIdx].maxScore = Number(e.target.value);
+                                            setTemplate({ ...template, sections: newSections });
+                                        }}
+                                    />
+                                </label>
+                            ) : (
+                                /* COMPANY QUESTIONS UI */
+                                <div className="space-y-3">
+                                    {sec.questions.map((q, qIdx) => (
+                                        <div
+                                            key={q.id}
+                                            className="flex flex-col gap-2 border border-gray-400 p-3 rounded-lg bg-white"
+                                        >
+                                            <div className="flex justify-between">
+                                                <label className="text-sm">คำถาม</label>
+                                                <button
+                                                    className="text-sm rounded-lg cursor-pointer px-4 py-1 text-red-500 underline hover:no-underline"
+                                                    onClick={() => removeQuestion(sIdx, qIdx)}
+                                                >
+                                                    ลบ
+                                                </button>
+                                            </div>
 
-                                        <input className="border border-gray-400 rounded-xl px-3 py-2 text-sm"
-                                            value={q.prompt}
-                                            onChange={(e) => updateQuestion(sIdx, qIdx, "prompt", e.target.value)}
-                                        />
-
-                                        <label className="flex justify-start items-center gap-2">
-                                            <p className='text-sm'>คะแนนเต็ม</p>
                                             <input
-                                                type="number"
-                                                min={1}
-                                                max={10}
-                                                className="border border-gray-400 rounded-lg py-1 px-2 text-center "
-                                                value={q.maxScore}
-                                                onChange={(e) => updateQuestion(sIdx, qIdx, "maxScore", Number(e.target.value))}
+                                                className="border border-gray-400 rounded-xl px-3 py-2 text-sm"
+                                                value={q.prompt}
+                                                onChange={(e) => {
+                                                    const newSections = [...template.sections];
+                                                    newSections[sIdx].questions[qIdx].prompt = e.target.value;
+                                                    setTemplate({ ...template, sections: newSections });
+                                                }}
                                             />
-                                        </label>
 
-                                    </div>
-                                ))}
-                            </div>
+                                            <label className="flex items-center gap-2">
+                                                <p className="text-sm">คะแนนเต็ม</p>
+                                                <input
+                                                    type="number"
+                                                    min={1}
+                                                    max={10}
+                                                    className="border border-gray-400 rounded-lg py-1 px-2 text-center"
+                                                    value={q.maxScore}
+                                                    onChange={(e) => {
+                                                        const newSections = [...template.sections];
+                                                        newSections[sIdx].questions[qIdx].maxScore = Number(e.target.value);
+                                                        setTemplate({ ...template, sections: newSections });
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
+                                    ))}
 
-                            {/* Add Question Button */}
-                            <button
-                                className="px-3 py-1 bg-green-500 text-white rounded-lg mt-3 hover:bg-green-600  cursor-pointer"
-                                onClick={() => addQuestion(sIdx)}
-                            >
-                                + เพิ่มคำถาม (Question)
-                            </button>
+                                    <button
+                                        className="px-3 py-1 bg-green-500 text-white rounded-lg mt-3 hover:bg-green-600 cursor-pointer"
+                                        onClick={() => addQuestion(sIdx)}
+                                    >
+                                        + เพิ่มคำถาม (Question)
+                                    </button>
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 ))}
@@ -501,5 +639,3 @@ function FormEvaluate({ template, setTemplate }) {
         </div>
     );
 }
-
-

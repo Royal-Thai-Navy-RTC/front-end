@@ -11,7 +11,8 @@ export default defineConfig({
     allowedHosts: ["rtcas.pargorn.com"],
     proxy: {
       "/api": {
-        target: "https://api.pargorn.com/api/",
+        target: "http://localhost:3000/api/",
+        // target: "https://api.pargorn.com/api/",
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, "")

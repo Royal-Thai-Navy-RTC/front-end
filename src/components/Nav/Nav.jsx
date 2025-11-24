@@ -237,6 +237,9 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
     );
   };
 
+  // console.log(resolveAvatarUrl(user.avatar));
+  
+
   /* ------------------------------------------------------------
       JSX START
   ------------------------------------------------------------ */
