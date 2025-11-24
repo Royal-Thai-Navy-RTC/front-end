@@ -395,8 +395,8 @@ export default function UserDetail() {
               )}
               {!isCancelledLeave && (
                 <div className="mt-2 grid sm:grid-cols-2 gap-2">
-                  {showAdminApproval && <ApprovalStep label="ผู้ดูแล (Admin)" meta={adminApprovalMeta} />}
-                  <ApprovalStep label="ผู้บังคับบัญชา (Owner)" meta={ownerApprovalMeta} />
+                  {showAdminApproval && <ApprovalStep label="หัวหน้าหมวด" meta={adminApprovalMeta} />}
+                  <ApprovalStep label="ผู้บังคับบัญชา" meta={ownerApprovalMeta} />
                 </div>
               )}
             </div>
