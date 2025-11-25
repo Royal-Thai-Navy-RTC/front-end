@@ -112,6 +112,7 @@ const formatDateRange = (start, end) => {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Bangkok",
   });
   if (!end) return startText;
   const endDate = new Date(end);
@@ -121,6 +122,7 @@ const formatDateRange = (start, end) => {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Bangkok",
   });
   return `${startText} - ${endText}`;
 };
@@ -129,15 +131,27 @@ const formatDateTime = (value) => {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "-";
-  return parsed.toLocaleString("th-TH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return parsed.toLocaleString("th-TH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Bangkok",
+  });
 };
 
 const toInputDateTime = (value) => {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  const offsetMs = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+  const pad2 = (num) => String(num).padStart(2, "0");
+  const year = date.getFullYear();
+  const month = pad2(date.getMonth() + 1);
+  const day = pad2(date.getDate());
+  const hours = pad2(date.getHours());
+  const minutes = pad2(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
 const getLeaveTypeLabel = (value) => LEAVE_TYPES.find((type) => type.value === value)?.label || value || "-";
@@ -240,6 +254,14 @@ const getApproverDisplayName = (approver) => {
   const composed = `${rank}${(approver.firstName || "")} ${(approver.lastName || "")}`.trim();
   if (composed) return composed;
   return approver.username || approver.name || "";
+};
+
+// Serialize datetime-local value to UTC ISO string to avoid server-side timezone shifting.
+const toUtcIsoString = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
 };
 
 export default function TeacherLeave() {
@@ -420,7 +442,12 @@ export default function TeacherLeave() {
     }
 
     setSubmitting(true);
-    const payload = { ...form, isOfficialDuty: Boolean(isOfficialDutyForm) };
+    const payload = {
+      ...form,
+      startDate: toUtcIsoString(form.startDate),
+      endDate: toUtcIsoString(form.endDate),
+      isOfficialDuty: Boolean(isOfficialDutyForm),
+    };
     const endpoint = isOfficialDutyForm ? "/api/teacher/official-duty-leaves" : "/api/teacher/leaves";
     try {
       await axios.post(endpoint, payload, { headers });
