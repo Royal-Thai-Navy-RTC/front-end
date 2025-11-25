@@ -9,6 +9,7 @@ export default function FormEvaluateStudent() {
     const { divisionOptions } = useOutletContext();
 
     const [listEvaluate, setListEvaluate] = useState([]);
+    const [teachers, setTeachers] = useState([]);
     const [expandedId, setExpandedId] = useState(null);
     const [openForm, setOpenForm] = useState(false);
     const [editTemplate, setEditTemplate] = useState(null);
@@ -24,7 +25,9 @@ export default function FormEvaluateStudent() {
         type: "company",
         battalionCount: 0,
         teacherCount: 0,
-        sections: []
+        sections: [],
+        teacherEvaluators: [],
+
     };
 
     /* -------- Load templates from API -------- */
@@ -42,6 +45,20 @@ export default function FormEvaluateStudent() {
             }
         };
         fetchTemplates();
+
+        const fetchTeachers = async () => {
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get("/api/admin/users?role=TEACHER", {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                const payload = response.data?.data ?? response.data;
+                setTeachers(Array.isArray(payload) ? payload : payload?.items || []);
+            } catch (err) {
+                console.error("failed to load teachers", err);
+            }
+        };
+        fetchTeachers();
     }, []);
 
     const toggleExpand = (id) => {
@@ -280,6 +297,7 @@ export default function FormEvaluateStudent() {
                     }}
                     onSave={onSave}
                     saving={saving}
+                    teachers={teachers}
                 />
             )}
         </div>
@@ -296,7 +314,7 @@ function ChevronDownIcon({ open }) {
 }
 
 /* -------------------- MODAL -------------------- */
-function ModalEditForm({ template, setTemplate, onClose, onSave, saving }) {
+function ModalEditForm({ template, setTemplate, onClose, onSave, saving, teachers }) {
     return (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
@@ -312,7 +330,7 @@ function ModalEditForm({ template, setTemplate, onClose, onSave, saving }) {
                     </button>
                 </div>
 
-                <FormEvaluate template={template} setTemplate={setTemplate} />
+                <FormEvaluate template={template} setTemplate={setTemplate} teachers={teachers} />
 
                 <div className="flex justify-end gap-3 mt-6">
                     <button onClick={onClose} className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50">
@@ -332,7 +350,8 @@ function ModalEditForm({ template, setTemplate, onClose, onSave, saving }) {
 }
 
 /* -------------------- FORM COMPONENT -------------------- */
-function FormEvaluate({ template, setTemplate }) {
+function FormEvaluate({ template, setTemplate, teachers }) {
+    const [teacherSearch, setTeacherSearch] = useState({});
     const [openSections, setOpenSections] = useState(
         template.sections.map(() => true)
     );
@@ -362,6 +381,15 @@ function FormEvaluate({ template, setTemplate }) {
                         sections: newSections
                     };
                 }
+
+                if (key === "teacherCount") {
+                    return {
+                        ...prev,
+                        teacherCount: value,
+                        teacherEvaluators: (prev.teacherEvaluators || []).slice(0, value)
+                    };
+                }
+
 
                 // เปลี่ยนเป็น กองพัน → ไม่มี questions, ไม่มี maxScore
                 if (value === "battalion") {
@@ -468,7 +496,7 @@ function FormEvaluate({ template, setTemplate }) {
                     <span>คำอธิบาย</span>
                     <input
                         className="border rounded-xl px-3 py-2"
-                        value={template.description ?? ""}  
+                        value={template.description ?? ""}
                         onChange={(e) => updateField("description", e.target.value)}
                     />
                 </label>
@@ -479,13 +507,13 @@ function FormEvaluate({ template, setTemplate }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                     {/* <label className="flex flex-col text-sm">
-                        <span>หัวข้อหมวด</span>
-                        <input
-                            className="border rounded-xl px-3 py-2"
-                            value={template.categoryTitle}
-                            onChange={(e) => updateField("categoryTitle", e.target.value)}
-                        />
-                    </label> */}
+                            <span>หัวข้อหมวด</span>
+                            <input
+                                className="border rounded-xl px-3 py-2"
+                                value={template.categoryTitle}
+                                onChange={(e) => updateField("categoryTitle", e.target.value)}
+                            />
+                        </label> */}
 
                     <label className="flex flex-col text-sm">
                         <span>จำนวนกองพันที่ต้องการประเมิน</span>
@@ -510,6 +538,44 @@ function FormEvaluate({ template, setTemplate }) {
                     </label>
                 </div>
             )}
+
+            {/* SELECT TEACHERS FOR BATTALION */}
+            {template.type === "battalion" && template.teacherCount > 0 && (
+                <div className="border border-gray-300 rounded-xl p-4 mt-2 bg-gray-50">
+                    <h3 className="font-semibold text-blue-700 mb-3">เลือกครูผู้ประเมิน</h3>
+
+                    {/* create array [1..teacherCount] */}
+                    {Array.from({ length: template.teacherCount }).map((_, idx) => (
+                        <label key={idx} className="flex flex-col text-sm mb-3">
+                            <span>ครูผู้ประเมินคนที่ {idx + 1}</span>
+                            <select
+                                className="border rounded-xl px-3 py-2"
+                                value={template.teacherEvaluators?.[idx] ?? ""}
+                                onChange={(e) => {
+                                    const newList = [...(template.teacherEvaluators || [])];
+                                    newList[idx] = Number(e.target.value);
+                                    setTemplate({ ...template, teacherEvaluators: newList });
+                                }}
+                            >
+                                <option value="">-- เลือกครู --</option>
+
+                                {teachers
+                                    .filter(t => {
+                                        const selected = template.teacherEvaluators || [];
+                                        return !selected.includes(t.id) || selected[idx] === t.id;
+                                    })
+                                    .map(t => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.rank} {t.firstName} {t.lastName}
+                                        </option>
+                                    ))}
+
+                            </select>
+                        </label>
+                    ))}
+                </div>
+            )}
+
 
             {/* Add Section */}
             <div className="w-full flex justify-start">

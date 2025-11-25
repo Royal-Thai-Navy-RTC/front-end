@@ -123,7 +123,7 @@ const router = createBrowserRouter([
                     </ProtectedRoute>)
             },
             {
-                path: "managesoldier",
+                path: "managesailor",
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
                         <ManageSoldier />

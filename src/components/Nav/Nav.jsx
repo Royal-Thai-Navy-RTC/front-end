@@ -128,7 +128,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       {
         label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"], children: [
           { path: "/manage", label: "สิทธิผู้ใช้งาน", icon: Settings2, roles: ["admin", "owner"] },
-          { path: "/managesoldier", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
+          { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
       },
       {
