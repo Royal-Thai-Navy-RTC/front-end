@@ -4,9 +4,19 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { Search } from "lucide-react";
 
+const reorderQuestionIds = (sections) => {
+    return sections.map(sec => ({
+        ...sec,
+        questions: sec.questions.map((q, idx) => ({
+            ...q,
+            id: idx + 1
+        }))
+    }));
+};
+
 /* -------------------- MAIN COMPONENT -------------------- */
 export default function FormEvaluateStudent() {
-    const { divisionOptions } = useOutletContext();
+    // const { divisionOptions } = useOutletContext();
 
     const [listEvaluate, setListEvaluate] = useState([]);
     const [teachers, setTeachers] = useState([]);
@@ -15,19 +25,19 @@ export default function FormEvaluateStudent() {
     const [editTemplate, setEditTemplate] = useState(null);
     const [saving, setSaving] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [searchType, setSearchType] = useState("");
     const [searchKey, setSearchKey] = useState("");
+
 
     /** TEMPLATE DEFAULT STRUCTURE */
     const emptyTemplate = {
         id: null,
         name: "",
         description: "",
-        type: "company",
-        battalionCount: 0,
-        teacherCount: 0,
+        templateType: "COMPANY",
+        battalionCount: 4,
+        teacherEvaluatorCount: 2,
         sections: [],
-        teacherEvaluators: [],
-
     };
 
     /* -------- Load templates from API -------- */
@@ -103,7 +113,12 @@ export default function FormEvaluateStudent() {
     };
 
     const openEdit = (template) => {
-        setEditTemplate(JSON.parse(JSON.stringify(template)));
+        const cleanTemplate = {
+            ...template,
+            sections: reorderQuestionIds(template.sections)
+        };
+
+        setEditTemplate(JSON.parse(JSON.stringify(cleanTemplate)));
         setOpenForm(true);
     };
 
@@ -186,20 +201,40 @@ export default function FormEvaluateStudent() {
                 {/* Search Input */}
                 <div className="flex flex-col gap-2 mb-5">
                     <label className="text-sm text-gray-600">เลือกแบบฟอร์มที่ต้องการจัดการ</label>
-                    <div className="relative">
-                        <input
-                            className="border border-gray-400 rounded-lg p-2 pr-10 w-full text-gray-700"
-                            placeholder="ชื่อแบบฟอร์ม..."
-                            value={searchKey}
-                            onChange={(e) => setSearchKey(e.target.value)}
-                        />
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
+
+                    <div className='flex sm:flex-row flex-col gap-3 w-full'>
+
+                        {/* เลือกประเภท */}
+                        <select
+                            className="border border-gray-400 rounded-lg p-2 pr-10 text-gray-700"
+                            value={searchType}
+                            onChange={(e) => setSearchType(e.target.value)}
+                        >
+                            <option value="">- ประเภทการประเมิน -</option>
+                            <option value="BATTALION">กองพัน</option>
+                            <option value="COMPANY">กองร้อย</option>
+                        </select>
+
+                        {/* ค้นหาตามชื่อ */}
+                        <div className="relative w-full">
+                            <input
+                                className="border border-gray-400 rounded-lg p-2 pr-10 w-full text-gray-700"
+                                placeholder="ชื่อแบบฟอร์ม..."
+                                value={searchKey}
+                                onChange={(e) => setSearchKey(e.target.value)}
+                            />
+                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                        </div>
                     </div>
                 </div>
 
                 {/* LIST */}
                 {listEvaluate
-                    .filter(v => v.name.toLowerCase().includes(searchKey.toLowerCase()))
+                    .filter(v => {
+                        const matchName = v.name.toLowerCase().includes(searchKey.toLowerCase());
+                        const matchType = searchType ? v.templateType === searchType : true;
+                        return matchName && matchType;
+                    })
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                     .map(v => (
                         <div
@@ -215,7 +250,7 @@ export default function FormEvaluateStudent() {
                                     <h3 className="text-xl sm:text-2xl font-bold text-blue-800">{v.name}</h3>
                                     <p className="text-gray-600 text-sm">{v.description}</p>
                                     <p className="text-xs text-blue-700 font-semibold">
-                                        ประเภทฟอร์ม: {v.type === "company" ? "ประเมินกองร้อย" : "ประเมินกองพัน"}
+                                        ประเภทฟอร์ม: {v.templateType === "COMPANY" ? "ประเมินกองร้อย" : "ประเมินกองพัน"}
                                     </p>
                                 </div>
 
@@ -241,14 +276,11 @@ export default function FormEvaluateStudent() {
                             {/* DETAILS */}
                             <div className={`overflow-hidden transition-all duration-300 ${expandedId === v.id ? "max-h-[2000px] opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"}`}>
                                 <div className="border-t pt-3 border-gray-400">
-
                                     {/* IF BATTALION */}
-                                    {v.type === "battalion" && (
+                                    {v.templateType === "BATTALION" && (
                                         <div className="mb-4 text-sm text-gray-700">
-                                            {/* <p>หัวข้อหมวด: {v.categoryTitle}</p> */}
                                             <p>จำนวนกองพัน: {v.battalionCount}</p>
-                                            <p>จำนวนครูผู้ประเมิน: {v.teacherCount}</p>
-                                            {/* <p>คะแนนเต็มของหมวด: {v.sectionMaxScore}</p> */}
+                                            <p>จำนวนครูผู้ประเมิน: {v.teacherEvaluatorCount}</p>
                                         </div>
                                     )}
 
@@ -261,7 +293,7 @@ export default function FormEvaluateStudent() {
                                                     {section.sectionOrder}. {section.title}
                                                 </p>
 
-                                                {v.type === "company" ? (
+                                                {v.templateType === "COMPANY" ? (
                                                     <ul className="pl-6 text-sm text-gray-700 list-decimal flex flex-col gap-1">
                                                         {section.questions.map((q, i) => (
                                                             <li key={i} className="flex flex-col sm:flex-row sm:justify-between">
@@ -350,8 +382,7 @@ function ModalEditForm({ template, setTemplate, onClose, onSave, saving, teacher
 }
 
 /* -------------------- FORM COMPONENT -------------------- */
-function FormEvaluate({ template, setTemplate, teachers }) {
-    const [teacherSearch, setTeacherSearch] = useState({});
+function FormEvaluate({ template, setTemplate }) {
     const [openSections, setOpenSections] = useState(
         template.sections.map(() => true)
     );
@@ -366,10 +397,8 @@ function FormEvaluate({ template, setTemplate, teachers }) {
 
     const updateField = (key, value) => {
         setTemplate(prev => {
-            if (key === "type") {
-
-                // เปลี่ยนเป็น กองร้อย → ต้องเพิ่ม questions
-                if (value === "company") {
+            if (key === "templateType") {
+                if (value === "COMPANY") {
                     const newSections = prev.sections.map(sec => ({
                         ...sec,
                         questions: sec.questions ?? []
@@ -377,31 +406,23 @@ function FormEvaluate({ template, setTemplate, teachers }) {
 
                     return {
                         ...prev,
-                        type: value,
+                        templateType: value,
                         sections: newSections
                     };
                 }
 
-                if (key === "teacherCount") {
-                    return {
-                        ...prev,
-                        teacherCount: value,
-                        teacherEvaluators: (prev.teacherEvaluators || []).slice(0, value)
-                    };
-                }
-
-
-                // เปลี่ยนเป็น กองพัน → ไม่มี questions, ไม่มี maxScore
-                if (value === "battalion") {
+                // BATTALION → ไม่มี questions
+                if (value === "BATTALION") {
                     const newSections = prev.sections.map(sec => ({
-                        id: sec.id,
-                        sectionOrder: sec.sectionOrder,
-                        title: sec.title
+                        ...sec,
+                        questions: sec.questions?.length
+                            ? sec.questions
+                            : [{ id: Date.now(), prompt: sec.title || "", maxScore: sec.maxScore ?? 1 }]
                     }));
 
                     return {
                         ...prev,
-                        type: value,
+                        templateType: value,
                         sections: newSections
                     };
                 }
@@ -410,7 +431,6 @@ function FormEvaluate({ template, setTemplate, teachers }) {
             return { ...prev, [key]: value };
         });
     };
-
 
 
     /* SECTION EDIT */
@@ -425,8 +445,10 @@ function FormEvaluate({ template, setTemplate, teachers }) {
             id: Date.now(),
             sectionOrder: template.sections.length + 1,
             title: "",
-            maxScore: template.type === "battalion" ? template.sectionMaxScore : undefined,
-            questions: template.type === "company" ? [] : undefined
+            questions:
+                template.templateType === "BATTALION"
+                    ? [{ id: Date.now(), prompt: "", maxScore: 1 }]
+                    : [],
         };
 
         setTemplate(prev => ({
@@ -437,6 +459,7 @@ function FormEvaluate({ template, setTemplate, teachers }) {
         setOpenSections(prev => [...prev, true]);
     };
 
+
     const removeSection = (idx) => {
         const updated = template.sections.filter((_, i) => i !== idx);
         updated.forEach((s, i) => { s.sectionOrder = i + 1 });
@@ -445,41 +468,54 @@ function FormEvaluate({ template, setTemplate, teachers }) {
         setOpenSections(prev => prev.filter((_, i) => i !== idx));
     };
 
-    /* ADD QUESTION (Only company) */
+    /* ADD QUESTION (Only COMPANY) */
     const addQuestion = (sIdx) => {
-        if (template.type !== "company") return;
+        if (template.templateType !== "COMPANY") return;
 
         const newSections = [...template.sections];
+
         newSections[sIdx].questions.push({
-            id: Date.now(),
+            id: newSections[sIdx].questions.length + 1,
             prompt: "",
             maxScore: 1
         });
 
-        setTemplate({ ...template, sections: newSections });
+        setTemplate({
+            ...template,
+            sections: reorderQuestionIds(newSections)
+        });
     };
 
     const removeQuestion = (sIdx, qIdx) => {
         const newSections = [...template.sections];
         newSections[sIdx].questions = newSections[sIdx].questions.filter((_, i) => i !== qIdx);
-        setTemplate({ ...template, sections: newSections });
+        setTemplate({
+            ...template,
+            sections: reorderQuestionIds(newSections)
+        });
     };
 
     return (
         <div className="space-y-6">
-
             {/* Type */}
-            <label className="flex flex-col text-sm">
-                <span>ประเภทฟอร์ม</span>
-                <select
-                    className="border rounded-xl px-3 py-2"
-                    value={template.type}
-                    onChange={(e) => updateField("type", e.target.value)}
-                >
-                    <option value="company">ประเมินกองร้อย</option>
-                    <option value="battalion">ประเมินกองพัน</option>
-                </select>
-            </label>
+            {template.id == null ?
+                <label className="flex flex-col text-sm">
+                    <span>ประเภทฟอร์ม</span>
+                    <select
+                        className={`border rounded-xl px-3 py-2 ${template.id !== null && "bg-gray-200 cursor-not-allowed"}`}
+                        value={template.templateType}
+                        onChange={(e) => updateField("templateType", e.target.value)}
+                        disabled={template.id !== null}
+                    >
+                        <option value="COMPANY">ประเมินกองร้อย</option>
+                        <option value="BATTALION">ประเมินกองพัน</option>
+                    </select>
+                </label> :
+                <div className='flex gap-1 font-bold border-t border-gray-300 pt-2'>
+                    <p className=''>แบบฟอร์มประเมิน</p>
+                    <p className='text-blue-800'>{template.templateType == "BATTALION" ? "กองพัน" : "กองร้อย"}</p>
+                </div>
+            }
 
             {/* Name / Description */}
             <div className="grid grid-cols-1 gap-4">
@@ -503,18 +539,8 @@ function FormEvaluate({ template, setTemplate, teachers }) {
             </div>
 
             {/* ONLY BATTALION */}
-            {template.type === "battalion" && (
+            {template.templateType === "BATTALION" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-                    {/* <label className="flex flex-col text-sm">
-                            <span>หัวข้อหมวด</span>
-                            <input
-                                className="border rounded-xl px-3 py-2"
-                                value={template.categoryTitle}
-                                onChange={(e) => updateField("categoryTitle", e.target.value)}
-                            />
-                        </label> */}
-
                     <label className="flex flex-col text-sm">
                         <span>จำนวนกองพันที่ต้องการประเมิน</span>
                         <input
@@ -532,50 +558,12 @@ function FormEvaluate({ template, setTemplate, teachers }) {
                             type="number"
                             min={1}
                             className="border rounded-xl px-3 py-2"
-                            value={template.teacherCount ?? 0}
-                            onChange={(e) => updateField("teacherCount", Number(e.target.value))}
+                            value={template.teacherEvaluatorCount ?? 0}
+                            onChange={(e) => { updateField("teacherEvaluatorCount", Number(e.target.value)) }}
                         />
                     </label>
                 </div>
             )}
-
-            {/* SELECT TEACHERS FOR BATTALION */}
-            {template.type === "battalion" && template.teacherCount > 0 && (
-                <div className="border border-gray-300 rounded-xl p-4 mt-2 bg-gray-50">
-                    <h3 className="font-semibold text-blue-700 mb-3">เลือกครูผู้ประเมิน</h3>
-
-                    {/* create array [1..teacherCount] */}
-                    {Array.from({ length: template.teacherCount }).map((_, idx) => (
-                        <label key={idx} className="flex flex-col text-sm mb-3">
-                            <span>ครูผู้ประเมินคนที่ {idx + 1}</span>
-                            <select
-                                className="border rounded-xl px-3 py-2"
-                                value={template.teacherEvaluators?.[idx] ?? ""}
-                                onChange={(e) => {
-                                    const newList = [...(template.teacherEvaluators || [])];
-                                    newList[idx] = Number(e.target.value);
-                                    setTemplate({ ...template, teacherEvaluators: newList });
-                                }}
-                            >
-                                <option value="">-- เลือกครู --</option>
-
-                                {teachers
-                                    .filter(t => {
-                                        const selected = template.teacherEvaluators || [];
-                                        return !selected.includes(t.id) || selected[idx] === t.id;
-                                    })
-                                    .map(t => (
-                                        <option key={t.id} value={t.id}>
-                                            {t.rank} {t.firstName} {t.lastName}
-                                        </option>
-                                    ))}
-
-                            </select>
-                        </label>
-                    ))}
-                </div>
-            )}
-
 
             {/* Add Section */}
             <div className="w-full flex justify-start">
@@ -591,7 +579,6 @@ function FormEvaluate({ template, setTemplate, teachers }) {
             <div className="space-y-6">
                 {template.sections.map((sec, sIdx) => (
                     <div key={sec.id} className="border border-gray-400 rounded-xl p-4">
-
                         <div className="flex flex-col sm:flex-row gap-2 justify-between items-center mb-2">
                             <h4 className="font-bold sm:text-xl text-blue-700">
                                 หมวดที่ {sec.sectionOrder} : {sec.title}
@@ -616,35 +603,48 @@ function FormEvaluate({ template, setTemplate, teachers }) {
 
                         {/* SECTION BODY */}
                         <div className={`${openSections[sIdx] ? "block" : "hidden"} text-gray-800`}>
-
-                            {/* SECTION TITLE */}
-                            <label className="flex flex-col text-sm mb-3">
-                                <span>ชื่อหมวด</span>
-                                <input
-                                    className="border border-gray-400 rounded-lg px-3 py-2"
-                                    value={sec.title}
-                                    onChange={(e) => updateSectionTitle(sIdx, e.target.value)}
-                                />
-                            </label>
-
                             {/* IF BATTALION → SHOW ONLY MAX SCORE */}
-                            {template.type === "battalion" ? (
+                            {template.templateType === "BATTALION" ? (<>
+                                <label className="flex flex-col text-sm mb-3">
+                                    <span>ชื่อหมวด</span>
+                                    <input
+                                        className="border border-gray-400 rounded-lg px-3 py-2"
+                                        value={sec.title}
+                                        onChange={(e) => {
+                                            const name = e.target.value;
+                                            updateSectionTitle(sIdx, name);
+
+                                            const newSections = [...template.sections];
+                                            newSections[sIdx].questions[0].prompt = name;
+
+                                            setTemplate({ ...template, sections: newSections });
+                                        }}
+                                    />
+                                </label>
+
                                 <label className="flex flex-col text-sm">
                                     <span>คะแนนเต็มของหมวด</span>
                                     <input
                                         type="number"
                                         min={1}
                                         className="border border-gray-400 rounded-lg px-3 py-2"
-                                        value={sec.maxScore}
+                                        value={sec.questions[0].maxScore}
                                         onChange={(e) => {
                                             const newSections = [...template.sections];
-                                            newSections[sIdx].maxScore = Number(e.target.value);
+                                            newSections[sIdx].questions[0].maxScore = Number(e.target.value);
                                             setTemplate({ ...template, sections: newSections });
                                         }}
                                     />
                                 </label>
-                            ) : (
-                                /* COMPANY QUESTIONS UI */
+                            </>) : (<>
+                                <label className="flex flex-col text-sm mb-3">
+                                    <span>ชื่อหมวด</span>
+                                    <input
+                                        className="border border-gray-400 rounded-lg px-3 py-2"
+                                        value={sec.title}
+                                        onChange={(e) => updateSectionTitle(sIdx, e.target.value)}
+                                    />
+                                </label>
                                 <div className="space-y-3">
                                     {sec.questions.map((q, qIdx) => (
                                         <div
@@ -696,7 +696,7 @@ function FormEvaluate({ template, setTemplate, teachers }) {
                                         + เพิ่มคำถาม (Question)
                                     </button>
                                 </div>
-                            )}
+                            </>)}
 
                         </div>
                     </div>
