@@ -62,7 +62,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       title: "ข้อมูลพื้นฐาน", fields: [
         { name: "rank", label: "ยศ", type: "select", option: rankOptions },
         { name: "firstName", label: "ชื่อ", type: "text" }, { name: "lastName", label: "นามสกุล", type: "text" },
-        { name: "username", label: "ชื่อผู้ใช้งาน", type: "text" },
+        // { name: "username", label: "ชื่อผู้ใช้งาน", type: "text" },
         { name: "birthDate", label: "วันเกิด", type: "date" },
         { name: "education", label: "การศึกษา", type: "text" },
         { name: "fullAddress", label: "ที่อยู่", type: "textarea" },
