@@ -8,9 +8,12 @@ export default function EvaluateStudent() {
   const { state } = useLocation();
   const battalion = state?.battalion;
   const company = state?.company;
+  const templateType = state?.templateType;
 
   const [searchSubject, setSearchSubject] = useState("");
   const [searchForm, setSearchForm] = useState("");
+  const [intake, setIntake] = useState("");
+  const [year, setYear] = useState("");
   const [optionEvaluate, setOptionEvaluate] = useState([]);
   const [listEvaluate, setListEvaluate] = useState([]);
   const [formEvaluate, setFormEvaluate] = useState(null);
@@ -19,16 +22,21 @@ export default function EvaluateStudent() {
   const [overallScore, setOverallScore] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 2 }, (_, i) => currentYear + i);
+  }, []);
+
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("/api/admin/student-evaluation-templates", {
+        const response = await axios.get(`/api/admin/student-evaluation-templates?templateType=${templateType}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = response.data?.data || [];
         setListEvaluate(data);
-        const mapped = data.map((f) => ({ label: f.name, value: f.id }));
+        const mapped = data.filter(v => v.templateType == templateType).map((f) => ({ label: f.name, value: f.id }));
         setOptionEvaluate(mapped);
       } catch (err) {
         console.log("Error loading templates", err);
@@ -69,25 +77,25 @@ export default function EvaluateStudent() {
   const handleInputScore = (e, sectionId, questionId, maxScore) => {
     let v = e.target.value;
 
-    // อนุญาตให้ว่าง
+    // อนุญาตให้เป็นค่าว่าง
     if (v === "") {
       handleScore(sectionId, questionId, "");
       return;
     }
+    if (v > maxScore) {
+      handleScore(sectionId, questionId, maxScore);
+      return;
+    }
+    if (templateType === "BATTALION") {
+      if (!/^\d*\.?\d{0,2}$/.test(v)) return;
+    }
+    else {
+      if (!/^\d+$/.test(v)) return;
+    }
 
-    // อนุญาตเฉพาะตัวเลข
-    if (!/^\d+$/.test(v)) return;
-
-    let num = Number(v);
-
-    // ห้ามต่ำกว่า 1
-    if (num < 1) num = 1;
-
-    // ห้ามมากกว่า maxScore
-    if (num > maxScore) num = maxScore;
-
-    handleScore(sectionId, questionId, num);
+    handleScore(sectionId, questionId, v);
   };
+
 
 
   const handleSubmit = async () => {
@@ -107,9 +115,15 @@ export default function EvaluateStudent() {
       Swal.fire({ icon: "warning", title: "ยังไม่ได้ให้คะแนน" });
       return;
     }
+    if (!intake) {
+      Swal.fire({ icon: "warning", title: "กรุณาเลือกผลัด" });
+      return;
+    }
 
     const payload = {
       templateId: formEvaluate.id,
+      intake:intake,
+      year:year,
       subject: searchSubject,
       companyCode: company != null ? String(company) : "",
       battalionCode: battalion != null ? String(battalion) : "",
@@ -173,8 +187,14 @@ export default function EvaluateStudent() {
       <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-2">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex flex-col">
-            <h1 className="text-3xl font-bold text-blue-900">กองร้อย {battalion}</h1>
-            <p className="text-xl text-gray-500">กองพันที่ {company}</p>
+            {templateType === "BATTALION" ? (
+              <h1 className="text-3xl font-bold text-blue-900">กองพันที่ {battalion}</h1>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold text-blue-900">กองร้อย {company}</h1>
+                <p className="text-xl text-gray-500">กองพันที่ {battalion}</p>
+              </>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 text-gray-600">
@@ -227,75 +247,74 @@ export default function EvaluateStudent() {
           <div className="px-6 pt-4">
             {formEvaluate.sections
               ?.sort((a, b) => a.sectionOrder - b.sectionOrder)
-              .map((sec) => (
-                <div
-                  key={sec.id}
-                  className="w-full mb-6 border border-gray-200 rounded-2xl overflow-hidden shadow-sm"
-                >
-                  <div className="bg-blue-800 text-white px-4 py-3 font-semibold">
-                    {sec.title}
-                  </div>
+              .map((sec) => {
+                return templateType == "" ? (
+                  <div key={sec.id}
+                    className="w-full mb-6 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-blue-800 text-white px-4 py-3 font-semibold">
+                      {sec.title}
+                    </div>
 
-                  <div className="flex flex-col gap-3 p-4 bg-white">
-                    {sec.questions
-                      ?.sort((a, b) => a.questionOrder - b.questionOrder)
-                      .map((q) => {
-                        const maxScore = q.maxScore || 5;
-                        const currentScore = scores?.[sec.id]?.[q.id];
-                        return (
-                          <div key={q.id} className="border border-gray-300 rounded-xl p-3 flex flex-col gap-2">
-                            <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
-                              <div className="flex-1">
-                                <p className="font-semibold text-gray-900">
-                                  {q.prompt}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  หมวด: {sec.title}
-                                </p>
-                              </div>
-                              <div className="flex flex-row sm:flex-col text-right items-center sm:items-end sm:justify-end min-w-[90px] gap-2">
-                                <p className="text-xs text-gray-500">ได้</p>
-                                {/* เพิ่ม/ลดคะแนน */}
-                                <div className="flex items-center text-blue-800">
-                                  <input
-                                    type="text"
-                                    value={currentScore ?? ""}
-                                    onChange={(e) => handleInputScore(e, sec.id, q.id, maxScore)}
-                                    className="w-16 text-center border border-gray-400 rounded-l-lg py-1"
-                                    placeholder="0"
-                                  />
-
-                                  {/* ปุ่มเพิ่มคะแนน */}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      let cur = Number(currentScore || 0);
-                                      const newVal = Math.min(maxScore, cur + 1);
-                                      handleScore(sec.id, q.id, newVal);
-                                    }}
-                                    className="px-3 py-1 border-y border-gray-400 hover:bg-gray-200"
-                                  >
-                                    +
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      let cur = Number(currentScore || 0);
-                                      const newVal = Math.max(1, cur - 1);
-                                      handleScore(sec.id, q.id, newVal);
-                                    }}
-                                    className="px-3 py-1 border rounded-r-lg border-gray-400 hover:bg-gray-200"
-                                  > - </button>
+                    <div className="flex flex-col gap-3 p-4 bg-white">
+                      {sec.questions
+                        ?.sort((a, b) => a.questionOrder - b.questionOrder)
+                        .map((q) => {
+                          const maxScore = q.maxScore || 5;
+                          const currentScore = scores?.[sec.id]?.[q.id];
+                          return (
+                            <div key={q.id} className="border border-gray-300 rounded-xl p-3 flex flex-col gap-2">
+                              <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                                <div className="flex-1">
+                                  <p className="font-semibold text-gray-900">
+                                    {q.prompt}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    หมวด: {sec.title}
+                                  </p>
                                 </div>
-                                <span className="sm:text-lg font-bold text-blue-800">เต็ม {maxScore}</span>
-                                {/* <p className="text-lg font-bold text-blue-800">
+                                <div className="flex flex-row sm:flex-col text-right items-center sm:items-end sm:justify-end min-w-[90px] gap-2">
+                                  <p className="text-xs text-gray-500">ได้</p>
+                                  {/* เพิ่ม/ลดคะแนน */}
+                                  <div className="flex items-center text-blue-800">
+                                    <input
+                                      type="text"
+                                      value={currentScore ?? ""}
+                                      onChange={(e) => handleInputScore(e, sec.id, q.id, maxScore)}
+                                      className="w-24 text-center border border-gray-400 rounded-l-lg py-1"
+                                      placeholder={"0"}
+                                    />
+
+                                    {/* ปุ่มเพิ่มคะแนน */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        let cur = Number(currentScore || 0);
+                                        const newVal = Math.min(maxScore, cur + 1);
+                                        handleScore(sec.id, q.id, newVal);
+                                      }}
+                                      className="px-3 py-1 border-y border-gray-400 hover:bg-gray-200"
+                                    >
+                                      +
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        let cur = Number(currentScore || 0);
+                                        const newVal = Math.max(1, cur - 1);
+                                        handleScore(sec.id, q.id, newVal);
+                                      }}
+                                      className="px-3 py-1 border rounded-r-lg border-gray-400 hover:bg-gray-200"
+                                    > - </button>
+                                  </div>
+                                  <span className="sm:text-lg font-bold text-blue-800">เต็ม {maxScore}</span>
+                                  {/* <p className="text-lg font-bold text-blue-800">
                                   {currentScore ?? "-"} / {maxScore}
                                 </p> */}
+                                </div>
                               </div>
-                            </div>
 
 
-                            {/* <div className="flex flex-wrap gap-2">
+                              {/* <div className="flex flex-wrap gap-2">
                               {Array.from({ length: maxScore }, (_, i) => {
                                 const scoreValue = i + 1;
                                 const selected =
@@ -318,14 +337,71 @@ export default function EvaluateStudent() {
                                 );
                               })}
                             </div> */}
-                          </div>
-                        );
-                      })}
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ) : (
+                  <div key={sec.id} className="w-full mb-6 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="flex flex-col gap-3 p-4 bg-white">
+                      {sec.questions
+                        ?.sort((a, b) => a.questionOrder - b.questionOrder)
+                        .map((q) => {
+                          const maxScore = q.maxScore || 5;
+                          const currentScore = scores?.[sec.id]?.[q.id];
+                          return (
+                            <div key={q.id} className=" rounded-xl flex flex-col gap-2">
+                              <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                                <p className="font-semibold text-blue-800">
+                                  {q.prompt}
+                                </p>
+                                <div className="flex flex-row sm:flex-col text-right items-center sm:items-end sm:justify-end min-w-[90px] gap-2">
+                                  <p className="text-xs text-gray-500">ได้</p>
+                                  {/* เพิ่ม/ลดคะแนน */}
+                                  <div className="flex items-center text-blue-800">
+                                    <input
+                                      type="text"
+                                      value={currentScore ?? ""}
+                                      onChange={(e) => handleInputScore(e, sec.id, q.id, maxScore)}
+                                      className="w-24 text-center border border-gray-400 rounded-l-lg py-1"
+                                      placeholder={"0"}
+                                    />
 
-            <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                                    {/* ปุ่มเพิ่มคะแนน */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        let cur = Number(currentScore || 0);
+                                        const newVal = Math.min(maxScore, cur + 1);
+                                        handleScore(sec.id, q.id, newVal);
+                                      }}
+                                      className="px-3 py-1 border-y border-gray-400 hover:bg-gray-200"
+                                    >
+                                      +
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        let cur = Number(currentScore || 0);
+                                        const newVal = Math.max(1, cur - 1);
+                                        handleScore(sec.id, q.id, newVal);
+                                      }}
+                                      className="px-3 py-1 border rounded-r-lg border-gray-400 hover:bg-gray-200"
+                                    > - </button>
+                                  </div>
+                                  <span className="sm:text-lg font-bold text-blue-800">เต็ม {maxScore}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>)
+              })
+            }
+
+            <div className="grid sm:grid-cols-3 gap-4 mt-4">
               {/* คะแนนรวม (Total Score) */}
               <label className="flex flex-col text-sm text-gray-700">
                 <span>คะแนนรวม</span>
@@ -352,15 +428,40 @@ export default function EvaluateStudent() {
                   เปอร์เซ็นต์คะแนนที่ได้เมื่อเทียบกับคะแนนเต็ม
                 </span>
               </label>
-              <label className="flex flex-col text-sm text-gray-700">
+              <label className="flex flex-col text-sm text-gray-700 w-full">
                 <span>ช่วงประเมิน</span>
                 <input
                   type="date"
                   value={evaluationDate}
                   onChange={(e) => setEvaluationDate(e.target.value)}
-                  className="border rounded-xl px-3 py-2 mt-1"
+                  className="border rounded-xl px-3 py-2 mt-1 w-full"
                 />
               </label>
+              <label className="flex flex-col text-sm text-gray-700 w-full">
+                <span>ผลัด</span>
+                <select className="border rounded-xl px-3 py-2 mt-1 w-full text-center" value={intake}
+                  onChange={(e) => setIntake(e.target.value)}>
+                  <option value="">- กรุณาเลือกผลัด -</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </label>
+              <label className="flex flex-col text-sm text-gray-700 w-full">
+                <span>ปี</span>
+                <select
+                  className="border rounded-xl px-3 py-2 mt-1 w-full text-center"
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                >
+                  {/* <option value="">- กรุณาเลือก -</option> */}
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </label>
+
             </div>
 
             <label className="flex flex-col text-sm text-gray-700 mt-3">

@@ -1,62 +1,30 @@
-ไม่ใช่ต้องเป็นโครงสร้างแบบนี้
-[{
-  "id": 4,
-  "name": "qwdqwdq",
-  "description": "asdfadf",
-  "templateType": "BATTALION",
-  "battalionCount": 4,
-  "teacherEvaluatorCount": 2,
-  "isActive": true,
-  "createdBy": 1,
-  "createdAt": "2025-11-25T06:22:40.175Z",
-  "updatedAt": "2025-11-25T07:50:34.023Z",
-  "sections": [
-    {
-      "id": 31,
-      "templateId": 4,
-      "title": "11111111111",
-      "description": null,
-      "sectionOrder": 1,
-      "questions": [
-        {
-          "id": 101,
-          "sectionId": 31,
-          "prompt": "11111111111",
-          "maxScore": 50,
-          "questionOrder": 1
-        }
-      ]
+const handleInputScore = (e, sectionId, questionId, maxScore) => {
+    let v = e.target.value;
+
+    // ลบจนว่างได้
+    if (v === "") {
+      handleScore(sectionId, questionId, "");
+      return;
     }
-  ]
-},
-{
-  "id": 5,
-  "name": "bat2",
-  "description": "bat",
-  "templateType": "BATTALION",
-  "battalionCount": 4,
-  "teacherEvaluatorCount": 2,
-  "isActive": true,
-  "createdBy": 1,
-  "createdAt": "2025-11-25T06:22:40.175Z",
-  "updatedAt": "2025-11-25T07:50:34.023Z",
-  "sections": [
-    {
-      "id": 32,
-      "templateId": 4,
-      "title": "2222",
-      "description": null,
-      "sectionOrder": 1,
-      "questions": [
-        {
-          "id": 101,
-          "sectionId": 31,
-          "prompt": "2222",
-          "maxScore": 30,
-          "questionOrder": 1
-        }
-      ]
+
+    if (v > maxScore) {
+      handleScore(sectionId, questionId, maxScore);
+      return;
     }
-  ]
-},
-]
+
+    // อนุญาตทศนิยม 2 ตำแหน่ง
+    if (!/^\d*\.?\d{0,2}$/.test(v)) return;
+
+    // เก็บเป็น string ไม่แปลงเป็น Number
+    handleScore(sectionId, questionId, v);
+  };
+
+  <input
+                                  type="text"
+                                  value={currentScore ?? ""}
+                                  onChange={(e) => handleInputScore(e, sec.id, q.id, maxScore)}
+                                  className="w-24 text-center border border-gray-400 rounded-l-lg py-1"
+                                  placeholder={"0"}
+                                />
+
+                                 const templateType = state?.templateType;

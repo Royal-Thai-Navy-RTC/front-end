@@ -90,8 +90,8 @@ export default function ListStudent() {
 
             {/* HEADER */}
             <section className="bg-white rounded-2xl shadow p-6">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className='flex flex-col'>
+                <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+                    <div className='flex flex-col md:w-1/3'>
                         <h1 className="text-3xl font-bold text-blue-900">ประเมินนักเรียน</h1>
                         <p className="text-sm text-gray-500">
                             {activeTab === "COMPANY"
@@ -99,36 +99,34 @@ export default function ListStudent() {
                                 : "เลือกกองพัน 1 - 4 เพื่อประเมิน"}
                         </p>
                     </div>
-
-                    <div className="flex flex-col sm:flex-row gap-3 items-end sm:items-center">
-
+                    <div className="flex flex-col md:flex-row gap-3 items-end md:items-center">
                         {/* TAB SWITCH */}
-                        <div className="flex rounded-xl bg-gray-100 p-1">
+                        <div className="flex rounded-xl bg-gray-100 p-1 items-center">
                             <button
                                 onClick={() => handleChangeTab("COMPANY")}
-                                className={`px-4 py-2 text-sm rounded-lg transition
-                                    ${activeTab === "COMPANY"
+                                className={`px-4 py-2 text-sm rounded-lg whitespace-nowrap
+                                ${activeTab === "COMPANY"
                                         ? "bg-white shadow text-blue-600"
-                                        : "text-gray-500 hover:text-blue-600"}`}
+                                        : "text-gray-500 hover:text-blue-600 cursor-pointer"}`}
                             >
                                 กองร้อย
                             </button>
+
                             <button
                                 onClick={() => handleChangeTab("BATTALION")}
-                                className={`px-4 py-2 text-sm rounded-lg transition
+                                className={`px-4 py-2 text-sm rounded-lg whitespace-nowrap 
                                     ${activeTab === "BATTALION"
                                         ? "bg-white shadow text-blue-600"
-                                        : "text-gray-500 hover:text-blue-600"}`}
+                                        : "text-gray-500 hover:text-blue-600 cursor-pointer"}`}
                             >
                                 กองพัน
                             </button>
                         </div>
 
-                        {/* SEARCH */}
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <div className="flex items-start gap-3 flex-wrap w-full">
 
-                                {/* ช่องค้นหา กองร้อย: แสดงเฉพาะตอนอยู่ tab กองร้อย */}
+                        {/* SEARCH */}
+                        <div className="flex flex-col md:flex-row gap-3 w-full">
+                            <div className="flex flex-col md:flex-row items-start gap-3 w-full">
                                 {activeTab === "COMPANY" && (
                                     <input
                                         type="text"
@@ -138,8 +136,6 @@ export default function ListStudent() {
                                         className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:outline-none w-full sm:w-35 md:w-48"
                                     />
                                 )}
-
-                                {/* ช่องค้นหา กองพัน: ใช้ได้ทั้งสอง tab แต่ tab กองพันจะใช้ filter แค่ช่องนี้ */}
                                 <input
                                     type="text"
                                     placeholder="กองพัน..."
@@ -202,11 +198,12 @@ export default function ListStudent() {
                                                 ? {
                                                     battalion: u.battalion,
                                                     company: u.company,
+                                                    templateType: "COMPANY"
                                                 }
                                                 : {
                                                     battalion: u.battalion,
-                                                    // ถ้าหน้า "กองพัน" ไม่ต้องส่ง company หรือจะกำหนดเป็น null ก็ได้
                                                     company: null,
+                                                    templateType: "BATTALION"
                                                 }
                                         }
                                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
