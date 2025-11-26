@@ -248,7 +248,7 @@ export default function EvaluateStudent() {
             {formEvaluate.sections
               ?.sort((a, b) => a.sectionOrder - b.sectionOrder)
               .map((sec) => {
-                return templateType == "" ? (
+                return templateType == "COMPANY" ? (
                   <div key={sec.id}
                     className="w-full mb-6 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                     <div className="bg-blue-800 text-white px-4 py-3 font-semibold">

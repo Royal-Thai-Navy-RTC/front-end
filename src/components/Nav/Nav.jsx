@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import {
+  Mail,
+  Bell,
   Loader2,
   LogOut,
   Menu,
@@ -304,7 +306,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                   </button>
 
                   {profileMenuOpen && (
-                    <div ref={dropdownRef} className="absolute right-0 mt-3 w-60 bg-white/95 backdrop-blur border border-blue-100 shadow-2xl rounded-2xl p-3 flex flex-col gap-1 z-50">
+                    <div ref={dropdownRef} className="absolute right-0 mt-3 w-60 bg-white backdrop-blur border border-blue-100 shadow-2xl rounded-2xl p-3 flex flex-col gap-1 z-50">
                       <div className="px-2 pb-3 border-b border-gray-200">
                         <p className="text-sm font-semibold">{user.rank} {user.firstName} {user.lastName}</p>
                         <p className="text-xs text-gray-500">{getRoleLabel(user.role)}</p>
@@ -312,6 +314,10 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
 
                       <button onClick={openProfileModal} className="px-3 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2">
                         <UserRoundPen size={16} /> แก้ไขข้อมูลส่วนตัว
+                      </button>
+
+                      <button onClick={openProfileModal} className="px-3 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2">
+                        <Mail size={16} /> ข้อความ
                       </button>
 
                       <button onClick={handleLogout} className="px-3 py-2 rounded-xl hover:bg-red-50 text-red-600 flex items-center gap-2">
