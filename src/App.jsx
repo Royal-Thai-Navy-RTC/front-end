@@ -22,6 +22,7 @@ import EvaluationDashboard from "./pages/EvaluationDashboard";
 import PublicTeachingSchedules from "./pages/PublicTeachingSchedules";
 import Library from "./pages/Library";
 import ManageSoldier from "./pages/ManageSoldier";
+import Message from "./pages/Message";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -130,6 +131,14 @@ const router = createBrowserRouter([
                     </ProtectedRoute>
                 )
             },
+            {
+                path: "message",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "STUDENT", "OWNER", "SUB_ADMIN"]}>
+                        <Message />
+                    </ProtectedRoute>
+                )
+            }
         ]
     },
     {
