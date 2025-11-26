@@ -275,25 +275,45 @@ export default function FormEvaluateStudent() {
 
                             {/* DETAILS */}
                             <div className={`overflow-hidden transition-all duration-300 ${expandedId === v.id ? "max-h-[2000px] opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"}`}>
-                                <div className="border-t pt-3 border-gray-400">
-                                    {/* IF BATTALION */}
-                                    {v.templateType === "BATTALION" && (
-                                        <div className="mb-4 text-sm text-gray-700">
-                                            <p>จำนวนกองพัน: {v.battalionCount}</p>
-                                            <p>จำนวนครูผู้ประเมิน: {v.teacherEvaluatorCount}</p>
+
+                                {/* IF BATTALION */}
+                                {v.templateType === "BATTALION" ? (
+                                    <div className="border-t pt-3 border-gray-400">
+                                        <div className="flex gap-x-5 mb-4 text-sm text-gray-700">
+                                            {/* <p>{v.battalionCount} กองพัน</p> */}
+                                            <p>ผู้ประเมินจำนวน {v.teacherEvaluatorCount} คน</p>
                                         </div>
-                                    )}
-
-                                    {/* SECTIONS */}
-                                    {v.sections
-                                        .sort((a, b) => a.sectionOrder - b.sectionOrder)
-                                        .map(section => (
-                                            <div key={section.id} className="mb-3">
-                                                <p className="font-bold text-blue-700">
-                                                    {section.sectionOrder}. {section.title}
-                                                </p>
-
-                                                {v.templateType === "COMPANY" ? (
+                                        <div className=' flex flex-col'>
+                                            {v.sections
+                                                .sort((a, b) => a.sectionOrder - b.sectionOrder)
+                                                .map(section => (
+                                                    <div key={section.id} className="mb-3">
+                                                        {/* <p className="font-bold text-blue-700">
+                                                            {section.sectionOrder}. {section.title}
+                                                        </p> */}
+                                                        <ul className="pl-6 text-sm text-gray-700 list-decimal flex flex-col gap-1">
+                                                            {section.questions.map((q, i) => (
+                                                                <li key={i} className="flex flex-col sm:flex-row sm:justify-between">
+                                                                    <p className="font-bold text-blue-700">{section.sectionOrder}. {q.prompt}</p>
+                                                                    <span className="text-blue-700 text-xs w-1/2 text-start font-semibold">
+                                                                        คะแนนเต็ม {q.maxScore}
+                                                                    </span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="border-t pt-3 border-gray-400">
+                                        {v.sections
+                                            .sort((a, b) => a.sectionOrder - b.sectionOrder)
+                                            .map(section => (
+                                                <div key={section.id} className="mb-3">
+                                                    <p className="font-bold text-blue-700">
+                                                        {section.sectionOrder}. {section.title}
+                                                    </p>
                                                     <ul className="pl-6 text-sm text-gray-700 list-decimal flex flex-col gap-1">
                                                         {section.questions.map((q, i) => (
                                                             <li key={i} className="flex flex-col sm:flex-row sm:justify-between">
@@ -304,14 +324,14 @@ export default function FormEvaluateStudent() {
                                                             </li>
                                                         ))}
                                                     </ul>
-                                                ) : (
-                                                    <p className="text-sm text-gray-700 ml-6">
-                                                        คะแนนเต็มหมวด: {section.maxScore}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        ))}
-                                </div>
+                                                </div>
+                                            ))}
+                                    </div>
+                                )
+                                }
+
+
+
                             </div>
                         </div>
                     ))}
@@ -603,7 +623,6 @@ function FormEvaluate({ template, setTemplate }) {
 
                         {/* SECTION BODY */}
                         <div className={`${openSections[sIdx] ? "block" : "hidden"} text-gray-800`}>
-                            {/* IF BATTALION → SHOW ONLY MAX SCORE */}
                             {template.templateType === "BATTALION" ? (<>
                                 <label className="flex flex-col text-sm mb-3">
                                     <span>ชื่อหมวด</span>
@@ -623,7 +642,7 @@ function FormEvaluate({ template, setTemplate }) {
                                 </label>
 
                                 <label className="flex flex-col text-sm">
-                                    <span>คะแนนเต็มของหมวด</span>
+                                    <span>คะแนนเต็ม</span>
                                     <input
                                         type="number"
                                         min={1}
