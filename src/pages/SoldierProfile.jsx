@@ -148,7 +148,7 @@ export default function RegisterSoldier() {
                 province: value,
                 district: "",
                 subdistrict: "",
-                zipCode: ""                         // ✅ reset zipCode
+                zipCode: ""                         
             }));
             return;
         }
@@ -605,7 +605,7 @@ export default function RegisterSoldier() {
                                         onChange={handleProfileChange}
                                         rows={4}
                                         className="w-full mt-1 border border-gray-500 rounded-xl px-3 py-2"
-                                        placeholder="เช่น เคยผ่าตัด, ประวัติการแพ้รุนแรง ฯลฯ"
+                                        placeholder="เช่น เคยผ่าตัด, ประวัติการแพ้รุนแรง, ประสบอุบัติเหตุรุนแรง ฯลฯ"
                                     />
                                 </div>
                             </div>
