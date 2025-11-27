@@ -107,6 +107,9 @@ export default function TeacherRollCall() {
   const [submitting, setSubmitting] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [subjectOptions, setSubjectOptions] = useState([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [useCustomSubject, setUseCustomSubject] = useState(false);
   const [adminReports, setAdminReports] = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState("");
@@ -182,6 +185,50 @@ export default function TeacherRollCall() {
     if (!isAdmin) return [];
     return [...adminReports].sort((a, b) => (getReportDate(b)?.getTime() || 0) - (getReportDate(a)?.getTime() || 0));
   }, [adminReports, isAdmin]);
+
+  // โหลดหัวข้อวิชาจาก TeachingSchedule เพื่อให้เลือกตรงกับตาราง
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      setLoadingSubjects(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("/api/teaching-schedules", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const payload = response.data?.data ?? response.data ?? {};
+        const schedules = Array.isArray(payload) ? payload : payload?.items || [];
+
+        const getLocalDateKey = (value) => {
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) return null;
+          // ใช้วันตาม timezone เครื่อง (เลี่ยงปัญหา UTC+0)
+          const year = date.getFullYear();
+          const month = `${date.getMonth() + 1}`.padStart(2, "0");
+          const day = `${date.getDate()}`.padStart(2, "0");
+          return `${year}-${month}-${day}`;
+        };
+
+        const todayKey = getLocalDateKey(new Date());
+        const titlesToday = schedules
+          .filter((item) => {
+            const dateValue = item.start || item.trainingDate || item.date;
+            if (!dateValue) return false;
+            const key = getLocalDateKey(dateValue);
+            return key && key === todayKey;
+          })
+          .map((item) => (item.title || item.subject || "").trim())
+          .filter(Boolean);
+
+        const uniqueSubjects = Array.from(new Set(titlesToday));
+        setSubjectOptions(uniqueSubjects);
+      } catch (err) {
+        console.error("failed to load subject options from teaching schedules", err);
+      } finally {
+        setLoadingSubjects(false);
+      }
+    };
+    fetchSubjects();
+  }, []);
 
   const adminSummary = useMemo(() => {
     if (!isAdmin) {
@@ -582,14 +629,42 @@ export default function TeacherRollCall() {
           <div className="grid md:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1 text-sm">
               <span>หัวข้อรายวิชา</span>
-              <input
-                type="text"
+              <select
                 name="subject"
-                value={form.subject}
-                onChange={handleChange}
+                value={useCustomSubject ? "__custom__" : form.subject}
+                onChange={(event) => {
+                  const { value } = event.target;
+                  if (value === "__custom__") {
+                    setUseCustomSubject(true);
+                    setForm((prev) => ({ ...prev, subject: "" }));
+                    return;
+                  }
+                  setUseCustomSubject(false);
+                  setForm((prev) => ({ ...prev, subject: value }));
+                }}
                 className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                placeholder="เช่น การใช้อาวุธปืนประจำกาย"
-              />
+              >
+                <option value="">{loadingSubjects ? "กำลังโหลดวิชาของวันนี้..." : "เลือกหัวข้อจากตารางสอนวันนี้"}</option>
+                {subjectOptions.map((subject) => (
+                  <option key={subject} value={subject}>
+                    {subject}
+                  </option>
+                ))}
+                <option value="__custom__">อื่นๆ (พิมพ์หัวข้อเอง)</option>
+              </select>
+              {useCustomSubject && (
+                <input
+                  type="text"
+                  name="subject"
+                  value={form.subject}
+                  onChange={handleChange}
+                  className="mt-2 border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="พิมพ์หัวข้อวิชาเอง"
+                />
+              )}
+              {subjectOptions.length === 0 && !loadingSubjects && (
+                <p className="text-xs text-amber-600 mt-1">ยังไม่มีตารางสอนของวันนี้ กรุณาบันทึกตารางสอนก่อน หรือพิมพ์หัวข้อเอง</p>
+              )}
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span>จำนวนผู้เข้าร่วม</span>
