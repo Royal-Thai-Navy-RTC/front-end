@@ -4,7 +4,9 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { X } from "lucide-react";
-import addressData from "../assets/address-data.json"
+import addressData from "../assets/address-data.json";
+
+const defaultIdCard = "https://via.placeholder.com/600x380?text=ID+Card+Preview";
 
 const initialFormValues = {
     // basic
@@ -243,13 +245,14 @@ export default function RegisterSoldier() {
     };
 
     const handleRegister = async () => {
-        // basic validation
-        const requiredFields = ["firstName", "lastName", "birthDate", "email", "phone"];
+        // validation ตาม API: firstName,lastName,citizenId,birthDate, และต้องมีไฟล์บัตรประชาชน
+        const requiredFields = ["firstName", "lastName", "birthDate", "idCardNumber"];
         const missing = requiredFields.filter((f) => !`${formValues[f] ?? ""}`.trim());
-        if (missing.length) {
+        if (missing.length || !avatarFile) {
+            const missingText = missing.map((f) => f).join(", ");
             Swal.fire({
                 title: "กรุณากรอกข้อมูลให้ครบ",
-                text: `ยังขาด: ${missing.join(", ")}`,
+                text: `${missingText ? `ยังขาด: ${missingText}. ` : ""}กรุณาอัปโหลดรูปบัตรประชาชน`,
                 icon: "warning",
             });
             return;
@@ -257,25 +260,38 @@ export default function RegisterSoldier() {
 
         setLoading(true);
         try {
-            // if you want to upload avatar first, uncomment:
-            // const avatarPath = await uploadAvatarToServer();
-            // if (avatarPath) setFormValues((p) => ({ ...p, avatar: avatarPath }));
+            const fd = new FormData();
+            fd.append("firstName", formValues.firstName.trim());
+            fd.append("lastName", formValues.lastName.trim());
+            fd.append("citizenId", formValues.idCardNumber.trim());
+            fd.append("birthDate", formValues.birthDate);
+            if (formValues.weight) fd.append("weightKg", formValues.weight);
+            if (formValues.height) fd.append("heightCm", formValues.height);
+            if (formValues.education) fd.append("education", formValues.education);
+            if (formValues.previousJob) fd.append("previousJob", formValues.previousJob);
+            if (formValues.religion) fd.append("religion", formValues.religion);
+            if (formValues.canSwim) fd.append("canSwim", formValues.canSwim === "yes" ? "true" : "false");
+            if (formValues.specialSkills) fd.append("specialSkills", formValues.specialSkills);
+            if (formValues.addressDetail) fd.append("addressLine", formValues.addressDetail);
+            if (formValues.province) fd.append("province", formValues.province);
+            if (formValues.district) fd.append("district", formValues.district);
+            if (formValues.subdistrict) fd.append("subdistrict", formValues.subdistrict);
+            if (formValues.zipCode) fd.append("postalCode", formValues.zipCode);
+            if (formValues.email) fd.append("email", formValues.email);
+            if (formValues.phone) fd.append("phone", formValues.phone);
+            if (formValues.emergencyContactName) fd.append("emergencyName", formValues.emergencyContactName);
+            if (formValues.emergencyContactPhone) fd.append("emergencyPhone", formValues.emergencyContactPhone);
+            if (profileForm.medicalHistory) fd.append("medicalNotes", profileForm.medicalHistory);
+            // arrays
+            ensureArrayField("chronicDiseases").forEach((v) => fd.append("chronicDiseases[]", v));
+            ensureArrayField("foodAllergies").forEach((v) => fd.append("foodAllergies[]", v));
+            ensureArrayField("drugAllergies").forEach((v) => fd.append("drugAllergies[]", v));
+            // file
+            fd.append("file", avatarFile);
 
-            // Build payload - merge formValues + profileForm arrays + address object
-            const payload = {
-                ...formValues,
-                avatar: formValues.avatar || null, // server path if uploaded
-                ...profileForm, // includes medicalHistory, chronicDiseases, foodAllergies, drugAllergies
-                address: {
-                    province: formValues.province,
-                    district: formValues.district,
-                    subdistrict: formValues.subdistrict,
-                    detail: formValues.addressDetail,
-                },
-            };
-
-            // POST to server
-            await axios.post("/api/soldier/create", payload);
+            await axios.post("/api/soldier-intakes", fd, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
 
             Swal.fire({ icon: "success", title: "บันทึกสำเร็จ" });
             navigate("/soldiers");
