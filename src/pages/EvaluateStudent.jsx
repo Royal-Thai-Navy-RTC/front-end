@@ -39,7 +39,7 @@ export default function EvaluateStudent() {
         const mapped = data.filter(v => v.templateType == templateType).map((f) => ({ label: f.name, value: f.id }));
         setOptionEvaluate(mapped);
       } catch (err) {
-        console.log("Error loading templates", err);
+        // console.log("Error loading templates", err);
       }
     };
     fetchTemplates();

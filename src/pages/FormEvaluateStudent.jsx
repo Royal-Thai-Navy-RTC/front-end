@@ -51,7 +51,7 @@ export default function FormEvaluateStudent() {
 
                 setListEvaluate(response.data?.data || []);
             } catch (err) {
-                console.log("Error loading templates", err);
+                // console.log("Error loading templates", err);
             }
         };
         fetchTemplates();

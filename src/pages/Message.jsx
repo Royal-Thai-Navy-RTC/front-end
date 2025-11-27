@@ -73,7 +73,7 @@ export default function Message() {
     setError("");
     try {
       const isOwner = role === "OWNER";
-      const url = isOwner ? "/owner/notifications" : "/teacher/notifications";
+      const url = isOwner ? "/api/owner/notifications" : "/api/teacher/notifications";
       const response = await axios.get(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         params: { page, pageSize: 10 },
@@ -87,6 +87,8 @@ export default function Message() {
         date: item.dueAt || item.schedule?.start || item.createdAt,
         message: item.message || "",
         type: item.type || "",
+        status: item.status || "unread",
+        isRead: item.status ? item.status !== "unread" : Boolean(item.isRead),
         teacherName: item.teacher?.name || item.teacherName || "",
         teacherRank: item.teacher?.rank,
         source: item.source || "ระบบแจ้งเตือน",
@@ -96,7 +98,6 @@ export default function Message() {
         scheduleLocation: item.schedule?.location,
         companyCode: item.schedule?.companyCode,
         battalionCode: item.schedule?.battalionCode,
-        isRead: false,
       }));
       setMessages(normalized);
       const totalCount = response.data?.total || normalized.length;
@@ -184,18 +185,27 @@ export default function Message() {
     setPage(1);
   };
 
-  // mark as read เมื่อคลิกข้อความ
-  const markAsRead = (id) => {
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              isRead: true,
-            }
-          : m
-      )
-    );
+  // mark as read เมื่อคลิกข้อความ + ยิง endpoint
+  const markAsRead = async (id) => {
+    if (!id) return;
+    const target = messages.find((m) => m.id === id);
+    if (target?.isRead) return;
+
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, isRead: true, status: "read" } : m)));
+
+    try {
+      const isOwner = role === "OWNER";
+      const url = isOwner ? "/api/owner/notifications/read" : "/api/teacher/notifications/read";
+      await axios.patch(
+        url,
+        { ids: [id] },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+    } catch (err) {
+      // หากยิงไม่ผ่านย้อนสถานะกลับ
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, isRead: false, status: target?.status || "unread" } : m)));
+      console.error("mark read failed", err);
+    }
   };
 
   return (
@@ -312,12 +322,12 @@ export default function Message() {
           <div className="flex items-center gap-2 text-xs text-gray-500">
             {loading && <span className="text-blue-600">กำลังโหลด...</span>}
             {!loading && error && <span className="text-red-500">{error}</span>}
-            {!loading && !error && (
+            {/* {!loading && !error && (
               <>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">ยังไม่อ่านจะเข้ม</span>
-                <span className="rounded-full bg-gray-50 px-3 py-1 text-gray-600">อ่านแล้วจะจาง</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">ยังไม่อ่าน</span>
+                <span className="rounded-full bg-gray-50 px-3 py-1 text-gray-600">อ่านแล้ว</span>
               </>
-            )}
+            )} */}
             <button
               type="button"
               onClick={fetchNotifications}
@@ -347,7 +357,7 @@ export default function Message() {
               }}
             >
               <div className="flex items-center gap-3">
-                <span className={`h-2.5 w-2.5 rounded-full ${m.isRead ? "bg-gray-300" : "bg-blue-600"}`} />
+                {!m.isRead && <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />}
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-500 text-sm font-semibold text-white shadow-sm">
                   {m.sender?.slice(0, 1) || "?"}
                 </div>
@@ -365,6 +375,7 @@ export default function Message() {
                   >
                     {m.title}
                   </p>
+                  {/* แถบ "ใหม่" แสดงเฉพาะที่ยังไม่อ่าน */}
                   {!m.isRead && (
                     <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                       ใหม่
