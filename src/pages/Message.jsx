@@ -1,5 +1,37 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import axios from "axios";
 import { Search } from "lucide-react";
+
+const MOCK_MESSAGES = [
+  {
+    id: 1,
+    title: "แจ้งเตือน: ยังไม่ส่งยอดนักเรียนประจำวัน",
+    sender: "ระบบแจ้งเตือน",
+    date: "2025-11-20", // ใช้รูปแบบ YYYY-MM-DD
+    isRead: false,
+  },
+  {
+    id: 2,
+    title: "เตือน: กรุณาประเมินนักเรียนชุด A ก่อนเที่ยงวันนี้",
+    sender: "ฝ่ายกำกับดูแล",
+    date: "2025-11-18",
+    isRead: true,
+  },
+  {
+    id: 3,
+    title: "แจ้งเตือน: รายชื่อผลัด B ยังไม่ครบถ้วน",
+    sender: "ระบบแจ้งเตือน",
+    date: "2025-11-15",
+    isRead: false,
+  },
+  {
+    id: 4,
+    title: "ย้ำเตือน: ประเมินผลปลายสัปดาห์ของผลัด C",
+    sender: "ฝ่ายกำกับดูแล",
+    date: "2025-11-10",
+    isRead: true,
+  },
+];
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -7,38 +39,6 @@ const formatDate = (value) => {
 };
 
 export default function Message() {
-  // ---------------- MOCK DATA ----------------
-  const mockMessages = [
-    {
-      id: 1,
-      title: "แจ้งเตือน: ยังไม่ส่งยอดนักเรียนประจำวัน",
-      sender: "ระบบแจ้งเตือน",
-      date: "2025-11-20", // ใช้รูปแบบ YYYY-MM-DD
-      isRead: false,
-    },
-    {
-      id: 2,
-      title: "เตือน: กรุณาประเมินนักเรียนชุด A ก่อนเที่ยงวันนี้",
-      sender: "ฝ่ายกำกับดูแล",
-      date: "2025-11-18",
-      isRead: true,
-    },
-    {
-      id: 3,
-      title: "แจ้งเตือน: รายชื่อผลัด B ยังไม่ครบถ้วน",
-      sender: "ระบบแจ้งเตือน",
-      date: "2025-11-15",
-      isRead: false,
-    },
-    {
-      id: 4,
-      title: "ย้ำเตือน: ประเมินผลปลายสัปดาห์ของผลัด C",
-      sender: "ฝ่ายกำกับดูแล",
-      date: "2025-11-10",
-      isRead: true,
-    },
-    // เพิ่ม mock เพิ่มได้ตามต้องการ
-  ];
 
   // ---------------- STATES ----------------
   const [messages, setMessages] = useState([]);
@@ -47,12 +47,92 @@ export default function Message() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
+  const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [fetched, setFetched] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [toast, setToast] = useState("");
+  const toastTimerRef = useRef(null);
+  const inFlightRef = useRef(false);
+  const lastToastCountRef = useRef(null);
+  const role = (localStorage.getItem("role") || "").toUpperCase();
+  const token = localStorage.getItem("token");
   const pageSize = 10;
   const unreadCount = useMemo(() => messages.filter((m) => !m.isRead).length, [messages]);
+  const typeLabel = (type) =>
+    ({
+      TRAINING_REPORT_MISSING: "ยังไม่ส่งยอดนักเรียน",
+      STUDENT_EVALUATION_MISSING: "ยังไม่ประเมินนักเรียน",
+    }[type] || "แจ้งเตือน");
 
-  // โหลด mock data
+  const fetchNotifications = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    setLoading(true);
+    setError("");
+    try {
+      const isOwner = role === "OWNER";
+      const url = isOwner ? "/owner/notifications" : "/teacher/notifications";
+      const response = await axios.get(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        params: { page, pageSize: 10 },
+      });
+      const payload = response.data?.data ?? response.data?.items ?? response.data ?? [];
+      const list = Array.isArray(payload) ? payload : payload?.data || [];
+      const normalized = list.map((item) => ({
+        id: item.id || item._id || `${item.type || "notice"}-${item.dueAt || item.schedule?.start}`,
+        title: item.title || item.schedule?.title || "ไม่ระบุหัวข้อ",
+        sender: item.teacher?.name || item.teacherName || "ระบบแจ้งเตือน",
+        date: item.dueAt || item.schedule?.start || item.createdAt,
+        message: item.message || "",
+        type: item.type || "",
+        teacherName: item.teacher?.name || item.teacherName || "",
+        teacherRank: item.teacher?.rank,
+        source: item.source || "ระบบแจ้งเตือน",
+        scheduleTitle: item.schedule?.title || "",
+        scheduleStart: item.schedule?.start || "",
+        scheduleEnd: item.schedule?.end || "",
+        scheduleLocation: item.schedule?.location,
+        companyCode: item.schedule?.companyCode,
+        battalionCode: item.schedule?.battalionCode,
+        isRead: false,
+      }));
+      setMessages(normalized);
+      const totalCount = response.data?.total || normalized.length;
+      setPageInfo({
+        page: response.data?.page || page,
+        pageSize: response.data?.pageSize || 10,
+        total: totalCount,
+        totalPages: response.data?.totalPages || 1,
+      });
+      setLastUpdated(new Date());
+      setFetched(true);
+      if (totalCount > 0 && lastToastCountRef.current !== totalCount) {
+        lastToastCountRef.current = totalCount;
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        setToast(`มีการแจ้งเตือน ${totalCount} รายการ`);
+        toastTimerRef.current = setTimeout(() => setToast(""), 3200);
+      }
+      if (totalCount === 0) {
+        setError("วันนี้ยังไม่มีแจ้งเตือน");
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || "ไม่สามารถโหลดแจ้งเตือนได้");
+      setMessages(MOCK_MESSAGES);
+      setFetched(true);
+    } finally {
+      setLoading(false);
+      inFlightRef.current = false;
+    }
+  }, [page, role, token]);
+
   useEffect(() => {
-    setMessages(mockMessages);
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, []);
 
   // ---------------- FILTER LOGIC ----------------
@@ -89,7 +169,7 @@ export default function Message() {
     () => [...filteredMessages].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [filteredMessages]
   );
-  const totalPages = Math.max(1, Math.ceil(sortedMessages.length / pageSize));
+  const totalPages = pageInfo.totalPages || Math.max(1, Math.ceil(sortedMessages.length / pageSize));
   const paginated = sortedMessages.slice((page - 1) * pageSize, page * pageSize);
 
   const handlePageChange = (p) => {
@@ -136,7 +216,7 @@ export default function Message() {
                 ยังไม่อ่าน {unreadCount} รายการ
               </span>
               <span className="rounded-full bg-white/80 px-3 py-2 text-sm text-gray-700 shadow-sm ring-1 ring-gray-100">
-                ทั้งหมด {messages.length} รายการ
+                ทั้งหมด {pageInfo.total || messages.length} รายการ
               </span>
             </div>
           </div>
@@ -213,6 +293,15 @@ export default function Message() {
         </div>
       </section>
 
+      {toast && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="flex items-center gap-2 rounded-2xl bg-white/95 shadow-xl ring-1 ring-blue-100 px-4 py-3 text-sm text-blue-800 backdrop-blur">
+            <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+            <span className="font-semibold">{toast}</span>
+          </div>
+        </div>
+      )}
+
       {/* INBOX LIST */}
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-lg">
         <div className="flex sm:flex-row flex-col items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -221,8 +310,22 @@ export default function Message() {
             กล่องแจ้งเตือน {paginated.length} รายการในหน้า {page}/{totalPages}
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">ยังไม่อ่านจะเข้ม</span>
-            <span className="rounded-full bg-gray-50 px-3 py-1 text-gray-600">อ่านแล้วจะจาง</span>
+            {loading && <span className="text-blue-600">กำลังโหลด...</span>}
+            {!loading && error && <span className="text-red-500">{error}</span>}
+            {!loading && !error && (
+              <>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">ยังไม่อ่านจะเข้ม</span>
+                <span className="rounded-full bg-gray-50 px-3 py-1 text-gray-600">อ่านแล้วจะจาง</span>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={fetchNotifications}
+              className="ml-3 rounded-xl border border-gray-200 px-3 py-1.5 text-[11px] font-semibold text-blue-700 hover:border-blue-400 hover:bg-blue-50"
+              disabled={loading}
+            >
+              รีเฟรช
+            </button>
           </div>
         </div>
 
@@ -252,6 +355,9 @@ export default function Message() {
 
               <div className="min-w-0 space-y-1">
                 <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                    {typeLabel(m.type)}
+                  </span>
                   <p
                     className={`truncate ${
                       m.isRead ? "font-medium text-gray-600" : "font-semibold text-slate-900"
@@ -266,8 +372,20 @@ export default function Message() {
                   )}
                 </div>
                 <p className={`truncate text-sm ${m.isRead ? "text-gray-500" : "text-gray-600"}`}>
-                  {m.sender} • {formatDate(m.date)}
+                  {m.message || m.sender} • {formatDate(m.date)}
                 </p>
+                {m.scheduleTitle && (
+                  <p className="truncate text-xs text-gray-500">
+                    คาบ: {m.scheduleTitle} {m.companyCode || m.battalionCode ? `· ${m.companyCode || "-"} / ${m.battalionCode || "-"}` : ""}
+                  </p>
+                )}
+                {(m.teacherName || m.scheduleLocation || m.scheduleStart) && (
+                  <p className="truncate text-xs text-gray-500">
+                    {m.teacherName ? `ครู: ${m.teacherName}` : ""}
+                    {m.scheduleLocation ? ` · สถานที่ ${m.scheduleLocation}` : ""}
+                    {m.scheduleStart ? ` · เริ่ม ${formatDate(m.scheduleStart)}` : ""}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-2 justify-end text-xs text-gray-500">

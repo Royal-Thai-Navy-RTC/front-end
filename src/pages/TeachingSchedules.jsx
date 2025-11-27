@@ -45,10 +45,18 @@ const toLocalInputValue = (value) => {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 };
 
+// Preserve local clock time and include timezone offset to avoid shifting (UTC+0 vs local)
 const toIsoString = (value) => {
   if (!value) return null;
   const date = new Date(value);
-  return date.toISOString();
+  if (Number.isNaN(date.getTime())) return null;
+  const offsetMinutes = -date.getTimezoneOffset(); // minutes east of UTC
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const pad = (num) => String(Math.abs(num)).padStart(2, "0");
+  const hoursOffset = pad(Math.trunc(offsetMinutes / 60));
+  const minutesOffset = pad(offsetMinutes % 60);
+  const localIso = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19); // remove Z, keep local clock
+  return `${localIso}${sign}${hoursOffset}:${minutesOffset}`;
 };
 
 const INITIAL_SCHEDULE = {
