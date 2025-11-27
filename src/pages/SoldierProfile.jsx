@@ -33,7 +33,7 @@ const initialFormValues = {
     medicalHistory: "",
     zipCode: "",
     bloodType: "",
-    yearService: "",
+    serviceYears: "",
 };
 
 export default function RegisterSoldier() {
@@ -244,17 +244,22 @@ export default function RegisterSoldier() {
     };
 
     const handleRegister = async () => {
-        const requiredFields = ["firstName", "lastName", "birthDate", "idCardNumber"];
-        const missing = requiredFields.filter((f) => !`${formValues[f] ?? ""}`.trim());
-        if (missing.length || !avatarFile) {
-            const missingText = missing.map((f) => f).join(", ");
-            Swal.fire({
-                title: "กรุณากรอกข้อมูลให้ครบ",
-                text: `${missingText ? `ยังขาด: ${missingText}. ` : ""}กรุณาอัปโหลดรูปบัตรประชาชน`,
-                icon: "warning",
-            });
-            return;
-        }
+        const allowEmpty = [
+            "specialSkills",
+            "chronicDiseases",
+            "foodAllergies",
+            "drugAllergies",
+            "medicalHistory"
+        ];
+
+        const requiredFields = Object.keys(formValues)
+            .filter((k) => !allowEmpty.includes(k));
+
+        const missing = requiredFields.filter(
+            (f) => !`${formValues[f] ?? ""}`.trim()
+        );
+
+          
 
         setLoading(true);
         try {
@@ -281,7 +286,7 @@ export default function RegisterSoldier() {
             if (formValues.emergencyContactPhone) fd.append("emergencyPhone", formValues.emergencyContactPhone);
             if (profileForm.medicalHistory) fd.append("medicalNotes", profileForm.medicalHistory);
             if (formValues.bloodType) fd.append("bloodType", formValues.bloodType);
-            if (formValues.yearService) fd.append("yearService", formValues.yearService);
+            if (formValues.serviceYears) fd.append("serviceYears", formValues.serviceYears);
 
             // arrays
             ensureArrayField("chronicDiseases").forEach((v) => fd.append("chronicDiseases[]", v));
@@ -290,14 +295,13 @@ export default function RegisterSoldier() {
             // file
             fd.append("file", avatarFile);
 
-            console.log(fd);
-            
+            // console.log(fd);
 
-            // await axios.post("/api/soldier-intakes", fd, {
-            //     headers: { "Content-Type": "multipart/form-data" },
-            // });
+            await axios.post("/api/soldier-intakes", fd, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
 
-            // Swal.fire({ icon: "success", title: "บันทึกสำเร็จ" });
+            Swal.fire({ icon: "success", title: "บันทึกสำเร็จ" });
         } catch (err) {
             console.error(err);
             Swal.fire({
@@ -391,7 +395,7 @@ export default function RegisterSoldier() {
                 },
                 { name: "specialSkills", label: "ความสามารถพิเศษ", type: "text" },
                 {
-                    name: "yearService", label: "จำนวนปีที่รับราชการทหาร", type: "select", option: [
+                    name: "serviceYears", label: "จำนวนปีที่รับราชการทหาร", type: "select", option: [
                         { value: "6", label: "6 เดือน" },
                         { value: "1", label: "1 ปี" },
                         { value: "2", label: "2 ปี" },
