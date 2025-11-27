@@ -216,6 +216,7 @@ export default function SoldierDashboard() {
     const [editFile, setEditFile] = useState(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [previewImage, setPreviewImage] = useState(null);
 
     const token = useMemo(() => localStorage.getItem("token"), []);
     const currentRole = (user?.role || "").toString().toUpperCase();
@@ -479,6 +480,7 @@ export default function SoldierDashboard() {
     };
 
     return (
+        <>
         <div className="min-h-screen w-full px-4 py-6 bg-gradient-to-b from-blue-50/50 via-white to-white">
             <div className="max-w-6xl mx-auto space-y-6">
                 <section className="relative overflow-hidden rounded-3xl border border-blue-100/70 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-700 shadow-xl text-white">
@@ -738,13 +740,17 @@ export default function SoldierDashboard() {
                                     )}
 
                                     {selected.idCardImageUrl || selected.avatar ? (
-                                        <div className="rounded-xl overflow-hidden border border-white/20 bg-white/10">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPreviewImage(resolveFileUrl(selected.idCardImageUrl || selected.avatar))}
+                                            className="rounded-xl overflow-hidden border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
+                                        >
                                             <img
                                                 src={resolveFileUrl(selected.idCardImageUrl || selected.avatar)}
                                                 alt="บัตรประชาชน/ไฟล์แนบ"
                                                 className="w-full object-cover"
                                             />
-                                        </div>
+                                        </button>
                                     ) : null}
 
                                     <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
@@ -806,6 +812,32 @@ export default function SoldierDashboard() {
                 </div>
             </div>
         </div>
+        {previewImage && (
+            <div
+                className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+                onClick={() => setPreviewImage(null)}
+            >
+                <div
+                    className="relative bg-white rounded-2xl shadow-2xl overflow-hidden max-w-4xl w-full"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex justify-between items-center px-4 py-2 bg-blue-900 text-white text-sm font-semibold">
+                        <span>รูปบัตรประชาชน</span>
+                        <button
+                            type="button"
+                            className="rounded-full bg-white/15 hover:bg-white/25 px-3 py-1 text-xs"
+                            onClick={() => setPreviewImage(null)}
+                        >
+                            ปิด
+                        </button>
+                    </div>
+                    <div className="bg-black flex items-center justify-center">
+                        <img src={previewImage} alt="id card" className="max-h-[75vh] max-w-[100%] object-contain" />
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
 
