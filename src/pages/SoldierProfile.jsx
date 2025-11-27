@@ -1,5 +1,5 @@
 // RegisterSoldier.jsx
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { useNavigate, useOutletContext } from "react-router-dom";
@@ -340,6 +340,24 @@ export default function RegisterSoldier() {
             }))
         : [];
 
+    const selectedSubdistrict = useMemo(() => {
+        if (!formValues.subdistrict) return null;
+        return addressData.find((i) => i.id === Number(formValues.subdistrict)) || null;
+    }, [formValues.subdistrict]);
+
+    const mapLink = useMemo(() => {
+        if (!selectedSubdistrict || !selectedSubdistrict.lat || !selectedSubdistrict.long) return "";
+        const { lat, long } = selectedSubdistrict;
+        return `https://www.google.com/maps/search/?api=1&query=${lat},${long}`;
+    }, [selectedSubdistrict]);
+
+    const mapEmbedUrl = useMemo(() => {
+        if (!selectedSubdistrict || !selectedSubdistrict.lat || !selectedSubdistrict.long) return "";
+        const { lat, long } = selectedSubdistrict;
+        const query = encodeURIComponent(`${lat},${long}`);
+        return `https://www.google.com/maps?q=${query}&hl=th&z=14&output=embed`;
+    }, [selectedSubdistrict]);
+
 
 
     const profileSections = [
@@ -487,6 +505,46 @@ export default function RegisterSoldier() {
                                             </label>
                                         ))}
                                     </div>
+
+                                    {sec.title === "ที่อยู่" && (
+                                        <div className="mt-3 flex flex-col gap-2 text-xs text-gray-600 bg-blue-50/60 border border-blue-100 rounded-xl p-3">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="font-semibold text-gray-800">ปักหมุดตำบล</span>
+                                                {mapLink && (
+                                                    <a
+                                                        href={mapLink}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-blue-700 underline font-semibold text-xs"
+                                                    >
+                                                        เปิดใน Google Maps
+                                                    </a>
+                                                )}
+                                            </div>
+                                            {selectedSubdistrict ? (
+                                                <p>
+                                                    {selectedSubdistrict.name_th || "ตำบลไม่พบชื่อ"} · จังหวัด {selectedSubdistrict.district?.province?.name_th || "-"}
+                                                </p>
+                                            ) : (
+                                                <p>เลือกจังหวัด/อำเภอ/ตำบล เพื่อปักหมุด</p>
+                                            )}
+                                            {!mapLink && selectedSubdistrict && (
+                                                <p className="text-amber-600">ตำบลนี้ยังไม่มีพิกัดในระบบ</p>
+                                            )}
+                                            {mapEmbedUrl && (
+                                                <div className="mt-2 rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                                                    <iframe
+                                                        title="ตำแหน่งบนแผนที่"
+                                                        src={mapEmbedUrl}
+                                                        className="w-full h-56"
+                                                        allowFullScreen
+                                                        loading="lazy"
+                                                        referrerPolicy="no-referrer-when-downgrade"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
 
