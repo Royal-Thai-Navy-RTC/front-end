@@ -602,7 +602,7 @@ export default function SoldierDashboard() {
                                         </div>
                                         <div className="flex flex-col items-end gap-2 text-right text-blue-100">
                                             <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 text-xs font-semibold">
-                                                อายุราชการ {selected.serviceYears ? `${Math.round(selected.serviceYears * 10) / 10} ปี` : "ไม่ระบุ"}
+                                                อายุราชการ {formatServiceDuration(getServiceMonths(selected))}
                                             </span>
                                             <div className="flex flex-wrap gap-2 justify-end">
                                                 <button
