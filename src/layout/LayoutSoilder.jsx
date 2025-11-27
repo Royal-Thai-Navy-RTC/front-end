@@ -22,17 +22,19 @@ const educationOptions = [
   { value: "ปริญญาตรี", label: "ปริญญาตรี" },
   { value: "ปริญญาโท", label: "ปริญญาโท" },
   { value: "ปริญญาเอก", label: "ปริญญาเอก" },
-  { value: "ประถม 6", label: "ประถม 6" },
-  { value: "มัธยมศึกษาปีที่ 3", label: "มัธยมศึกษาปีที่ 3" },
-  { value: "มัธยมศึกษาปีที่ 6", label: "มัธยมศึกษาปีที่ 6" },
   { value: "ปวช.", label: "ปวช." },
   { value: "ปวส.", label: "ปวส." },
+  { value: "มัธยมศึกษาปีที่ 3", label: "มัธยมศึกษาปีที่ 3" },
+  { value: "มัธยมศึกษาปีที่ 6", label: "มัธยมศึกษาปีที่ 6" },
+  { value: "ประถมศึกษาปีที่ 6", label: "ประถมศึกษาปีที่ 6" },
+  { value: "ต่ำกว่าประถมศึกษาปีที่ 6", label: "ต่ำกว่าประถมศึกษาปีที่ 6" },
 ];
 
 const religionOptions = [
   { value: "พุทธ", label: "ศาสนาพุทธ" },
   { value: "อิสลาม", label: "ศาสนาอิสลาม" },
   { value: "คริสต์", label: "ศาสนาคริสต์" },
+  { value: "อื่นๆ", label: "อื่นๆ" },
 ];
 
 export default function LayoutSoilder() {

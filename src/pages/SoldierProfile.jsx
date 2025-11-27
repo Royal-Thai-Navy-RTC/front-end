@@ -43,16 +43,13 @@ export default function RegisterSoldier() {
     const [formValues, setFormValues] = useState(initialFormValues);
     const [zipCode, setZipCode] = useState("");
 
-
-    // profileForm holds arrays and medicalHistory (so we can manage them separately or merge before submit)
     const [profileForm, setProfileForm] = useState({
         medicalHistory: "",
-        chronicDiseases: [], // array of strings
-        foodAllergies: [], // array of strings
-        drugAllergies: [], // array of strings
+        chronicDiseases: [],
+        foodAllergies: [],
+        drugAllergies: [],
     });
 
-    // local inputs for adding items
     const [newDisease, setNewDisease] = useState("");
     const [newFoodAllergy, setNewFoodAllergy] = useState("");
     const [newDrugAllergy, setNewDrugAllergy] = useState("");
