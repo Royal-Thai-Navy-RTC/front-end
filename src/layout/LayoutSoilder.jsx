@@ -19,13 +19,13 @@ const normalizeUser = (data = {}) => {
 };
 
 const educationOptions = [
-  { value: "ปริญญาตรี", label: "ปริญญาตรี" },
-  { value: "ปริญญาโท", label: "ปริญญาโท" },
   { value: "ปริญญาเอก", label: "ปริญญาเอก" },
+  { value: "ปริญญาโท", label: "ปริญญาโท" },
+  { value: "ปริญญาตรี", label: "ปริญญาตรี" },
   { value: "ปวช.", label: "ปวช." },
   { value: "ปวส.", label: "ปวส." },
-  { value: "มัธยมศึกษาปีที่ 3", label: "มัธยมศึกษาปีที่ 3" },
   { value: "มัธยมศึกษาปีที่ 6", label: "มัธยมศึกษาปีที่ 6" },
+  { value: "มัธยมศึกษาปีที่ 3", label: "มัธยมศึกษาปีที่ 3" },
   { value: "ประถมศึกษาปีที่ 6", label: "ประถมศึกษาปีที่ 6" },
   { value: "ต่ำกว่าประถมศึกษาปีที่ 6", label: "ต่ำกว่าประถมศึกษาปีที่ 6" },
 ];
@@ -34,6 +34,24 @@ const religionOptions = [
   { value: "พุทธ", label: "ศาสนาพุทธ" },
   { value: "อิสลาม", label: "ศาสนาอิสลาม" },
   { value: "คริสต์", label: "ศาสนาคริสต์" },
+  { value: "อื่นๆ", label: "อื่นๆ" },
+];
+
+const bloodOptions = [
+  { value: "A", label: "A" },
+  { value: "B", label: "B" },
+  { value: "AB", label: "AB" },
+  { value: "O", label: "O" },
+  { value: "ไม่ทราบ", label: "ไม่ทราบ" },
+];
+
+const relationOptions = [
+  { value: "พ่อ", label: "พ่อ" },
+  { value: "แม่", label: "แม่" },
+  { value: "พี่น้อง", label: "พี่น้อง" },
+  { value: "ภรรยา", label: "ภรรยา" },
+  { value: "ปู่", label: "ปู่" },
+  { value: "ยาย", label: "ยาย" },
   { value: "อื่นๆ", label: "อื่นๆ" },
 ];
 
@@ -82,7 +100,7 @@ export default function LayoutSoilder() {
       {/* ส่วนเนื้อหา */}
       <div className="flex flex-col flex-grow items-center p-2 px-5 mb-5">
         {/* <Outlet /> */}
-        <Outlet  context={{ educationOptions, religionOptions }} />
+        <Outlet  context={{ educationOptions, religionOptions, relationOptions, bloodOptions }} />
       </div>
 
       {/* Footer */}

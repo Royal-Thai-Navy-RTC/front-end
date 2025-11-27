@@ -32,11 +32,13 @@ const initialFormValues = {
     avatar: "",
     medicalHistory: "",
     zipCode: "",
+    bloodType: "",
+    yearService: "",
 };
 
 export default function RegisterSoldier() {
     // outlet context can provide options for selects (education, religion)
-    const { religionOptions = [], educationOptions = [] } = useOutletContext() ?? {};
+    const { religionOptions = [], educationOptions = [], relationOptions = [], bloodOptions = [] } = useOutletContext() ?? {};
 
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
@@ -147,7 +149,7 @@ export default function RegisterSoldier() {
                 province: value,
                 district: "",
                 subdistrict: "",
-                zipCode: ""                         
+                zipCode: ""
             }));
             return;
         }
@@ -242,7 +244,6 @@ export default function RegisterSoldier() {
     };
 
     const handleRegister = async () => {
-        // validation ตาม API: firstName,lastName,citizenId,birthDate, และต้องมีไฟล์บัตรประชาชน
         const requiredFields = ["firstName", "lastName", "birthDate", "idCardNumber"];
         const missing = requiredFields.filter((f) => !`${formValues[f] ?? ""}`.trim());
         if (missing.length || !avatarFile) {
@@ -279,6 +280,9 @@ export default function RegisterSoldier() {
             if (formValues.emergencyContactName) fd.append("emergencyName", formValues.emergencyContactName);
             if (formValues.emergencyContactPhone) fd.append("emergencyPhone", formValues.emergencyContactPhone);
             if (profileForm.medicalHistory) fd.append("medicalNotes", profileForm.medicalHistory);
+            if (formValues.bloodType) fd.append("bloodType", formValues.bloodType);
+            if (formValues.yearService) fd.append("yearService", formValues.yearService);
+
             // arrays
             ensureArrayField("chronicDiseases").forEach((v) => fd.append("chronicDiseases[]", v));
             ensureArrayField("foodAllergies").forEach((v) => fd.append("foodAllergies[]", v));
@@ -286,12 +290,14 @@ export default function RegisterSoldier() {
             // file
             fd.append("file", avatarFile);
 
-            await axios.post("/api/soldier-intakes", fd, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
+            console.log(fd);
+            
 
-            Swal.fire({ icon: "success", title: "บันทึกสำเร็จ" });
-            navigate("/soldiers");
+            // await axios.post("/api/soldier-intakes", fd, {
+            //     headers: { "Content-Type": "multipart/form-data" },
+            // });
+
+            // Swal.fire({ icon: "success", title: "บันทึกสำเร็จ" });
         } catch (err) {
             console.error(err);
             Swal.fire({
@@ -354,6 +360,7 @@ export default function RegisterSoldier() {
                 { name: "height", label: "ส่วนสูง (ซม.)", type: "number" },
                 { name: "education", label: "การศึกษา", type: "select", option: educationOptions },
                 { name: "previousJob", label: "อาชีพก่อนเป็นทหาร", type: "text" },
+                { name: "bloodType", label: "กรุ๊ปเลือด", type: "select", option: bloodOptions, },
                 { name: "religion", label: "ศาสนา", type: "select", option: religionOptions },
                 {
                     name: "canSwim",
@@ -365,6 +372,13 @@ export default function RegisterSoldier() {
                     ],
                 },
                 { name: "specialSkills", label: "ความสามารถพิเศษ", type: "text" },
+                {
+                    name: "yearService", label: "จำนวนปีที่รับราชการทหาร", type: "select", option: [
+                        { value: "6", label: "6 เดือน" },
+                        { value: "1", label: "1 ปี" },
+                        { value: "2", label: "2 ปี" },
+                    ]
+                },
             ],
         },
         {
@@ -387,7 +401,7 @@ export default function RegisterSoldier() {
         {
             title: "ผู้ติดต่อฉุกเฉิน",
             fields: [
-                { name: "emergencyContactName", label: "ชื่อผู้ติดต่อฉุกเฉิน", type: "text" },
+                { name: "emergencyContactName", label: "ชื่อผู้ติดต่อฉุกเฉิน", type: "select", option: relationOptions },
                 { name: "emergencyContactPhone", label: "เบอร์ผู้ติดต่อฉุกเฉิน", type: "text", maxLength: 10 },
             ],
         },
@@ -447,45 +461,71 @@ export default function RegisterSoldier() {
                                     <p className="font-semibold text-gray-800 mb-3">{sec.title}</p>
 
                                     <div className="grid sm:grid-cols-2 gap-4">
-                                        {sec.fields.map((field) => (
-                                            <label key={field.name} className={`${field.type === "textarea" ? "sm:col-span-2" : ""} text-sm text-gray-700`}>
-                                                <div className="mb-1 font-medium">{field.label}</div>
+                                        {sec.fields.map((field) => {
+                                            const isOtherSelected = formValues[field.name] === "อื่นๆ";
 
-                                                {field.type === "select" ? (
-                                                    <select
-                                                        name={field.name}
-                                                        value={formValues[field.name] ?? ""}
-                                                        onChange={handleChange}
-                                                        className="w-full mt-1 border border-gray-500 rounded-xl px-3 py-2"
-                                                    >
-                                                        <option value="">-- เลือก --</option>
-                                                        {field.option?.map((o) => (
-                                                            <option key={o.value ?? o} value={o.value ?? o}>
-                                                                {o.label ?? o}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                ) : field.type === "textarea" ? (
-                                                    <textarea
-                                                        name={field.name}
-                                                        rows={3}
-                                                        value={formValues[field.name] ?? ""}
-                                                        onChange={handleChange}
-                                                        className="w-full mt-1 border border-gray-500 rounded-xl px-3 py-2"
-                                                    />
-                                                ) : (
-                                                    <input
-                                                        name={field.name}
-                                                        type={field.type}
-                                                        maxLength={field.maxLength ?? undefined}
-                                                        value={formValues[field.name] ?? ""}
-                                                        onChange={handleChange}
-                                                        readOnly={field.name === "zipCode"}
-                                                        className="w-full mt-1 border border-gray-500 rounded-xl px-3 py-2"
-                                                    />
-                                                )}
-                                            </label>
-                                        ))}
+                                            return (
+                                                <label
+                                                    key={field.name}
+                                                    className={`${field.type === "textarea" ? "sm:col-span-2" : ""} text-sm text-gray-700`}
+                                                >
+                                                    <div className="mb-1 font-medium">{field.label}</div>
+
+                                                    {field.type === "select" ? (
+                                                        <>
+                                                            <select
+                                                                name={field.name}
+                                                                value={formValues[field.name] ?? ""}
+                                                                onChange={handleChange}
+                                                                className="w-full mt-1 border border-gray-500 rounded-xl px-3 py-2"
+                                                            >
+                                                                <option value="">-- เลือก --</option>
+                                                                {field.option?.map((o) => (
+                                                                    <option key={o.value ?? o} value={o.value ?? o}>
+                                                                        {o.label ?? o}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+
+                                                            {isOtherSelected && (
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="ใส่ข้อมูลเพิ่มเติม"
+                                                                    value={formValues[`${field.name}_other`] ?? ""}
+                                                                    onChange={(e) =>
+                                                                        handleChange({
+                                                                            target: {
+                                                                                name: `${field.name}_other`,
+                                                                                value: e.target.value,
+                                                                            },
+                                                                        })
+                                                                    }
+                                                                    className="w-full mt-2 border border-gray-500 rounded-xl px-3 py-2"
+                                                                />
+                                                            )}
+                                                        </>
+                                                    ) : field.type === "textarea" ? (
+                                                        <textarea
+                                                            name={field.name}
+                                                            rows={3}
+                                                            value={formValues[field.name] ?? ""}
+                                                            onChange={handleChange}
+                                                            className="w-full mt-1 border border-gray-500 rounded-xl px-3 py-2"
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            name={field.name}
+                                                            type={field.type}
+                                                            maxLength={field.maxLength ?? undefined}
+                                                            value={formValues[field.name] ?? ""}
+                                                            onChange={handleChange}
+                                                            readOnly={field.name === "zipCode"}
+                                                            className="w-full mt-1 border border-gray-500 rounded-xl px-3 py-2"
+                                                        />
+                                                    )}
+                                                </label>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             ))}
@@ -607,7 +647,6 @@ export default function RegisterSoldier() {
                                         ))}
                                     </div>
                                 </div>
-
 
                                 {/* medicalHistory */}
                                 <div className="mt-3">
