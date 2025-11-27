@@ -149,16 +149,16 @@ export default function LayoutMain() {
     }
   };
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (user.role === "ADMIN" || !token) return;
+  // useEffect(() => {
+  //   const token = localStorage.getItem("token");
+  //   if (user.role === "ADMIN" || !token) return;
 
-    const interval = setInterval(() => {
-      fetchMessage();
-    }, 10000);
+  //   const interval = setInterval(() => {
+  //     fetchMessage();
+  //   }, 10000);
 
-    return () => clearInterval(interval);
-  }, [user.role]);
+  //   return () => clearInterval(interval);
+  // }, [user.role]);
 
   // update Role and token
   useEffect(() => {
