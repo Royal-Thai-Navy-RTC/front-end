@@ -117,7 +117,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   const role = (user?.role || "guest").toLowerCase();
   const isAuthenticated = role !== "guest";
 
-  // console.log(profileModalOpen);
+  console.log(profileModalOpen);
 
 
   /* --- PAGES (WITH DROPDOWN SUPPORT) --- */
@@ -128,9 +128,10 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
       { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
       {
-        label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"], children: [
-          { path: "/manage", label: "สิทธิผู้ใช้งาน", icon: Settings2, roles: ["admin", "owner"] },
-          { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
+        label: "Admin", icon: Settings2, roles: ["admin", "owner"], children: [
+          { path: "/manage", label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"] },
+           { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", icon: ClipboardList, roles: ["admin", "owner"] },
+          // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
       },
       {
@@ -143,7 +144,6 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
         label: "ข้าราชการ", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
           { path: "/teacher-report", label: "แจ้งยอดนักเรียน", icon: ClipboardList, roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/teacher-leave", label: "แจ้งการลา", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"] },
-          { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", icon: CalendarClock, roles: ["admin", "owner", "sub_admin", "teacher"] },
         ]
       },
@@ -316,9 +316,9 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                         <UserRoundPen size={16} /> แก้ไขข้อมูลส่วนตัว
                       </button>
 
-                      <button onClick={openProfileModal} className="px-3 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2">
+                      <Link onClick={() => setProfileMenuOpen(prev => !prev)} to="/message" className="px-3 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2">
                         <Mail size={16} /> ข้อความ
-                      </button>
+                      </Link>
 
                       <button onClick={handleLogout} className="px-3 py-2 rounded-xl hover:bg-red-50 text-red-600 flex items-center gap-2">
                         <LogOut size={16} /> ออกจากระบบ

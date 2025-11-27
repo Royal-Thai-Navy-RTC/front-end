@@ -195,12 +195,11 @@ export default function Message() {
         <table className="min-w-full border-collapse text-left text-gray-700">
           <thead className="bg-blue-50 text-blue-700 font-semibold">
             <tr>
-              <th className="p-3 border-b text-center">ลำดับ</th>
               <th className="p-3 border-b">หัวข้อ</th>
               <th className="p-3 border-b">ผู้ส่ง</th>
               <th className="p-3 border-b text-center">วันที่</th>
-              <th className="p-3 border-b text-center">สถานะ</th>
-              <th className="p-3 border-b text-center">จัดการ</th>
+              {/*<th className="p-3 border-b text-center">สถานะ</th>
+               <th className="p-3 border-b text-center">จัดการ</th> */}
             </tr>
           </thead>
 
@@ -212,9 +211,9 @@ export default function Message() {
                   !m.isRead ? "bg-blue-50/40" : ""
                 }`}
               >
-                <td className="p-3 border-b text-center">
+                {/* <td className="p-3 border-b text-center">
                   {(page - 1) * pageSize + index + 1}
-                </td>
+                </td> */}
                 <td className="p-3 border-b">
                   <div className="font-medium">
                     {m.title}
@@ -226,7 +225,7 @@ export default function Message() {
                 <td className="p-3 border-b text-center">
                   {m.date}
                 </td>
-                <td className="p-3 border-b text-center">
+                {/*<td className="p-3 border-b text-center">
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       m.isRead
@@ -237,7 +236,7 @@ export default function Message() {
                     {m.isRead ? "อ่านแล้ว" : "ยังไม่อ่าน"}
                   </span>
                 </td>
-                <td className="p-3 border-b text-center">
+                 <td className="p-3 border-b text-center">
                   <button
                     onClick={() => toggleRead(m.id)}
                     className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-sm"
@@ -245,7 +244,7 @@ export default function Message() {
                     <Eye size={16} />
                     {m.isRead ? "ทำเป็นยังไม่อ่าน" : "อ่านแล้ว"}
                   </button>
-                </td>
+                </td> */}
               </tr>
             ))}
 
