@@ -23,6 +23,7 @@ import PublicTeachingSchedules from "./pages/PublicTeachingSchedules";
 import Library from "./pages/Library";
 import ManageSoldier from "./pages/ManageSoldier";
 import Message from "./pages/Message";
+import SoldierDashboard from "./pages/SoldierDashboard";
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -128,6 +129,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
                         <ManageSoldier />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "soldiers",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
+                        <SoldierDashboard />
                     </ProtectedRoute>
                 )
             },
