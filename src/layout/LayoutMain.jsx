@@ -133,6 +133,32 @@ export default function LayoutMain() {
       }
     }
   };
+
+  const fetchMessage = async () => {
+    const token = localStorage.getItem("token");
+    const apiPath = `${user.role === "OWNER" ? "owner" : "teacher"}/notifications`;
+
+    try {
+      const response = await axios.get(`/api/${apiPath}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log(response.data);
+
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    if (user.role === "ADMIN") return;
+
+    const interval = setInterval(() => {
+      fetchMessage();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [user.role]);
+
   // update Role and token
   useEffect(() => {
     fetchToken();

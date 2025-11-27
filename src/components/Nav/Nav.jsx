@@ -130,7 +130,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       {
         label: "Admin", icon: Settings2, roles: ["admin", "owner"], children: [
           { path: "/manage", label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"] },
-           { path: "/form-evaluate-student", label: "ฟอร์มการประเมินนักเรียน", icon: ClipboardList, roles: ["admin", "owner"] },
+           { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
           // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
       },

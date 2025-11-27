@@ -215,10 +215,10 @@ export default function Message() {
 
       {/* INBOX LIST */}
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-lg">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div className="flex sm:flex-row flex-col items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <span className="h-2 w-2 rounded-full bg-blue-500" />
-            มุมมองกล่องแจ้งเตือน · แสดง {paginated.length} รายการในหน้า {page}/{totalPages}
+            กล่องแจ้งเตือน {paginated.length} รายการในหน้า {page}/{totalPages}
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">ยังไม่อ่านจะเข้ม</span>
