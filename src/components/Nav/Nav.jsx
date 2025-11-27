@@ -1,7 +1,6 @@
 /* --- IMPORTS --- */
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
 import Swal from "sweetalert2";
 import {
   Mail,
@@ -117,7 +116,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   const role = (user?.role || "guest").toLowerCase();
   const isAuthenticated = role !== "guest";
 
-  console.log(profileModalOpen);
+  // console.log(profileModalOpen);
 
 
   /* --- PAGES (WITH DROPDOWN SUPPORT) --- */

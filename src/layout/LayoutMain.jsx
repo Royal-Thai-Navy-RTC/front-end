@@ -142,10 +142,10 @@ export default function LayoutMain() {
       const response = await axios.get(`/api/${apiPath}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log(response.data);
+      // console.log(response.data);
 
     } catch (error) {
-      console.log(error);
+      // console.log(error);
     }
   };
 
