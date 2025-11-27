@@ -109,7 +109,8 @@ const normalizeIntake = (raw = {}) => {
         foodAllergies: normalizeList(raw.foodAllergies),
         drugAllergies: normalizeList(raw.drugAllergies),
         createdAt: raw.createdAt,
-        avatar: raw.avatar || raw.file,
+        avatar: raw.avatar || raw.file || raw.idCardImageUrl,
+        idCardImageUrl: raw.idCardImageUrl || raw.avatar || raw.file,
         bloodGroup: raw.bloodGroup || raw.blood_type || raw.bloodType,
     };
 };
@@ -203,6 +204,7 @@ export default function SoldierDashboard() {
     const { user } = useOutletContext() ?? {};
     const [loading, setLoading] = useState(false);
     const [intakes, setIntakes] = useState([]);
+    const [summary, setSummary] = useState({ total: 0, sixMonths: 0, oneYear: 0, twoYears: 0 });
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState("");
     const [provinceFilter, setProvinceFilter] = useState("");
@@ -214,6 +216,7 @@ export default function SoldierDashboard() {
     const [editFile, setEditFile] = useState(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [previewImage, setPreviewImage] = useState(null);
 
     const token = useMemo(() => localStorage.getItem("token"), []);
     const currentRole = (user?.role || "").toString().toUpperCase();
@@ -292,6 +295,26 @@ export default function SoldierDashboard() {
     }, [fetchIntakes]);
 
     useEffect(() => {
+        const fetchSummary = async () => {
+            try {
+                const res = await axios.get("/api/admin/soldier-intakes-summary", {
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                });
+                const data = res.data?.data || res.data || {};
+                setSummary({
+                    total: data.total ?? 0,
+                    sixMonths: data.sixMonths ?? 0,
+                    oneYear: data.oneYear ?? 0,
+                    twoYears: data.twoYears ?? 0,
+                });
+            } catch (error) {
+                // เงียบไว้เพื่อไม่รบกวน UX ของหน้าสรุป
+            }
+        };
+        fetchSummary();
+    }, [token]);
+
+    useEffect(() => {
         if (selected) {
             setEditForm(mapIntakeToForm(selected));
             setEditFile(null);
@@ -307,24 +330,15 @@ export default function SoldierDashboard() {
     }, [intakes, provinceFilter]);
 
     const stats = useMemo(() => {
-        const total = intakes.length;
-        const getMonths = (i) =>
-            i.serviceMonths ?? (i.serviceYears !== undefined ? Math.round(i.serviceYears * 12) : null);
-        const sixMonthCount = intakes.filter((i) => {
-            const months = getMonths(i);
-            return months !== null && months !== undefined && months <= 6;
-        }).length;
-        const oneYearCount = intakes.filter((i) => {
-            const months = getMonths(i);
-            return months !== null && months !== undefined && Math.round(months / 12) === 1;
-        }).length;
-        const twoYearCount = intakes.filter((i) => {
-            const months = getMonths(i);
-            return months !== null && months !== undefined && Math.round(months / 12) === 2;
-        }).length;
         const contactReady = intakes.filter((i) => i.emergencyName || i.emergencyPhone).length;
-        return { total, sixMonthCount, oneYearCount, twoYearCount, contactReady };
-    }, [intakes]);
+        return {
+            total: summary.total ?? intakes.length,
+            sixMonthCount: summary.sixMonths ?? 0,
+            oneYearCount: summary.oneYear ?? 0,
+            twoYearCount: summary.twoYears ?? 0,
+            contactReady,
+        };
+    }, [intakes, summary]);
 
     const handlePageChange = (next) => {
         if (next < 1 || next > pageMeta.totalPages) return;
@@ -466,6 +480,7 @@ export default function SoldierDashboard() {
     };
 
     return (
+        <>
         <div className="min-h-screen w-full px-4 py-6 bg-gradient-to-b from-blue-50/50 via-white to-white">
             <div className="max-w-6xl mx-auto space-y-6">
                 <section className="relative overflow-hidden rounded-3xl border border-blue-100/70 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-700 shadow-xl text-white">
@@ -724,15 +739,19 @@ export default function SoldierDashboard() {
                                         </div>
                                     )}
 
-                                    {selected.avatar && (
-                                        <div className="rounded-xl overflow-hidden border border-white/20 bg-white/10">
+                                    {selected.idCardImageUrl || selected.avatar ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setPreviewImage(resolveFileUrl(selected.idCardImageUrl || selected.avatar))}
+                                            className="rounded-xl overflow-hidden border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
+                                        >
                                             <img
-                                                src={resolveFileUrl(selected.avatar)}
+                                                src={resolveFileUrl(selected.idCardImageUrl || selected.avatar)}
                                                 alt="บัตรประชาชน/ไฟล์แนบ"
                                                 className="w-full object-cover"
                                             />
-                                        </div>
-                                    )}
+                                        </button>
+                                    ) : null}
 
                                     <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
                                         <div className="flex items-center gap-2 text-white font-semibold">
@@ -793,6 +812,32 @@ export default function SoldierDashboard() {
                 </div>
             </div>
         </div>
+        {previewImage && (
+            <div
+                className="fixed inset-0 z-[70] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+                onClick={() => setPreviewImage(null)}
+            >
+                <div
+                    className="relative bg-white rounded-2xl shadow-2xl overflow-hidden max-w-4xl w-full"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex justify-between items-center px-4 py-2 bg-blue-900 text-white text-sm font-semibold">
+                        <span>รูปบัตรประชาชน</span>
+                        <button
+                            type="button"
+                            className="rounded-full bg-white/15 hover:bg-white/25 px-3 py-1 text-xs"
+                            onClick={() => setPreviewImage(null)}
+                        >
+                            ปิด
+                        </button>
+                    </div>
+                    <div className="bg-black flex items-center justify-center">
+                        <img src={previewImage} alt="id card" className="max-h-[75vh] max-w-[100%] object-contain" />
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
 
