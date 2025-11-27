@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 
@@ -11,15 +11,100 @@ const formatDate = (value) => {
 export default function Library() {
   const CACHE_KEY = "libraryCache";
   const CACHE_TTL_MS = 15 * 60 * 1000;
+  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+  const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || "https://api.pargorn.com").replace(/\/$/, "");
+  const createInitialForm = useCallback(
+    () => ({ id: null, title: "", description: "", category: "", fileUrl: "", coverUrl: "", isActive: true }),
+    []
+  );
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: 24, total: 0, totalPages: 1 });
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ id: null, title: "", description: "", category: "", fileUrl: "", coverUrl: "", isActive: true });
+  const [form, setForm] = useState(() => createInitialForm());
+  const [fileToUpload, setFileToUpload] = useState(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const fileInputRef = useRef(null);
+
+  const normalizeUrl = useCallback(
+    (url) => {
+      if (!url) return "";
+      if (/^https?:\/\//i.test(url)) return url;
+      if (url.startsWith("/")) return `${API_BASE_URL}${url}`;
+      return `${API_BASE_URL}/${url}`;
+    },
+    [API_BASE_URL]
+  );
+
+  const isPdf = (url) => /\.pdf($|[?#])/i.test(url || "");
+
+  const PdfPreview = ({ url, className }) => {
+    const [thumb, setThumb] = useState("");
+    const [failed, setFailed] = useState(false);
+
+    useEffect(() => {
+      let cancelled = false;
+      if (!url) return undefined;
+      (async () => {
+        try {
+          setFailed(false);
+          const pdfjs = await import("pdfjs-dist/legacy/build/pdf");
+          const workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+          if (pdfjs.GlobalWorkerOptions?.workerSrc !== workerSrc) {
+            pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+          }
+          const loadingTask = pdfjs.getDocument({ url });
+          const pdf = await loadingTask.promise;
+          const page = await pdf.getPage(1);
+          const viewport = page.getViewport({ scale: 1 });
+          const targetHeight = 180;
+          const scale = Math.min(1.5, Math.max(0.5, targetHeight / viewport.height || 1));
+          const scaledViewport = page.getViewport({ scale });
+
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          canvas.width = scaledViewport.width;
+          canvas.height = scaledViewport.height;
+          await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          if (!cancelled) setThumb(dataUrl);
+        } catch (err) {
+          console.error("PDF thumbnail error", err);
+          if (!cancelled) setFailed(true);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [url]);
+
+    return thumb ? (
+      <div className={`relative overflow-hidden ${className}`}>
+        <img src={thumb} alt="ตัวอย่าง PDF" className="w-full h-full object-cover" loading="lazy" />
+        <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5" />
+      </div>
+    ) : (
+      <div className={`relative overflow-hidden bg-gray-100 ${className}`}>
+        {!failed ? (
+          <div className="flex h-full w-full items-center justify-center text-xs text-gray-400 animate-pulse">กำลังโหลด</div>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">ไม่มีปก</div>
+        )}
+      </div>
+    );
+  };
+
+  const normalizeItem = useCallback(
+    (item) => ({
+      ...item,
+      fileUrl: normalizeUrl(item?.fileUrl),
+      coverUrl: normalizeUrl(item?.coverUrl),
+    }),
+    [normalizeUrl]
+  );
 
   const role = (localStorage.getItem("role") || "").toUpperCase();
   const isAdminOwner = role === "ADMIN" || role === "OWNER";
@@ -70,7 +155,7 @@ export default function Library() {
           Date.now() - cached.timestamp < CACHE_TTL_MS &&
           cached.includeInactive === Boolean(includeInactive);
         if (isValid) {
-          setItems(Array.isArray(cached.items) ? cached.items : []);
+          setItems(Array.isArray(cached.items) ? cached.items.map(normalizeItem) : []);
           setPageInfo((prev) => ({
             page: cached.pageInfo?.page ?? prev.page,
             pageSize: cached.pageInfo?.pageSize ?? prev.pageSize,
@@ -94,7 +179,8 @@ export default function Library() {
         },
       });
       const payload = res.data?.data ?? res.data?.items ?? res.data ?? [];
-      setItems(Array.isArray(payload) ? payload : []);
+      const normalized = Array.isArray(payload) ? payload.map(normalizeItem) : [];
+      setItems(normalized);
       const nextPageInfo = {
         page: res.data?.page ?? pageInfo.page,
         pageSize: res.data?.pageSize ?? pageInfo.pageSize,
@@ -104,17 +190,17 @@ export default function Library() {
       setPageInfo(nextPageInfo);
 
       try {
-        localStorage.setItem(
-          CACHE_KEY,
-          JSON.stringify({
-            timestamp: Date.now(),
-            includeInactive: Boolean(includeInactive),
-            items: Array.isArray(payload) ? payload : [],
-            pageInfo: nextPageInfo,
-          })
-        );
-      } catch {
-        // ignore cache write errors
+            localStorage.setItem(
+              CACHE_KEY,
+              JSON.stringify({
+                timestamp: Date.now(),
+                includeInactive: Boolean(includeInactive),
+                items: normalized,
+                pageInfo: nextPageInfo,
+              })
+            );
+          } catch {
+            // ignore cache write errors
       }
     } catch (err) {
       setError(err?.response?.data?.message || "ไม่สามารถโหลดรายการห้องสมุดได้");
@@ -122,7 +208,7 @@ export default function Library() {
     } finally {
       setLoading(false);
     }
-  }, [CACHE_TTL_MS, isAdminOwner, pageInfo.page, pageInfo.pageSize, pageInfo.totalPages]);
+  }, [CACHE_TTL_MS, isAdminOwner, pageInfo.page, pageInfo.pageSize, pageInfo.totalPages, normalizeItem]);
 
   useEffect(() => {
     fetchLibrary();
@@ -140,15 +226,19 @@ export default function Library() {
         isActive: item.isActive !== false,
       });
     } else {
-      setForm({ id: null, title: "", description: "", category: "", fileUrl: "", coverUrl: "", isActive: true });
+      setForm(createInitialForm());
     }
+    setFileToUpload(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setModalOpen(true);
   };
 
   const closeModal = () => {
     if (saving) return;
     setModalOpen(false);
-    setForm({ id: null, title: "", description: "", category: "", fileUrl: "", coverUrl: "", isActive: true });
+    setForm(createInitialForm());
+    setFileToUpload(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleChange = (e) => {
@@ -156,32 +246,64 @@ export default function Library() {
     setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setFileToUpload(null);
+      return;
+    }
+    const allowedMime = ["application/pdf", "application/epub+zip"];
+    const allowedExt = /\.(pdf|epub)$/i.test(file.name);
+    const mimeOk = allowedMime.includes(file.type) || allowedExt;
+    if (!mimeOk) {
+      Swal.fire({ icon: "warning", title: "อัปโหลดได้เฉพาะไฟล์ PDF หรือ EPUB" });
+      e.target.value = "";
+      setFileToUpload(null);
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      Swal.fire({ icon: "warning", title: "ไฟล์ใหญ่เกิน 100MB", text: "กรุณาเลือกไฟล์ที่มีขนาดไม่เกิน 100MB" });
+      e.target.value = "";
+      setFileToUpload(null);
+      return;
+    }
+    setFileToUpload(file);
+  };
+
   const handleSave = async () => {
     if (!form.title.trim()) {
       Swal.fire({ icon: "warning", title: "กรุณาระบุชื่อหนังสือ/เอกสาร" });
       return;
     }
-    const payload = {
-      title: form.title,
-      description: form.description,
-      category: form.category,
-      fileUrl: form.fileUrl,
-      coverUrl: form.coverUrl,
-      isActive: Boolean(form.isActive),
-    };
     const token = localStorage.getItem("token");
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const formData = new FormData();
+    const appendIfValue = (key, value) => {
+      const processed = typeof value === "string" ? value.trim() : value;
+      if (processed !== undefined && processed !== null) {
+        formData.append(key, processed);
+      }
+    };
+    formData.append("title", form.title.trim());
+    appendIfValue("description", form.description);
+    appendIfValue("category", form.category);
+    appendIfValue("coverUrl", form.coverUrl);
+    formData.append("isActive", form.isActive ? "true" : "false");
+    if (fileToUpload) {
+      formData.append("file", fileToUpload);
+    }
     setSaving(true);
     try {
+      const url = form.id ? `/api/library/${form.id}` : "/api/library";
+      const method = form.id ? "put" : "post";
+      const res = await axios[method](url, formData, { headers });
       if (form.id) {
-        const res = await axios.put(`/api/library/${form.id}`, payload, { headers });
-        const updated = res.data?.item ?? res.data?.data ?? res.data ?? { ...payload, id: form.id };
+        const updated = normalizeItem(res.data?.item ?? res.data?.data ?? res.data ?? { ...form, id: form.id });
         setItems((prev) => prev.map((it) => (it.id === form.id ? { ...it, ...updated } : it)));
         localStorage.removeItem(CACHE_KEY);
         Swal.fire({ icon: "success", title: "อัปเดตสำเร็จ", timer: 1400, showConfirmButton: false });
       } else {
-        const res = await axios.post("/api/library", payload, { headers });
-        const created = res.data?.item ?? res.data?.data ?? res.data ?? { ...payload, id: Date.now().toString() };
+        const created = normalizeItem(res.data?.item ?? res.data?.data ?? res.data ?? { ...form, id: Date.now().toString() });
         setItems((prev) => [created, ...prev]);
         localStorage.removeItem(CACHE_KEY);
         Swal.fire({ icon: "success", title: "เพิ่มรายการสำเร็จ", timer: 1400, showConfirmButton: false });
@@ -210,7 +332,7 @@ export default function Library() {
     const token = localStorage.getItem("token");
     try {
       await axios.delete(`/api/library/${id}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      setItems((prev) => prev.filter((it) => it.id !== id));
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, isActive: false } : it)));
       localStorage.removeItem(CACHE_KEY);
       Swal.fire({ icon: "success", title: "ลบสำเร็จ", timer: 1200, showConfirmButton: false });
       fetchLibrary();
@@ -270,6 +392,8 @@ export default function Library() {
                 <div className="w-full h-24 rounded-2xl bg-blue-50 border border-blue-100 overflow-hidden">
                   {latestItem?.coverUrl ? (
                     <img src={latestItem.coverUrl} alt={latestItem.title} className="w-full h-full object-cover" />
+                  ) : latestItem?.fileUrl && isPdf(latestItem.fileUrl) ? (
+                    <PdfPreview url={latestItem.fileUrl} className="w-full h-full" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-xs text-blue-400">No cover</div>
                   )}
@@ -375,6 +499,8 @@ export default function Library() {
                       <div className="h-full w-full animate-pulse bg-gray-200" />
                     ) : doc?.coverUrl ? (
                       <img src={doc.coverUrl} alt={doc.title} className="h-full w-full object-cover" />
+                    ) : doc?.fileUrl && isPdf(doc.fileUrl) ? (
+                      <PdfPreview url={doc.fileUrl} className="h-full w-full" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-xs text-gray-400">ไม่มีปก</div>
                     )}
@@ -483,27 +609,51 @@ export default function Library() {
                   className="border rounded-xl px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
                 />
               </label>
+              {form.fileUrl && (
+                <div className="flex flex-col gap-1 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500">ไฟล์ปัจจุบัน:</span>
+                    <a
+                      href={form.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate text-blue-700 underline decoration-blue-300 underline-offset-4"
+                    >
+                      {form.fileUrl.split("/").pop() || form.fileUrl}
+                    </a>
+                  </div>
+                  <span className="text-[11px] text-gray-500">การอัปโหลดไฟล์ใหม่จะทับไฟล์เดิม (/uploads/library/...)</span>
+                </div>
+              )}
               <label className="flex flex-col text-sm text-gray-700">
-                ลิงก์ไฟล์ (URL)
-                <input
-                  type="text"
-                  name="fileUrl"
-                  value={form.fileUrl}
-                  onChange={handleChange}
-                  className="border rounded-xl px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
-                  placeholder="https://..."
-                />
-              </label>
-              <label className="flex flex-col text-sm text-gray-700">
-                ปกหนังสือ (รูปภาพ URL)
-                <input
-                  type="text"
-                  name="coverUrl"
-                  value={form.coverUrl}
-                  onChange={handleChange}
-                  className="border rounded-xl px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
-                  placeholder="https://..."
-                />
+                ไฟล์หนังสือ (PDF/EPUB ไม่เกิน 100MB)
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 mt-1">
+                  <input
+                    type="file"
+                    accept=".pdf,.epub,application/pdf,application/epub+zip"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="border rounded-xl px-3 py-2 w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                  />
+                  {fileToUpload ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                      <span className="truncate max-w-[200px] sm:max-w-[260px]">ไฟล์ที่เลือก: {fileToUpload.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFileToUpload(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        className="px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      >
+                        ล้างไฟล์
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500">ถ้าไม่เลือกไฟล์ใหม่ ระบบจะใช้ไฟล์เดิม (หรือยังไม่มีไฟล์)</p>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">รองรับการแนบไฟล์ และระบบจะสร้างลิงก์ให้เอง</p>
               </label>
               <label className="flex flex-col text-sm text-gray-700">
                 คำอธิบาย
