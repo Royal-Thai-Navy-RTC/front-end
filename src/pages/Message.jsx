@@ -322,12 +322,12 @@ export default function Message() {
           <div className="flex items-center gap-2 text-xs text-gray-500">
             {loading && <span className="text-blue-600">กำลังโหลด...</span>}
             {!loading && error && <span className="text-red-500">{error}</span>}
-            {!loading && !error && (
+            {/* {!loading && !error && (
               <>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">ยังไม่อ่านจะเข้ม</span>
-                <span className="rounded-full bg-gray-50 px-3 py-1 text-gray-600">อ่านแล้วจะจาง</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">ยังไม่อ่าน</span>
+                <span className="rounded-full bg-gray-50 px-3 py-1 text-gray-600">อ่านแล้ว</span>
               </>
-            )}
+            )} */}
             <button
               type="button"
               onClick={fetchNotifications}
