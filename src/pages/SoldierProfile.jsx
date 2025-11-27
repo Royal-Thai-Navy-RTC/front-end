@@ -266,7 +266,8 @@ export default function RegisterSoldier() {
             "foodAllergies",
             "drugAllergies",
             "medicalHistory",
-            "avatar"
+            "avatar",
+            "previousJob"
         ];
 
         const requiredFields = Object.keys(formValues)
@@ -276,7 +277,7 @@ export default function RegisterSoldier() {
             (f) => !`${formValues[f] ?? ""}`.trim()
         );
 
-        const otherFields = ["education", "emergencyName", "previousJob", "religion"];
+        const otherFields = ["education", "emergencyName", "religion"];
         otherFields.forEach((field) => {
             const val = getValueWithOther(field)?.trim();
             if (!val) missing.push(field);
