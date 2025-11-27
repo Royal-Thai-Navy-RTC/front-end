@@ -136,7 +136,7 @@ export default function LayoutMain() {
 
   const fetchMessage = async () => {
     const token = localStorage.getItem("token");
-    const apiPath = `${user.role === "OWNER" ? "owner" : "teacher"}/notifications`;
+    const apiPath = `${user.role === "OWNER" ? "owner" : "teacher"}/notifications?page=1&pageSize=10`;
 
     try {
       const response = await axios.get(`/api/${apiPath}`, {
