@@ -150,7 +150,8 @@ export default function LayoutMain() {
   };
 
   useEffect(() => {
-    if (user.role === "ADMIN") return;
+    const token = localStorage.getItem("token");
+    if (user.role === "ADMIN" || !token) return;
 
     const interval = setInterval(() => {
       fetchMessage();
