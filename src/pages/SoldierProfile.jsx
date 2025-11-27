@@ -37,6 +37,8 @@ const initialFormValues = {
 };
 
 export default function RegisterSoldier() {
+    // ตรวจสอบมือถือ
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     // outlet context can provide options for selects (education, religion)
     const { religionOptions = [], educationOptions = [], relationOptions = [], bloodOptions = [] } = useOutletContext() ?? {};
 
@@ -482,8 +484,14 @@ export default function RegisterSoldier() {
                             }
                         </div>
 
-
-                        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarSelect} className="hidden" />
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture={isMobile ? "environment" : undefined}
+                            onChange={handleAvatarSelect}
+                            className="hidden"
+                        />
 
                         <div className="w-full grid grid-cols-2 gap-3">
                             <button
@@ -500,7 +508,7 @@ export default function RegisterSoldier() {
                                 className="py-2 rounded-xl bg-green-600 text-white hover:bg-green-700"
                                 onClick={() => fileInputRef.current?.click()}
                             >
-                                เลือกรูป
+                                {isMobile ? "ถ่ายรูป" : "เลือกรูป"}
                             </button>
                         </div>
                     </div>
