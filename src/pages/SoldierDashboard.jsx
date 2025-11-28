@@ -247,6 +247,7 @@ export default function SoldierDashboard() {
     const [deleting, setDeleting] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
     const [exporting, setExporting] = useState(false);
+    const [exportingPdf, setExportingPdf] = useState(false);
 
     const token = useMemo(() => localStorage.getItem("token"), []);
     const currentRole = (user?.role || "").toString().toUpperCase();
@@ -407,22 +408,26 @@ export default function SoldierDashboard() {
         return Number.isNaN(months) ? null : months;
     };
 
+    const fetchAllIntakes = async () => {
+        const res = await axios.get("/api/admin/soldier-intakes", {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            params: {
+                page: 1,
+                pageSize: 10000,
+                search: search.trim() || undefined,
+            },
+        });
+        const normalized = extractIntakes(res.data).map(normalizeIntake);
+        return normalized.filter((item) => {
+            if (!provinceFilter) return true;
+            return `${item.province ?? ""}` === `${provinceFilter}`;
+        });
+    };
+
     const handleExport = async () => {
         setExporting(true);
         try {
-            const res = await axios.get("/api/admin/soldier-intakes", {
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                params: {
-                    page: 1,
-                    pageSize: 10000,
-                    search: search.trim() || undefined,
-                },
-            });
-            const normalized = extractIntakes(res.data).map(normalizeIntake);
-            const filtered = normalized.filter((item) => {
-                if (!provinceFilter) return true;
-                return `${item.province ?? ""}` === `${provinceFilter}`;
-            });
+            const filtered = await fetchAllIntakes();
             if (!filtered.length) {
                 Swal.fire({ icon: "info", title: "ไม่มีข้อมูล", text: "ไม่พบข้อมูลทหารใหม่สำหรับส่งออก" });
                 return;
@@ -492,6 +497,104 @@ export default function SoldierDashboard() {
             });
         } finally {
             setExporting(false);
+        }
+    };
+
+    const handleExportPdf = async () => {
+        setExportingPdf(true);
+        try {
+            const filtered = await fetchAllIntakes();
+            if (!filtered.length) {
+                Swal.fire({ icon: "info", title: "ไม่มีข้อมูล", text: "ไม่พบข้อมูลทหารใหม่สำหรับส่งออก" });
+                return;
+            }
+
+            const rowsHtml = filtered
+                .map((item, idx) => {
+                    const { provinceName, districtName, subdistrictName } = resolveLocationNames(item);
+                    const months = getServiceMonths(item);
+                    const created = item.createdAt ? new Date(item.createdAt).toLocaleString("th-TH") : "-";
+                    return `
+                        <tr>
+                            <td>${idx + 1}</td>
+                            <td>${(item.firstName || "") + " " + (item.lastName || "")}</td>
+                            <td>${item.citizenId || "-"}</td>
+                            <td>${item.phone || "-"}</td>
+                            <td>${item.education || "-"}</td>
+                            <td>${item.religion || "-"}</td>
+                            <td>${months ?? "-"}</td>
+                            <td>${provinceName || item.province || "-"}</td>
+                            <td>${districtName || item.district || "-"}</td>
+                            <td>${subdistrictName || item.subdistrict || "-"}</td>
+                            <td>${item.emergencyName || "-"}</td>
+                            <td>${item.emergencyPhone || "-"}</td>
+                            <td>${created}</td>
+                        </tr>
+                    `;
+                })
+                .join("");
+
+            const html = `
+                <html>
+                    <head>
+                        <meta charSet="utf-8" />
+                        <title>Export PDF</title>
+                        <style>
+                            body { font-family: "Sarabun", "Noto Sans Thai", sans-serif; padding: 16px; color: #0f172a; }
+                            h1 { margin-bottom: 12px; }
+                            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                            th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+                            th { background: #e2e8f0; }
+                            tr:nth-child(even) td { background: #f8fafc; }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>ข้อมูลทหารใหม่</h1>
+                        <p>รวม ${filtered.length} รายการ | สร้างเมื่อ ${new Date().toLocaleString("th-TH")}</p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>ชื่อ-สกุล</th>
+                                    <th>เลขบัตรประชาชน</th>
+                                    <th>เบอร์โทร</th>
+                                    <th>การศึกษา</th>
+                                    <th>ศาสนา</th>
+                                    <th>อายุราชการ(เดือน)</th>
+                                    <th>จังหวัด</th>
+                                    <th>อำเภอ</th>
+                                    <th>ตำบล</th>
+                                    <th>ติดต่อฉุกเฉิน</th>
+                                    <th>เบอร์ติดต่อฉุกเฉิน</th>
+                                    <th>วันที่สร้าง</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rowsHtml}</tbody>
+                        </table>
+                    </body>
+                </html>
+            `;
+
+            const printWindow = window.open("", "_blank");
+            if (!printWindow) {
+                Swal.fire({ icon: "error", title: "ส่งออกไม่สำเร็จ", text: "เบราว์เซอร์บล็อกหน้าต่างใหม่" });
+                return;
+            }
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            setTimeout(() => {
+                printWindow.close();
+            }, 300);
+        } catch (error) {
+            Swal.fire({
+                icon: "error",
+                title: "ส่งออก PDF ไม่สำเร็จ",
+                text: error?.response?.data?.message || error?.message || "เกิดข้อผิดพลาด",
+            });
+        } finally {
+            setExportingPdf(false);
         }
     };
 
@@ -764,6 +867,15 @@ export default function SoldierDashboard() {
                         >
                             <Download className={`w-4 h-4 ${exporting ? "animate-bounce" : ""}`} />
                             {exporting ? "กำลังส่งออก..." : "ส่งออก Excel"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleExportPdf}
+                            disabled={exportingPdf || loading}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow hover:bg-amber-600 disabled:opacity-60"
+                        >
+                            <Download className={`w-4 h-4 ${exportingPdf ? "animate-bounce" : ""}`} />
+                            {exportingPdf ? "กำลังส่งออก..." : "ส่งออก PDF"}
                         </button>
                     </div>
 
