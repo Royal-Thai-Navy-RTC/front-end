@@ -204,7 +204,7 @@ export default function SoldierDashboard() {
     const { user } = useOutletContext() ?? {};
     const [loading, setLoading] = useState(false);
     const [intakes, setIntakes] = useState([]);
-    const [summary, setSummary] = useState({ total: 0, sixMonths: 0, oneYear: 0, twoYears: 0 });
+    const [summary, setSummary] = useState({ total: 0, sixMonths: 0, oneYear: 0, twoYears: 0, educationCounts: [] });
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState("");
     const [provinceFilter, setProvinceFilter] = useState("");
@@ -306,6 +306,7 @@ export default function SoldierDashboard() {
                     sixMonths: data.sixMonths ?? 0,
                     oneYear: data.oneYear ?? 0,
                     twoYears: data.twoYears ?? 0,
+                    educationCounts: Array.isArray(data.educationCounts) ? data.educationCounts : [],
                 });
             } catch (error) {
                 // เงียบไว้เพื่อไม่รบกวน UX ของหน้าสรุป
@@ -339,6 +340,11 @@ export default function SoldierDashboard() {
             contactReady,
         };
     }, [intakes, summary]);
+
+    const educationCounts = useMemo(
+        () => (Array.isArray(summary.educationCounts) ? summary.educationCounts : []),
+        [summary.educationCounts],
+    );
 
     const handlePageChange = (next) => {
         if (next < 1 || next > pageMeta.totalPages) return;
@@ -513,6 +519,29 @@ export default function SoldierDashboard() {
                         <SummaryCard icon={ClipboardList} label="6 เดือน" value={stats.sixMonthCount} accent="from-emerald-500/90 to-emerald-400/90" />
                         <SummaryCard icon={Activity} label="1 ปี" value={stats.oneYearCount} accent="from-indigo-500/90 to-indigo-400/90" />
                         <SummaryCard icon={ShieldCheck} label="2 ปี" value={stats.twoYearCount} accent="from-amber-500/90 to-amber-400/90" />
+                    </div>
+                    <div className="relative px-6 pb-6 sm:px-8">
+                        <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur p-4 shadow-lg space-y-3">
+                            <div className="flex items-center justify-between text-white">
+                                <div className="text-sm font-semibold">การศึกษาทหารใหม่</div>
+                                <span className="text-xs text-white/80">แยกตามวุฒิการศึกษา</span>
+                            </div>
+                            {educationCounts.length ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                    {educationCounts.map((item) => (
+                                        <div
+                                            key={item.value || item.label}
+                                            className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 flex items-center justify-between shadow"
+                                        >
+                                            <span className="text-sm font-medium">{item.label || item.value || "ไม่ระบุ"}</span>
+                                            <span className="text-2xl font-bold">{item.count ?? 0}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-white/80">ยังไม่มีข้อมูลวุฒิการศึกษา</p>
+                            )}
+                        </div>
                     </div>
                 </section>
 

@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider, redirect } from "react-router-dom";
+import { useEffect, useState } from "react";
 import './index.css';
 import LayoutMain from './layout/LayoutMain';
 import Home from './pages/Home';
@@ -24,6 +25,36 @@ import Library from "./pages/Library";
 import ManageSoldier from "./pages/ManageSoldier";
 import Message from "./pages/Message";
 import SoldierDashboard from "./pages/SoldierDashboard";
+
+const normalizeRole = (role = "") => role.toUpperCase();
+
+const getStoredRole = () => {
+    try {
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const roleFromUser = normalizeRole(storedUser.role || "");
+        if (roleFromUser) return roleFromUser;
+    } catch {
+        // ignore parsing errors
+    }
+    return normalizeRole(localStorage.getItem("role") || "guest");
+};
+
+function SoldierProfileLayoutSwitcher() {
+    const [role, setRole] = useState(getStoredRole);
+
+    useEffect(() => {
+        const syncRole = () => setRole(getStoredRole());
+        window.addEventListener("storage", syncRole);
+        window.addEventListener("auth-change", syncRole);
+        return () => {
+            window.removeEventListener("storage", syncRole);
+            window.removeEventListener("auth-change", syncRole);
+        };
+    }, []);
+
+    const isAdminOrOwner = ["ADMIN", "OWNER"].includes(role);
+    return isAdminOrOwner ? <LayoutMain /> : <LayoutSoilder />;
+}
 
 const router = createBrowserRouter([
     { path: "", loader: () => redirect('home') },
@@ -151,7 +182,7 @@ const router = createBrowserRouter([
         ]
     },
     {
-        path: "", element: <LayoutSoilder />, children: [
+        path: "", element: <SoldierProfileLayoutSwitcher />, children: [
             { path: "soilderprofile", element: <SoilderProfile /> },
         ]
     }

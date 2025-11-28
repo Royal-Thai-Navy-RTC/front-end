@@ -8,10 +8,10 @@ export default defineConfig({
   build: { outDir: "./dist" },
   plugins: [react(), tailwindcss()],
   server: {
-    allowedHosts: ["rtcas.pargorn.com"],
+    allowedHosts: ["api.rtcas.in.th", "rtcas.in.th", "www.rtcas.in.th"],
     proxy: {
       "/api": {
-        // target: "http://localhost:3000/api/",
+        // target: "https://api.rtcas.in.th/api/",
         target: "https://api.pargorn.com/api/",
         changeOrigin: true,
         secure: false,
