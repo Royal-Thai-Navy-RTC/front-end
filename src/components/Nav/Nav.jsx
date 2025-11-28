@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import {
+  User,
   Mail,
   Bell,
   Loader2,
@@ -126,6 +127,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       { path: "/library", label: "ห้องสมุด", icon: BookOpen, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
       { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
       { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
+      { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", icon: User, roles: ["admin", "owner"] },
       {
         label: "Admin", icon: Settings2, roles: ["admin", "owner"], children: [
           { path: "/manage", label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"] },
