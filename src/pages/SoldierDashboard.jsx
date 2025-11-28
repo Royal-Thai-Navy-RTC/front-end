@@ -7,6 +7,7 @@ import {
     AlertTriangle,
     BadgeCheck,
     ClipboardList,
+    Download,
     MapPin,
     RefreshCw,
     Search,
@@ -200,23 +201,52 @@ const splitList = (value) =>
         .map((v) => v.trim())
         .filter(Boolean);
 
+const buildCounts = (list = [], key) => {
+    if (!key) return [];
+    const map = new Map();
+    list.forEach((item) => {
+        const raw = item?.[key];
+        const label = (raw && `${raw}`.trim()) || "ไม่ระบุ";
+        const current = map.get(label) || 0;
+        map.set(label, current + 1);
+    });
+    return Array.from(map.entries())
+        .map(([label, count]) => ({ label, value: label, count }))
+        .sort((a, b) => (b.count || 0) - (a.count || 0));
+};
+
+const protectExcelText = (value) => {
+    if (value === undefined || value === null) return "";
+    const text = `${value}`;
+    return `\u200C${text}`;
+};
+
 export default function SoldierDashboard() {
     const { user } = useOutletContext() ?? {};
     const [loading, setLoading] = useState(false);
     const [intakes, setIntakes] = useState([]);
-    const [summary, setSummary] = useState({ total: 0, sixMonths: 0, oneYear: 0, twoYears: 0, educationCounts: [] });
+    const [summary, setSummary] = useState({
+        total: 0,
+        sixMonths: 0,
+        oneYear: 0,
+        twoYears: 0,
+        educationCounts: [],
+        religionCounts: [],
+    });
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState("");
     const [provinceFilter, setProvinceFilter] = useState("");
     const [page, setPage] = useState(1);
     const pageSize = 10;
     const [pageMeta, setPageMeta] = useState({ totalPages: 1, total: 0 });
+    const [chartMetric, setChartMetric] = useState("education");
     const [editing, setEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
     const [editFile, setEditFile] = useState(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
+    const [exporting, setExporting] = useState(false);
 
     const token = useMemo(() => localStorage.getItem("token"), []);
     const currentRole = (user?.role || "").toString().toUpperCase();
@@ -307,6 +337,7 @@ export default function SoldierDashboard() {
                     oneYear: data.oneYear ?? 0,
                     twoYears: data.twoYears ?? 0,
                     educationCounts: Array.isArray(data.educationCounts) ? data.educationCounts : [],
+                    religionCounts: Array.isArray(data.religionCounts) ? data.religionCounts : [],
                 });
             } catch (error) {
                 // เงียบไว้เพื่อไม่รบกวน UX ของหน้าสรุป
@@ -341,10 +372,29 @@ export default function SoldierDashboard() {
         };
     }, [intakes, summary]);
 
-    const educationCounts = useMemo(
-        () => (Array.isArray(summary.educationCounts) ? summary.educationCounts : []),
-        [summary.educationCounts],
-    );
+    const educationCounts = useMemo(() => {
+        const fromSummary = Array.isArray(summary.educationCounts) ? summary.educationCounts : [];
+        if (fromSummary.length) return fromSummary;
+        return buildCounts(intakes, "education");
+    }, [summary.educationCounts, intakes]);
+
+    const religionCounts = useMemo(() => {
+        const fromSummary = Array.isArray(summary.religionCounts) ? summary.religionCounts : [];
+        if (fromSummary.length) return fromSummary;
+        return buildCounts(intakes, "religion");
+    }, [summary.religionCounts, intakes]);
+
+    const activeChartData = chartMetric === "religion" ? religionCounts : educationCounts;
+
+    const maxChartCount = useMemo(() => {
+        const positives = activeChartData
+            .map((i) => Number(i.count) || 0)
+            .filter((n) => n > 0);
+        if (!positives.length) return 0;
+        return Math.max(...positives);
+    }, [activeChartData]);
+
+    const hasChartData = maxChartCount > 0;
 
     const handlePageChange = (next) => {
         if (next < 1 || next > pageMeta.totalPages) return;
@@ -355,6 +405,94 @@ export default function SoldierDashboard() {
         if (!item) return null;
         const months = item.serviceMonths ?? (item.serviceYears !== undefined ? Math.round(item.serviceYears * 12) : null);
         return Number.isNaN(months) ? null : months;
+    };
+
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const res = await axios.get("/api/admin/soldier-intakes", {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                params: {
+                    page: 1,
+                    pageSize: 10000,
+                    search: search.trim() || undefined,
+                },
+            });
+            const normalized = extractIntakes(res.data).map(normalizeIntake);
+            const filtered = normalized.filter((item) => {
+                if (!provinceFilter) return true;
+                return `${item.province ?? ""}` === `${provinceFilter}`;
+            });
+            if (!filtered.length) {
+                Swal.fire({ icon: "info", title: "ไม่มีข้อมูล", text: "ไม่พบข้อมูลทหารใหม่สำหรับส่งออก" });
+                return;
+            }
+            const header = [
+                "ชื่อ",
+                "นามสกุล",
+                "เลขบัตรประชาชน",
+                "เบอร์โทร",
+                "อีเมล",
+                "การศึกษา",
+                "ศาสนา",
+                "อาชีพก่อนเป็นทหาร",
+                "อายุราชการ(เดือน)",
+                "จังหวัด",
+                "อำเภอ",
+                "ตำบล",
+                "ที่อยู่",
+                "รหัสไปรษณีย์",
+                "ติดต่อฉุกเฉิน",
+                "เบอร์ติดต่อฉุกเฉิน",
+                "กรุ๊ปเลือด",
+                "ว่ายน้ำได้",
+                "วันที่สร้าง",
+            ];
+            const rows = filtered.map((item) => {
+                const months = getServiceMonths(item);
+                const { provinceName, districtName, subdistrictName } = resolveLocationNames(item);
+                return [
+                    item.firstName || "",
+                    item.lastName || "",
+                    protectExcelText(item.citizenId || ""),
+                    item.phone || "",
+                    item.email || "",
+                    item.education || "",
+                    item.religion || "",
+                    item.previousJob || "",
+                    months ?? "",
+                    provinceName || item.province || "",
+                    districtName || item.district || "",
+                    subdistrictName || item.subdistrict || "",
+                    item.addressLine || "",
+                    item.postalCode || "",
+                    item.emergencyName || "",
+                    item.emergencyPhone || "",
+                    item.bloodGroup || "",
+                    item.canSwim ? "ใช่" : "ไม่ใช่",
+                    item.createdAt ? new Date(item.createdAt).toLocaleString("th-TH") : "",
+                ];
+            });
+            const csvContent = "\uFEFF" + buildCsv([header, ...rows]);
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `soldier-intakes-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            Swal.fire({ icon: "success", title: "ส่งออกสำเร็จ", text: `จำนวน ${filtered.length} รายการ` });
+        } catch (error) {
+            Swal.fire({
+                icon: "error",
+                title: "ส่งออกไม่สำเร็จ",
+                text: error?.response?.data?.message || error?.message || "เกิดข้อผิดพลาด",
+            });
+        } finally {
+            setExporting(false);
+        }
     };
 
     const handleEditChange = (e) => {
@@ -485,6 +623,22 @@ export default function SoldierDashboard() {
         return pieces.length ? pieces.join(" · ") : "-";
     };
 
+    const resolveLocationNames = (item) => {
+        const subdistrict = item.subdistrict ? subdistrictMap.get(Number(item.subdistrict)) : null;
+        const districtName = subdistrict?.district?.name_th || "";
+        const provinceName = subdistrict?.district?.province?.name_th || "";
+        const subdistrictName = subdistrict?.name_th || "";
+        return { provinceName, districtName, subdistrictName };
+    };
+
+    const formatCsvValue = (value) => {
+        const text = value === undefined || value === null ? "" : `${value}`;
+        const escaped = text.replace(/"/g, '""');
+        return `"${escaped}"`;
+    };
+
+    const buildCsv = (rows) => rows.map((row) => row.map(formatCsvValue).join(",")).join("\r\n");
+
     return (
         <>
         <div className="min-h-screen w-full px-4 py-6 bg-gradient-to-b from-blue-50/50 via-white to-white">
@@ -521,25 +675,56 @@ export default function SoldierDashboard() {
                         <SummaryCard icon={ShieldCheck} label="2 ปี" value={stats.twoYearCount} accent="from-amber-500/90 to-amber-400/90" />
                     </div>
                     <div className="relative px-6 pb-6 sm:px-8">
-                        <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur p-4 shadow-lg space-y-3">
-                            <div className="flex items-center justify-between text-white">
-                                <div className="text-sm font-semibold">การศึกษาทหารใหม่</div>
-                                <span className="text-xs text-white/80">แยกตามวุฒิการศึกษา</span>
+                        <div className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur p-4 shadow-lg space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3 text-white">
+                                <div className="space-y-1">
+                                    <div className="text-sm font-semibold">กราฟข้อมูลส่วนตัว</div>
+                                    <span className="text-xs text-white/80">เปรียบเทียบจำนวนตามหมวดข้อมูล</span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-white/10 rounded-full p-1 text-xs font-semibold">
+                                    <button
+                                        type="button"
+                                        onClick={() => setChartMetric("education")}
+                                        className={`px-3 py-1 rounded-full transition ${
+                                            chartMetric === "education" ? "bg-white text-blue-800 shadow" : "text-white/80 hover:bg-white/10"
+                                        }`}
+                                    >
+                                        การศึกษา
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setChartMetric("religion")}
+                                        className={`px-3 py-1 rounded-full transition ${
+                                            chartMetric === "religion" ? "bg-white text-blue-800 shadow" : "text-white/80 hover:bg-white/10"
+                                        }`}
+                                    >
+                                        ศาสนา
+                                    </button>
+                                </div>
                             </div>
-                            {educationCounts.length ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                    {educationCounts.map((item) => (
-                                        <div
-                                            key={item.value || item.label}
-                                            className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 flex items-center justify-between shadow"
-                                        >
-                                            <span className="text-sm font-medium">{item.label || item.value || "ไม่ระบุ"}</span>
-                                            <span className="text-2xl font-bold">{item.count ?? 0}</span>
-                                        </div>
-                                    ))}
+                            {hasChartData ? (
+                                <div className="space-y-3">
+                                    {activeChartData.map((item) => {
+                                        const count = Number(item.count) || 0;
+                                        const percent = count === 0 ? 0 : Math.min((count / maxChartCount) * 100, 100);
+                                        return (
+                                            <div key={item.value || item.label} className="space-y-2">
+                                                <div className="flex items-center justify-between text-sm text-white">
+                                                    <span className="font-semibold">{item.label || item.value || "ไม่ระบุ"}</span>
+                                                    <span className="text-lg font-bold">{count}</span>
+                                                </div>
+                                                <div className="h-3 rounded-full bg-white/10 overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-sky-200 via-blue-200 to-white shadow-lg transition-all"
+                                                        style={{ width: `${percent}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             ) : (
-                                <p className="text-sm text-white/80">ยังไม่มีข้อมูลวุฒิการศึกษา</p>
+                                <p className="text-sm text-white/80">ยังไม่มีข้อมูลสำหรับกราฟนี้</p>
                             )}
                         </div>
                     </div>
@@ -571,6 +756,15 @@ export default function SoldierDashboard() {
                                 </option>
                             ))}
                         </select>
+                        <button
+                            type="button"
+                            onClick={handleExport}
+                            disabled={exporting || loading}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-60"
+                        >
+                            <Download className={`w-4 h-4 ${exporting ? "animate-bounce" : ""}`} />
+                            {exporting ? "กำลังส่งออก..." : "ส่งออก Excel"}
+                        </button>
                     </div>
 
                     <div className="grid lg:grid-cols-3 gap-4">
