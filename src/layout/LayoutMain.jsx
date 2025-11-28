@@ -103,6 +103,13 @@ export default function LayoutMain() {
   const navigate = useNavigate();
   const [user, setUser] = useState(() => normalizeUser(getStoredUser()));
   const [messages, setMessages] = useState([]);
+  const normalizeMessages = useCallback((payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.data?.items)) return payload.data.items;
+    if (Array.isArray(payload?.items)) return payload.items;
+    return [];
+  }, []);
 
   const handleProfileUpdated = useCallback((updated, options = {}) => {
     const { emitEvent = false } = options;
@@ -166,7 +173,7 @@ export default function LayoutMain() {
   };
 
   // update message
-  const fetchMessage = async () => {
+  const fetchMessage = useCallback(async () => {
     const token = localStorage.getItem("token");
     const apiPath = `${user.role === "OWNER" ? "owner" : "teacher"}/notifications?page=1&pageSize=10`;
 
@@ -174,25 +181,25 @@ export default function LayoutMain() {
       const response = await axios.get(`/api/${apiPath}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // console.log(response.data);
-      const data = response.data?.data;
-      setMessages(data)
+      const data = normalizeMessages(response.data);
+      setMessages(data);
 
     } catch (error) {
       // console.log(error);
     }
-  };
+  }, [normalizeMessages, user.role]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (user.role === "ADMIN" || !token) return;
 
+    fetchMessage();
     const interval = setInterval(() => {
       fetchMessage();
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [user.role]);
+  }, [fetchMessage, user.role]);
 
   // update Role and token
   useEffect(() => {
@@ -219,7 +226,14 @@ export default function LayoutMain() {
   return (
     <div className="relative min-h-screen flex flex-col">
       <img src={bg} className="absolute inset-0 w-full h-full object-cover -z-10" />
-      <Nav user={user} divisionOptions={divisionOptions} rankOptions={rankOptions} religionOptions={religionOptions} onProfileUpdated={handleProfileUpdated} />
+      <Nav
+        user={user}
+        messages={messages}
+        divisionOptions={divisionOptions}
+        rankOptions={rankOptions}
+        religionOptions={religionOptions}
+        onProfileUpdated={handleProfileUpdated}
+      />
       {/* ส่วนเนื้อหา */}
       <div className="flex flex-col flex-grow items-center p-2 px-5 mb-5">
         {/* <Outlet /> */}

@@ -58,7 +58,14 @@ const PASSWORD_FORM_DEFAULT = {
 const getErrorMessage = (error, fallback = "เกิดข้อผิดพลาด กรุณาลองใหม่") => error?.response?.data?.message || error?.message || fallback;
 
 /* --- MAIN COMPONENT --- */
-export default function Nav({ user = { role: "guest" }, onProfileUpdated = () => { }, rankOptions, divisionOptions, religionOptions }) {
+export default function Nav({
+  user = { role: "guest" },
+  messages = [],
+  onProfileUpdated = () => { },
+  rankOptions,
+  divisionOptions,
+  religionOptions,
+}) {
   const profileSections = [
     {
       title: "ข้อมูลพื้นฐาน", fields: [
@@ -116,6 +123,10 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
 
   const role = (user?.role || "guest").toLowerCase();
   const isAuthenticated = role !== "guest";
+  const hasUnreadMessage = useMemo(
+    () => Array.isArray(messages) && messages.some((m) => (m?.status || "").toLowerCase() === "unread"),
+    [messages]
+  );
 
   // console.log(profileModalOpen);
 
@@ -301,9 +312,14 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                   <button
                     ref={avatarButtonRef}
                     onClick={() => setProfileMenuOpen(prev => !prev)}
-                    className="flex items-center gap-2 rounded-full border border-gray-200 p-1 hover:bg-gray-50"
+                    className="relative flex items-center gap-2 rounded-full border border-gray-200 p-1 hover:bg-gray-50"
                   >
-                    <img src={`${resolveAvatarUrl(user.avatar)}?v=${avatarVersion}`} className="w-9 h-9 rounded-full object-cover" />
+                    <div className="relative">
+                      <img src={`${resolveAvatarUrl(user.avatar)}?v=${avatarVersion}`} className="w-9 h-9 rounded-full object-cover" />
+                      {hasUnreadMessage && (
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" aria-label="มีข้อความใหม่" />
+                      )}
+                    </div>
                     <ChevronDownIcon open={profileMenuOpen} />
                   </button>
 
@@ -318,8 +334,14 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                         <UserRoundPen size={16} /> แก้ไขข้อมูลส่วนตัว
                       </button>
 
-                      <Link onClick={() => setProfileMenuOpen(prev => !prev)} to="/message" className="px-3 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2">
-                        <Mail size={16} /> ข้อความ
+                      <Link
+                        onClick={() => setProfileMenuOpen(prev => !prev)}
+                        to="/message"
+                        className="px-3 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2 relative"
+                      >
+                        <Mail size={16} />
+                        ข้อความ
+                        {hasUnreadMessage && <span className="absolute right-3 top-2 h-2 w-2 rounded-full bg-red-500" aria-label="มีข้อความใหม่" />}
                       </Link>
 
                       <button onClick={handleLogout} className="px-3 py-2 rounded-xl hover:bg-red-50 text-red-600 flex items-center gap-2">
@@ -380,6 +402,16 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
                 </div>
               )
             )}
+
+            <Link
+              to="/message"
+              className="w-11/12 py-3 text-gray-700 flex items-center gap-2 justify-center rounded-xl hover:bg-blue-50 relative"
+              onClick={() => setMenuOpen(false)}
+            >
+              <Mail size={16} />
+              ข้อความ
+              {hasUnreadMessage && <span className="absolute right-4 top-3 h-2 w-2 rounded-full bg-red-500" aria-label="มีข้อความใหม่" />}
+            </Link>
 
             <button onClick={openProfileModal} className="w-11/12 border border-blue-100 py-3 rounded-xl text-gray-800 hover:bg-blue-50">แก้ไขข้อมูลส่วนตัว</button>
             <button onClick={handleLogout} className="w-11/12 bg-red-600 text-white py-3 rounded-xl">ออกจากระบบ</button>
