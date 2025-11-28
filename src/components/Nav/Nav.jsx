@@ -87,9 +87,9 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
         { name: "position", label: "ตำแหน่ง/หน้าที่", type: "text" },
         { name: "division", label: "หมวดวิชา", type: "select", option: divisionOptions },
         { name: "religion", label: "ศาสนา", type: "select", option: religionOptions },
-        { name: "specialSkills", label: "ความสามารถพิเศษ", type: "input", placeholder:"ระบุ เช่น ว่ายน้ำ, ภาษาอังกฤษ" },
-        { name: "secondaryOccupation", label: "อาชีพเสริม", type: "input", placeholder:"" },
-        { name: "notes", label: "หมายเหตุเพิ่มเติม", type: "textarea",placeholder:"..." },
+        { name: "specialSkills", label: "ความสามารถพิเศษ", type: "input", placeholder: "ระบุ เช่น ว่ายน้ำ, ภาษาอังกฤษ" },
+        { name: "secondaryOccupation", label: "อาชีพเสริม", type: "input", placeholder: "" },
+        { name: "notes", label: "หมายเหตุเพิ่มเติม", type: "textarea", placeholder: "..." },
       ],
     },
   ];
@@ -127,12 +127,12 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
       { path: "/library", label: "ห้องสมุด", icon: BookOpen, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
       { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
       { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
-      { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", icon: User, roles: ["admin", "owner"] },
       {
         label: "Admin", icon: Settings2, roles: ["admin", "owner"], children: [
           { path: "/manage", label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"] },
-          { path: "/soldiers", label: "Dashboard ทหารใหม่", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
+          { path: "/soldiers", label: "Dashboard ทหารใหม่", icon: ClipboardList, roles: ["admin", "owner"] },
+          { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", icon: User, roles: ["admin", "owner"] },
           // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
       },
@@ -242,7 +242,7 @@ export default function Nav({ user = { role: "guest" }, onProfileUpdated = () =>
   };
 
   // console.log(resolveAvatarUrl(user.avatar));
-  
+
 
   /* ------------------------------------------------------------
       JSX START
