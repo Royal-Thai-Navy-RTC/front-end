@@ -4,6 +4,7 @@ import { IoMdEye, IoIosEyeOff } from "react-icons/io";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
+import logoNavy from "../assets/logo-navy.jpg"
 
 const parseJwt = (token) => {
     try {
@@ -86,10 +87,11 @@ export default function Login() {
     return (
         <div className="flex flex-col flex-grow items-center justify-center w-full">
             <div className='flex flex-col p-3 px-5 bg-white rounded-3xl w-[20rem] sm:w-[25rem] shadow-2xl gap-3 items-center justify-center'>
-                <img src={logo} className='size-30' />
+                <img src={logoNavy} className='w-30' />
                 <div className="flex flex-col justify-center text-center text-xl">
-                    <p className='font-sarabun-bold'>ศูนย์ฝึกทหารใหม่ กรมยุทธศึกษาทหารเรือ</p>
-                    <p className="">เข้าสู่ระบบ</p>
+                    <p className='text-blue-800 font-bold text-2xl'>Recruit Training Center <br/>Academic System</p>
+                    {/* <p className='font-sarabun-bold'>ศูนย์ฝึกทหารใหม่ กรมยุทธศึกษาทหารเรือ</p> */}
+                    {/* <p className="">Login</p> */}
                 </div>
 
                 <div className='flex flex-col gap-2 w-full'>
@@ -117,7 +119,7 @@ export default function Login() {
                     onClick={handleLogin}
                     className={`bg-blue-900 text-white text-xl w-full p-3 rounded-2xl ${loading ? "opacity-70 cursor-not-allowed" : "hover:opacity-90 hover:cursor-pointer"}`}
                 >
-                    {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+                    {loading ? "Logging in..." : "Login"}
                 </button>
                 <p className="flex gap-3">ยังไม่มีบัญชี? <Link to={"../register"} className=" underline hover:no-underline text-blue-900">สมัครสมาชิก</Link></p>
             </div>
