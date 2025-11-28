@@ -102,6 +102,7 @@ const relationOptions = [
 export default function LayoutMain() {
   const navigate = useNavigate();
   const [user, setUser] = useState(() => normalizeUser(getStoredUser()));
+  const [messages, setMessages] = useState([]);
 
   const handleProfileUpdated = useCallback((updated, options = {}) => {
     const { emitEvent = false } = options;
@@ -164,6 +165,7 @@ export default function LayoutMain() {
     }
   };
 
+  // update message
   const fetchMessage = async () => {
     const token = localStorage.getItem("token");
     const apiPath = `${user.role === "OWNER" ? "owner" : "teacher"}/notifications?page=1&pageSize=10`;
@@ -173,22 +175,24 @@ export default function LayoutMain() {
         headers: { Authorization: `Bearer ${token}` },
       });
       // console.log(response.data);
+      const data = response.data?.data;
+      setMessages(data)
 
     } catch (error) {
       // console.log(error);
     }
   };
 
-  // useEffect(() => {
-  //   const token = localStorage.getItem("token");
-  //   if (user.role === "ADMIN" || !token) return;
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (user.role === "ADMIN" || !token) return;
 
-  //   const interval = setInterval(() => {
-  //     fetchMessage();
-  //   }, 10000);
+    const interval = setInterval(() => {
+      fetchMessage();
+    }, 10000);
 
-  //   return () => clearInterval(interval);
-  // }, [user.role]);
+    return () => clearInterval(interval);
+  }, [user.role]);
 
   // update Role and token
   useEffect(() => {
