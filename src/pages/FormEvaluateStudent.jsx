@@ -34,9 +34,9 @@ export default function FormEvaluateStudent() {
         id: null,
         name: "",
         description: "",
-        templateType: "COMPANY",
-        battalionCount: 4,
-        teacherEvaluatorCount: 2,
+        templateType: "SERVICE",
+        battalionCount: 0,
+        teacherEvaluatorCount: 0,
         sections: [],
     };
 
@@ -122,16 +122,59 @@ export default function FormEvaluateStudent() {
         setOpenForm(true);
     };
 
+    const buildTemplatePayload = (template) => {
+        const sanitizedSections = Array.isArray(template.sections)
+            ? template.sections.map((sec, sIdx) => ({
+                ...sec,
+                sectionOrder: sec.sectionOrder ?? sIdx + 1,
+                questions: Array.isArray(sec.questions)
+                    ? sec.questions.map((q, qIdx) => ({
+                        ...q,
+                        id: q.id ?? qIdx + 1,
+                        questionOrder: q.questionOrder ?? qIdx + 1,
+                        prompt: q.prompt || "",
+                        maxScore: Number(q.maxScore) || 0,
+                    }))
+                    : [],
+            }))
+            : [];
+
+        const payload = {
+            id: template.id ?? null,
+            name: (template.name || "").trim(),
+            description: (template.description || "").trim(),
+            templateType: template.templateType || "SERVICE",
+            battalionCount: template.templateType === "BATTALION" ? Number(template.battalionCount || 0) : undefined,
+            teacherEvaluatorCount: template.templateType === "BATTALION" ? Number(template.teacherEvaluatorCount || 0) : undefined,
+            sections: sanitizedSections,
+        };
+
+        if (!payload.name) {
+            Swal.fire({ icon: "warning", title: "กรุณาระบุชื่อแบบฟอร์ม" });
+            return null;
+        }
+        if (!payload.sections.length) {
+            Swal.fire({ icon: "warning", title: "กรุณาเพิ่มหมวด (Section) อย่างน้อย 1 หมวด" });
+            return null;
+        }
+        return payload;
+    };
+
     /* SAVE TEMPLATE */
     const onSave = async () => {
         const token = localStorage.getItem("token");
         setSaving(true);
 
         try {
+            const payload = buildTemplatePayload(editTemplate);
+            if (!payload) {
+                setSaving(false);
+                return;
+            }
             if (showCreateModal) {
                 const response = await axios.post(
                     `/api/admin/student-evaluation-templates`,
-                    editTemplate,
+                    payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
 
@@ -142,7 +185,7 @@ export default function FormEvaluateStudent() {
             } else {
                 const response = await axios.put(
                     `/api/admin/student-evaluation-templates/${editTemplate.id}`,
-                    editTemplate,
+                    payload,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
 
@@ -213,6 +256,7 @@ export default function FormEvaluateStudent() {
                             <option value="">- ประเภทการประเมิน -</option>
                             <option value="BATTALION">กองพัน</option>
                             <option value="COMPANY">กองร้อย</option>
+                            <option value="SERVICE">ข้าราชการ</option>
                         </select>
 
                         {/* ค้นหาตามชื่อ */}
@@ -250,7 +294,8 @@ export default function FormEvaluateStudent() {
                                     <h3 className="text-xl sm:text-2xl font-bold text-blue-800">{v.name}</h3>
                                     <p className="text-gray-600 text-sm">{v.description}</p>
                                     <p className="text-xs text-blue-700 font-semibold">
-                                        ประเภทฟอร์ม: {v.templateType === "COMPANY" ? "ประเมินกองร้อย" : "ประเมินกองพัน"}
+                                        {/* ประเภทฟอร์ม: {v.templateType === "COMPANY" ? "ประเมินกองร้อย" : "ประเมินกองพัน"} */}
+                                        ประเภทฟอร์ม: {v.templateType === "COMPANY" ? "ประเมินกองร้อย" : v.templateType === "BATTALION" ? "ประเมินกองพัน" : "ประเมินข้าราชการ"}
                                     </p>
                                 </div>
 
@@ -418,10 +463,10 @@ function FormEvaluate({ template, setTemplate }) {
     const updateField = (key, value) => {
         setTemplate(prev => {
             if (key === "templateType") {
-                if (value === "COMPANY") {
+                if (value === "COMPANY" || value === "SERVICE") {
                     const newSections = prev.sections.map(sec => ({
                         ...sec,
-                        questions: sec.questions ?? []
+                        questions: Array.isArray(sec.questions) ? sec.questions : []
                     }));
 
                     return {
@@ -490,7 +535,7 @@ function FormEvaluate({ template, setTemplate }) {
 
     /* ADD QUESTION (Only COMPANY) */
     const addQuestion = (sIdx) => {
-        if (template.templateType !== "COMPANY") return;
+        if (template.templateType === "BATTALION") return;
 
         const newSections = [...template.sections];
 
@@ -529,11 +574,18 @@ function FormEvaluate({ template, setTemplate }) {
                     >
                         <option value="COMPANY">ประเมินกองร้อย</option>
                         <option value="BATTALION">ประเมินกองพัน</option>
+                        <option value="SERVICE">ประเมินข้าราชการ</option>
                     </select>
                 </label> :
                 <div className='flex gap-1 font-bold border-t border-gray-300 pt-2'>
                     <p className=''>แบบฟอร์มประเมิน</p>
-                    <p className='text-blue-800'>{template.templateType == "BATTALION" ? "กองพัน" : "กองร้อย"}</p>
+                    <p className='text-blue-800'>
+                        {template.templateType === "BATTALION"
+                            ? "กองพัน"
+                            : template.templateType === "SERVICE"
+                                ? "ข้าราชการ"
+                                : "กองร้อย"}
+                    </p>
                 </div>
             }
 
