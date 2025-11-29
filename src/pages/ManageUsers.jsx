@@ -731,6 +731,7 @@ const mapUserToForm = (data = {}) => ({
             lastName: createForm.lastName,
             username: createForm.username,
             birthDate: createForm.birthDate,
+            division: createForm.division,
             fullAddress: createForm.fullAddress,
             email: createForm.email,
             phone: createForm.phone,
@@ -741,6 +742,9 @@ const mapUserToForm = (data = {}) => ({
 
         if (!payload.rank) {
             delete payload.rank;
+        }
+        if (!payload.division) {
+            delete payload.division;
         }
 
         if (createForm.role) {
@@ -1037,6 +1041,32 @@ const mapUserToForm = (data = {}) => ({
                                             onChange={handleCreateChange}
                                             className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                         />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-sm">
+                                        <span>หมวดวิชา</span>
+                                        {divisionOptions.length ? (
+                                            <select
+                                                name="division"
+                                                value={createForm.division}
+                                                onChange={handleCreateChange}
+                                                className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                            >
+                                                <option value="">-- เลือกหมวดวิชา --</option>
+                                                {divisionOptions.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                name="division"
+                                                value={createForm.division}
+                                                onChange={handleCreateChange}
+                                                className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                            />
+                                        )}
                                     </label>
                                 </div>
                                 <div className="grid sm:grid-cols-2 gap-3">
