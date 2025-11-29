@@ -414,7 +414,6 @@ export default function OwnerEvaluation() {
       <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-3">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-gray-500">Civil Service Evaluation</p>
             <h1 className="text-2xl font-semibold text-gray-900">ประเมินข้าราชการรายบุคคล</h1>
             <p className="text-sm text-gray-500">เลือกบุคลากรที่ต้องการประเมินจากรายชื่อ แล้วกรอกคะแนนในแบบฟอร์มด้านขวา</p>
           </div>
