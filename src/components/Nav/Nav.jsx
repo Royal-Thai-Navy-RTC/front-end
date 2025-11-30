@@ -123,6 +123,7 @@ export default function Nav({
 
   const role = (user?.role || "guest").toLowerCase();
   const isAuthenticated = role !== "guest";
+  const isGuest = !isAuthenticated;
   const hasUnreadMessage = useMemo(
     () => Array.isArray(messages) && messages.some((m) => (m?.status || "").toLowerCase() === "unread"),
     [messages]
@@ -134,17 +135,16 @@ export default function Nav({
   /* --- PAGES (WITH DROPDOWN SUPPORT) --- */
   const pages = useMemo(
     () => [
-      { path: "/home", label: "หน้าหลัก", icon: Home, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
+      { path: "/home", label: "หน้าหลัก", icon: Home, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
       { path: "/library", label: "ห้องสมุด", icon: BookOpen, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
-      { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
-      { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
+      { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
+      { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner", "guest"] },
       {
         label: "แอดมิน", icon: Settings2, roles: ["admin", "owner"], children: [
           { path: "/manage", label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"] },
           { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", icon: User, roles: ["admin", "owner"] },
-          // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
       },
       {
@@ -166,15 +166,13 @@ export default function Nav({
 
   /* --- FILTER ITEMS BY ROLE --- */
   const visibleItems = useMemo(() => {
-    if (!isAuthenticated) return [];
-
     return pages
       .filter(item => item.roles.includes(role))
       .map(item => item.children
         ? { ...item, children: item.children.filter(c => !c.roles || c.roles.includes(role)) }
         : item
       );
-  }, [role, isAuthenticated, pages]);
+  }, [role, pages]);
 
   /* --- MOBILE DROPDOWN STATE --- */
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -317,7 +315,12 @@ export default function Nav({
                     <div className="relative">
                       <img src={`${resolveAvatarUrl(user.avatar)}?v=${avatarVersion}`} className="w-9 h-9 rounded-full object-cover" />
                       {hasUnreadMessage && (
-                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" aria-label="มีข้อความใหม่" />
+                        <Bell
+                          size={16}
+                          className="absolute -bottom-1 -right-1 text-red-500 fill-red-500"
+                          fill="currentColor"
+                          aria-label="มีข้อความใหม่"
+                        />
                       )}
                     </div>
                     <ChevronDownIcon open={profileMenuOpen} />
@@ -341,7 +344,14 @@ export default function Nav({
                       >
                         <Mail size={16} />
                         ข้อความ
-                        {hasUnreadMessage && <span className="absolute right-3 top-2 h-2 w-2 rounded-full bg-red-500" aria-label="มีข้อความใหม่" />}
+                        {hasUnreadMessage && (
+                          <Bell
+                            size={14}
+                            className="absolute right-2.5 top-1.5 text-red-500 fill-red-500"
+                            fill="currentColor"
+                            aria-label="มีข้อความใหม่"
+                          />
+                        )}
                       </Link>
 
                       <button onClick={handleLogout} className="px-3 py-2 rounded-xl hover:bg-red-50 text-red-600 flex items-center gap-2">
@@ -358,12 +368,21 @@ export default function Nav({
               </button>
             </>
           ) : (
-            <Link to="/login" className="px-4 py-2 bg-blue-800 text-white rounded-xl">Login</Link>
+            <>
+              <div className="hidden md:flex items-center gap-5">
+                {visibleItems.map(item =>
+                  !item.children ? (
+                    renderNavLink(item)
+                  ) : null
+                )}
+              </div>
+              <Link to="/login" className="px-4 py-2 bg-blue-800 text-white rounded-xl">Login</Link>
+            </>
           )}
         </div>
 
         {/* MOBILE MENU */}
-        {isAuthenticated && (
+        {(isAuthenticated || isGuest) && (
           <div className={`md:hidden transition-all duration-500 flex flex-col items-center gap-3 
             bg-white/95 backdrop-blur border border-blue-100 shadow-lg rounded-2xl 
             ${menuOpen ? "max-h-[70vh] py-4 mt-3 overflow-y-auto overscroll-contain" : "max-h-0 py-0 overflow-hidden"}`}>
@@ -403,18 +422,29 @@ export default function Nav({
               )
             )}
 
-            <Link
-              to="/message"
-              className="w-11/12 py-3 text-gray-700 flex items-center gap-2 justify-center rounded-xl hover:bg-blue-50 relative"
-              onClick={() => setMenuOpen(false)}
-            >
-              <Mail size={16} />
-              ข้อความ
-              {hasUnreadMessage && <span className="absolute right-4 top-3 h-2 w-2 rounded-full bg-red-500" aria-label="มีข้อความใหม่" />}
-            </Link>
+            {isAuthenticated && (
+              <>
+                <Link
+                  to="/message"
+                  className="w-11/12 py-3 text-gray-700 flex items-center gap-2 justify-center rounded-xl hover:bg-blue-50 relative"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Mail size={16} />
+                  ข้อความ
+                  {hasUnreadMessage && (
+                    <Bell
+                      size={16}
+                      className="absolute right-4 top-2.5 text-red-500 fill-red-500"
+                      fill="currentColor"
+                      aria-label="มีข้อความใหม่"
+                    />
+                  )}
+                </Link>
 
-            <button onClick={openProfileModal} className="w-11/12 border border-blue-100 py-3 rounded-xl text-gray-800 hover:bg-blue-50">แก้ไขข้อมูลส่วนตัว</button>
-            <button onClick={handleLogout} className="w-11/12 bg-red-600 text-white py-3 rounded-xl">ออกจากระบบ</button>
+                <button onClick={openProfileModal} className="w-11/12 border border-blue-100 py-3 rounded-xl text-gray-800 hover:bg-blue-50">แก้ไขข้อมูลส่วนตัว</button>
+                <button onClick={handleLogout} className="w-11/12 bg-red-600 text-white py-3 rounded-xl">ออกจากระบบ</button>
+              </>
+            )}
           </div>
         )}
       </nav>
