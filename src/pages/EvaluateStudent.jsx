@@ -19,6 +19,7 @@ export default function EvaluateStudent() {
   const [listEvaluate, setListEvaluate] = useState([]);
   const [formEvaluate, setFormEvaluate] = useState(null);
   const [evaluationDate, setEvaluationDate] = useState("");
+  const [evaluationRound, setEvaluationRound] = useState("");
   const [summary, setSummary] = useState("");
   const [overallScore, setOverallScore] = useState("");
   const [saving, setSaving] = useState(false);
@@ -26,6 +27,16 @@ export default function EvaluateStudent() {
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: 2 }, (_, i) => currentYear + i);
+  }, []);
+
+  const evaluatorName = useMemo(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("user") || "{}");
+      const composed = `${stored.firstName || ""} ${stored.lastName || ""}`.trim();
+      return composed || stored.username || "";
+    } catch {
+      return "";
+    }
   }, []);
 
   useEffect(() => {
@@ -104,7 +115,7 @@ export default function EvaluateStudent() {
       Swal.fire({ icon: "warning", title: "กรุณาเลือกแบบฟอร์ม" });
       return;
     }
-    if (!searchSubject) {
+    if (templateType !== "SERVICE" && !searchSubject) {
       Swal.fire({ icon: "warning", title: "กรุณาเลือกหมวดวิชา" });
       return;
     }
@@ -112,26 +123,36 @@ export default function EvaluateStudent() {
       Swal.fire({ icon: "warning", title: "กรุณาเลือกช่วงประเมิน" });
       return;
     }
+    if (templateType === "SERVICE" && !evaluationRound.trim()) {
+      Swal.fire({ icon: "warning", title: "ต้องระบุรอบการประเมินสำหรับเทมเพลต SERVICE" });
+      return;
+    }
     if (!answerList.length) {
       Swal.fire({ icon: "warning", title: "ยังไม่ได้ให้คะแนน" });
       return;
     }
-    if (!intake) {
+    if (templateType !== "SERVICE" && !intake) {
       Swal.fire({ icon: "warning", title: "กรุณาเลือกผลัด" });
+      return;
+    }
+    if (templateType !== "SERVICE" && !year) {
+      Swal.fire({ icon: "warning", title: "กรุณาเลือกปี" });
       return;
     }
 
     const payload = {
       templateId: formEvaluate.id,
-      intake:intake,
-      year:year,
-      subject: searchSubject,
+      intake: templateType === "SERVICE" ? undefined : intake,
+      year: templateType === "SERVICE" ? undefined : year,
+      subject: templateType === "SERVICE" ? (searchSubject || "ประเมินราชการ") : searchSubject,
+      evaluationRound: templateType === "SERVICE" ? evaluationRound.trim() : undefined,
       companyCode: company != null ? String(company) : "",
       battalionCode: battalion != null ? String(battalion) : "",
       evaluationPeriod: evaluationDate,
       summary: summary || "",
       overallScore: Number(overallScore || computedOverall || 0),
       answers: answerList,
+      evaluatorName: evaluatorName || undefined,
     };
 
     setSaving(true);
@@ -208,19 +229,25 @@ export default function EvaluateStudent() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 text-gray-600">
-            <select
-              name="subject"
-              value={searchSubject}
-              onChange={(e) => setSearchSubject(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48"
-            >
-              <option value="">-- หมวดวิชา --</option>
-              {divisionOptions.map((v) => (
-                <option key={v.value} value={v.value}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
+            {templateType === "SERVICE" ? (
+              <div className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48 bg-gray-50 text-gray-500 text-center">
+                ไม่ต้องเลือกหมวดวิชา
+              </div>
+            ) : (
+              <select
+                name="subject"
+                value={searchSubject}
+                onChange={(e) => setSearchSubject(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48"
+              >
+                <option value="">-- หมวดวิชา --</option>
+                {divisionOptions.map((v) => (
+                  <option key={v.value} value={v.value}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+            )}
 
             <select
               name="form"
@@ -447,29 +474,57 @@ export default function EvaluateStudent() {
                   className="border rounded-xl px-3 py-2 mt-1 w-full"
                 />
               </label>
+              {templateType === "SERVICE" && (
+                <label className="flex flex-col text-sm text-gray-700 w-full">
+                  <span>รอบการประเมิน</span>
+                  <input
+                    type="text"
+                    value={evaluationRound}
+                    onChange={(e) => setEvaluationRound(e.target.value)}
+                    className="border rounded-xl px-3 py-2 mt-1 w-full"
+                    placeholder="เช่น รอบที่ 1 / รอบต้นปี"
+                  />
+                </label>
+              )}
               <label className="flex flex-col text-sm text-gray-700 w-full">
                 <span>ผลัด</span>
-                <select className="border rounded-xl px-3 py-2 mt-1 w-full text-center" value={intake}
-                  onChange={(e) => setIntake(e.target.value)}>
-                  <option value="">- กรุณาเลือกผลัด -</option>
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                </select>
+                {templateType === "SERVICE" ? (
+                  <input
+                    disabled
+                    value="-"
+                    className="border rounded-xl px-3 py-2 mt-1 w-full text-center bg-gray-50 text-gray-400"
+                  />
+                ) : (
+                  <select className="border rounded-xl px-3 py-2 mt-1 w-full text-center" value={intake}
+                    onChange={(e) => setIntake(e.target.value)}>
+                    <option value="">- กรุณาเลือกผลัด -</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                )}
               </label>
               <label className="flex flex-col text-sm text-gray-700 w-full">
                 <span>ปี</span>
-                <select
-                  className="border rounded-xl px-3 py-2 mt-1 w-full text-center"
-                  value={year}
-                  onChange={(e) => setYear(e.target.value)}
-                >
-                  {/* <option value="">- กรุณาเลือก -</option> */}
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+                {templateType === "SERVICE" ? (
+                  <input
+                    disabled
+                    value="-"
+                    className="border rounded-xl px-3 py-2 mt-1 w-full text-center bg-gray-50 text-gray-400"
+                  />
+                ) : (
+                  <select
+                    className="border rounded-xl px-3 py-2 mt-1 w-full text-center"
+                    value={year}
+                    onChange={(e) => setYear(e.target.value)}
+                  >
+                    {/* <option value="">- กรุณาเลือก -</option> */}
+                    {yearOptions.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                )}
               </label>
 
             </div>
