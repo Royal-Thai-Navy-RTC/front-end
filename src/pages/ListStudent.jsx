@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from "react-router-dom";
 import { Edit } from "lucide-react";
+import axios from "axios";
 
 export default function ListStudent() {
 
@@ -21,14 +22,47 @@ export default function ListStudent() {
 
     const [searchCompany, setSearchCompany] = useState("");
     const [searchBattalion, setSearchBattalion] = useState("");
+    const [serviceSearch, setServiceSearch] = useState("");
 
     const [page, setPage] = useState(1);
     const [users, setUsers] = useState([]);
+    const [serviceUsers, setServiceUsers] = useState([]);
+    const [loadingService, setLoadingService] = useState(false);
     const pageSize = 10;
 
     // ---------------- LOAD MOCK DATA ----------------
     useEffect(() => {
         setUsers(mockData);
+    }, []);
+
+    useEffect(() => {
+        const fetchServiceUsers = async () => {
+            setLoadingService(true);
+            try {
+                const token = localStorage.getItem("token");
+                const response = await axios.get("/api/admin/users", {
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                });
+                const payload = response.data;
+                const resolved = Array.isArray(payload)
+                    ? payload
+                    : Array.isArray(payload?.data?.items)
+                        ? payload.data.items
+                        : Array.isArray(payload?.data)
+                            ? payload.data
+                            : Array.isArray(payload?.items)
+                                ? payload.items
+                                : [];
+                const filtered = resolved.filter((u) => (u.role || "").toUpperCase() !== "STUDENT");
+                setServiceUsers(filtered);
+            } catch (error) {
+                console.error("Failed to load users for service evaluation", error);
+                setServiceUsers([]);
+            } finally {
+                setLoadingService(false);
+            }
+        };
+        fetchServiceUsers();
     }, []);
 
     // เปลี่ยน tab ให้ reset หน้า
@@ -75,8 +109,25 @@ export default function ListStudent() {
         return result;
     }, [users, searchBattalion]);
 
+    const filteredService = useMemo(() => {
+        const keyword = serviceSearch.trim().toLowerCase();
+        return serviceUsers.filter((u) => {
+            const role = (u.role || "").toUpperCase();
+            if (role === "STUDENT") return false;
+
+            if (!keyword) return true;
+            const name = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
+            const username = (u.username || "").toLowerCase();
+            return name.includes(keyword) || username.includes(keyword);
+        });
+    }, [serviceUsers, serviceSearch]);
+
     // --------------------- PAGINATION ---------------------
-    const dataForTab = activeTab === "COMPANY" ? filteredCompany : filteredBattalion;
+    const dataForTab = activeTab === "COMPANY"
+        ? filteredCompany
+        : activeTab === "BATTALION"
+            ? filteredBattalion
+            : filteredService;
 
     const totalPages = Math.max(1, Math.ceil(dataForTab.length / pageSize));
     const paginated = dataForTab.slice((page - 1) * pageSize, page * pageSize);
@@ -121,28 +172,49 @@ export default function ListStudent() {
                             >
                                 กองพัน
                             </button>
+                            <button
+                                onClick={() => handleChangeTab("SERVICE")}
+                                className={`px-4 py-2 text-sm rounded-lg whitespace-nowrap 
+                                    ${activeTab === "SERVICE"
+                                        ? "bg-white shadow text-blue-600"
+                                        : "text-gray-500 hover:text-blue-600 cursor-pointer"}`}
+                            >
+                                ราชการ
+                            </button>
                         </div>
 
 
                         {/* SEARCH */}
                         <div className="flex flex-col md:flex-row gap-3 w-full">
-                            <div className="flex flex-col md:flex-row items-start gap-3 w-full">
-                                {activeTab === "COMPANY" && (
+                            <div className="flex flex-col md:flex-row items-start gap-3 w-full md:items-center">
+                                {activeTab === "SERVICE" ? (
                                     <input
                                         type="text"
-                                        placeholder="กองร้อย..."
-                                        value={searchCompany}
-                                        onChange={(e) => { setSearchCompany(e.target.value); setPage(1); }}
-                                        className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:outline-none w-full sm:w-35 md:w-48"
+                                        placeholder="ค้นหาชื่อ / ชื่อผู้ใช้..."
+                                        value={serviceSearch}
+                                        onChange={(e) => { setServiceSearch(e.target.value); setPage(1); }}
+                                        className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:outline-none w-full sm:w-60"
                                     />
+                                ) : (
+                                    <>
+                                        {activeTab === "COMPANY" && (
+                                            <input
+                                                type="text"
+                                                placeholder="กองร้อย..."
+                                                value={searchCompany}
+                                                onChange={(e) => { setSearchCompany(e.target.value); setPage(1); }}
+                                                className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:outline-none w-full sm:w-35 md:w-48"
+                                            />
+                                        )}
+                                        <input
+                                            type="text"
+                                            placeholder="กองพัน..."
+                                            value={searchBattalion}
+                                            onChange={(e) => { setSearchBattalion(e.target.value); setPage(1); }}
+                                            className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:outline-none w-full sm:w-35 md:w-48"
+                                        />
+                                    </>
                                 )}
-                                <input
-                                    type="text"
-                                    placeholder="กองพัน..."
-                                    value={searchBattalion}
-                                    onChange={(e) => { setSearchBattalion(e.target.value); setPage(1); }}
-                                    className="px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-200 focus:outline-none w-full sm:w-35 md:w-48"
-                                />
                             </div>
 
                             {/* CLEAR BUTTON */}
@@ -150,6 +222,7 @@ export default function ListStudent() {
                                 onClick={() => {
                                     setSearchCompany("");
                                     setSearchBattalion("");
+                                    setServiceSearch("");
                                     setPage(1);
                                 }}
                                 className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 whitespace-nowrap"
@@ -172,14 +245,31 @@ export default function ListStudent() {
                                 <th className="p-3 border-b text-center">กองร้อย</th>
                             )}
 
-                            <th className="p-3 border-b text-center">กองพัน</th>
+                            {activeTab !== "SERVICE" && (
+                                <th className="p-3 border-b text-center">กองพัน</th>
+                            )}
+
+                            {activeTab === "SERVICE" && (
+                                <>
+                                    <th className="p-3 border-b text-center">ชื่อ</th>
+                                    <th className="p-3 border-b text-center">บทบาท</th>
+                                </>
+                            )}
                             <th className="p-3 border-b text-center">ประเมิน</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        {paginated.map((u, index) => (
-                            <tr key={u.id} className="hover:bg-blue-50">
+                        {loadingService && activeTab === "SERVICE" && (
+                            <tr>
+                                <td colSpan={4} className="text-center p-4 text-gray-500">
+                                    กำลังโหลดรายชื่อผู้ใช้...
+                                </td>
+                            </tr>
+                        )}
+
+                        {!loadingService && paginated.map((u, index) => (
+                            <tr key={u.id || u._id} className="hover:bg-blue-50">
                                 <td className="p-3 border-b text-center">
                                     {(page - 1) * pageSize + index + 1}
                                 </td>
@@ -188,7 +278,20 @@ export default function ListStudent() {
                                     <td className="p-3 border-b text-center">{u.company}</td>
                                 )}
 
-                                <td className="p-3 border-b text-center">{u.battalion}</td>
+                                {activeTab !== "SERVICE" && (
+                                    <td className="p-3 border-b text-center">{u.battalion}</td>
+                                )}
+
+                                {activeTab === "SERVICE" && (
+                                    <>
+                                        <td className="p-3 border-b text-center">
+                                            {`${u.firstName || ""} ${u.lastName || ""}`.trim() || u.username || "-"}
+                                        </td>
+                                        <td className="p-3 border-b text-center">
+                                            {(u.role || "").toUpperCase()}
+                                        </td>
+                                    </>
+                                )}
 
                                 <td className="p-3 border-b text-center">
                                     <Link
@@ -200,11 +303,24 @@ export default function ListStudent() {
                                                     company: u.company,
                                                     templateType: "COMPANY"
                                                 }
-                                                : {
-                                                    battalion: u.battalion,
-                                                    company: null,
-                                                    templateType: "BATTALION"
-                                                }
+                                                : activeTab === "BATTALION"
+                                                    ? {
+                                                        battalion: u.battalion,
+                                                        company: null,
+                                                        templateType: "BATTALION"
+                                                    }
+                                                    : {
+                                                        battalion: null,
+                                                        company: null,
+                                                        templateType: "SERVICE",
+                                                        user: {
+                                                            id: u.id ?? u._id ?? null,
+                                                            role: u.role,
+                                                            firstName: u.firstName,
+                                                            lastName: u.lastName,
+                                                            username: u.username,
+                                                        }
+                                                    }
                                         }
                                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
                                     >
@@ -215,9 +331,9 @@ export default function ListStudent() {
                             </tr>
                         ))}
 
-                        {paginated.length === 0 && (
+                        {paginated.length === 0 && !(loadingService && activeTab === "SERVICE") && (
                             <tr>
-                                <td colSpan={activeTab === "COMPANY" ? 4 : 3} className="text-center p-4 text-gray-400">
+                                <td colSpan={activeTab === "COMPANY" ? 4 : activeTab === "SERVICE" ? 4 : 3} className="text-center p-4 text-gray-400">
                                     ไม่พบข้อมูล
                                 </td>
                             </tr>

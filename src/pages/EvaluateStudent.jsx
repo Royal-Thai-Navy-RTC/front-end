@@ -9,6 +9,7 @@ export default function EvaluateStudent() {
   const battalion = state?.battalion;
   const company = state?.company;
   const templateType = state?.templateType;
+  const serviceUser = state?.user;
 
   const [searchSubject, setSearchSubject] = useState("");
   const [searchForm, setSearchForm] = useState("");
@@ -189,6 +190,15 @@ export default function EvaluateStudent() {
           <div className="flex flex-col">
             {templateType === "BATTALION" ? (
               <h1 className="text-3xl font-bold text-blue-900">กองพันที่ {battalion}</h1>
+            ) : templateType === "SERVICE" ? (
+              <>
+                <h1 className="text-3xl font-bold text-blue-900">ประเมินราชการ</h1>
+                {serviceUser && (
+                  <p className="text-xl text-gray-500">
+                    ผู้รับการประเมิน: {`${serviceUser.firstName || ""} ${serviceUser.lastName || ""}`.trim() || serviceUser.username || "-"} ({(serviceUser.role || "").toUpperCase()})
+                  </p>
+                )}
+              </>
             ) : (
               <>
                 <h1 className="text-3xl font-bold text-blue-900">กองร้อย {company}</h1>
