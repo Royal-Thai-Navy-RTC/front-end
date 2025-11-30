@@ -201,12 +201,25 @@ const splitList = (value) =>
         .map((v) => v.trim())
         .filter(Boolean);
 
+const normalizeReligion = (value) => {
+    const text = (value || "").toString().trim();
+    if (!text) return "ไม่ระบุ";
+    const normalized = text.toLowerCase();
+    if (normalized.includes("พุทธ")) return "พุทธ";
+    if (normalized.includes("อิสลาม")) return "อิสลาม";
+    if (normalized.includes("คริส")) return "คริสต์";
+    return "อื่นๆ";
+};
+
 const buildCounts = (list = [], key) => {
     if (!key) return [];
     const map = new Map();
     list.forEach((item) => {
         const raw = item?.[key];
-        const label = (raw && `${raw}`.trim()) || "ไม่ระบุ";
+        const label =
+            key === "religion"
+                ? normalizeReligion(raw)
+                : (raw && `${raw}`.trim()) || "ไม่ระบุ";
         const current = map.get(label) || 0;
         map.set(label, current + 1);
     });
