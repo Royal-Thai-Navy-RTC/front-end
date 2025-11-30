@@ -175,12 +175,17 @@ export default function LayoutMain() {
   // update message
   const fetchMessage = useCallback(async () => {
     const token = localStorage.getItem("token");
-    const apiPath = `${user.role === "OWNER" ? "owner" : "teacher"}/notifications?page=1&pageSize=10`;
+
+    // อนุญาตเฉพาะ OWNER และ TEACHER เท่านั้น
+    if (!["OWNER", "TEACHER"].includes(user.role)) return;
+
+    const apiPath = `${user.role.toLowerCase()}/notifications?page=1&pageSize=10`;
 
     try {
       const response = await axios.get(`/api/${apiPath}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       const data = normalizeMessages(response.data);
       setMessages(data);
 
@@ -189,17 +194,21 @@ export default function LayoutMain() {
     }
   }, [normalizeMessages, user.role]);
 
+
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (user.role === "ADMIN" || !token) return;
+
+    if (!["OWNER", "TEACHER"].includes(user.role) || !token) return;
 
     fetchMessage();
+
     const interval = setInterval(() => {
       fetchMessage();
     }, 10000);
 
     return () => clearInterval(interval);
   }, [fetchMessage, user.role]);
+
 
   // update Role and token
   useEffect(() => {
