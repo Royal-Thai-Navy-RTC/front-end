@@ -4,7 +4,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 
 export default function EvaluateStudent() {
-  const { divisionOptions } = useOutletContext();
+  const { categoryOptions } = useOutletContext();
   const { state } = useLocation();
   const battalion = state?.battalion;
   const company = state?.company;
@@ -14,19 +14,19 @@ export default function EvaluateStudent() {
   const [searchSubject, setSearchSubject] = useState("");
   const [searchForm, setSearchForm] = useState("");
   const [intake, setIntake] = useState("");
-  const [year, setYear] = useState("");
+  const [year, setYear] = useState(() => new Date().getFullYear());
   const [optionEvaluate, setOptionEvaluate] = useState([]);
   const [listEvaluate, setListEvaluate] = useState([]);
   const [formEvaluate, setFormEvaluate] = useState(null);
-  const [evaluationDate, setEvaluationDate] = useState("");
+  const [battalionCompany, setBattalionCompany] = useState("");
   const [evaluationRound, setEvaluationRound] = useState("");
   const [summary, setSummary] = useState("");
   const [overallScore, setOverallScore] = useState("");
   const [saving, setSaving] = useState(false);
 
   const yearOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 2 }, (_, i) => currentYear + i);
+    const current = new Date().getFullYear();
+    return [current - 1, current];
   }, []);
 
   const evaluatorName = useMemo(() => {
@@ -119,8 +119,8 @@ export default function EvaluateStudent() {
       Swal.fire({ icon: "warning", title: "กรุณาเลือกหมวดวิชา" });
       return;
     }
-    if (!evaluationDate) {
-      Swal.fire({ icon: "warning", title: "กรุณาเลือกช่วงประเมิน" });
+    if (!battalionCompany && templateType === "BATTALION") {
+      Swal.fire({ icon: "warning", title: "กรุณาเลือกกองร้อย" });
       return;
     }
     if (templateType === "SERVICE" && !evaluationRound.trim()) {
@@ -140,6 +140,7 @@ export default function EvaluateStudent() {
       return;
     }
 
+<<<<<<< Updated upstream
     const evaluatedUserId = templateType === "SERVICE" ? (serviceUser?.id ?? serviceUser?._id ?? null) : null;
     const evaluatedUserName =
       templateType === "SERVICE"
@@ -147,6 +148,9 @@ export default function EvaluateStudent() {
         serviceUser?.username ||
         ""
         : "";
+=======
+    const evaluationDate = new Date().toISOString().split("T")[0];
+>>>>>>> Stashed changes
 
     const payload = {
       templateId: formEvaluate.id,
@@ -154,9 +158,10 @@ export default function EvaluateStudent() {
       year: templateType === "SERVICE" ? undefined : year,
       subject: templateType === "SERVICE" ? (searchSubject || "ประเมินราชการ") : searchSubject,
       evaluationRound: templateType === "SERVICE" ? evaluationRound.trim() : undefined,
-      companyCode: company != null ? String(company) : "",
+      // companyCode: company != null ? String(company) : "",
       battalionCode: battalion != null ? String(battalion) : "",
       evaluationPeriod: evaluationDate,
+      companyCode:battalionCompany,
       summary: summary || "",
       overallScore: Number(overallScore || computedOverall || 0),
       answers: answerList,
@@ -179,7 +184,7 @@ export default function EvaluateStudent() {
       Swal.fire({ icon: "success", title: "บันทึกแบบประเมินสำเร็จ" });
       setSummary("");
       setOverallScore("");
-      setEvaluationDate("");
+      setBattalionCompany("");
       setScores({});
     } catch (err) {
       Swal.fire({
@@ -244,11 +249,7 @@ export default function EvaluateStudent() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 text-gray-600">
-            {templateType === "SERVICE" ? (
-              <div className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48 bg-gray-50 text-gray-500 text-center">
-                ไม่ต้องเลือกหมวดวิชา
-              </div>
-            ) : (
+            {templateType !== "SERVICE" &&
               <select
                 name="subject"
                 value={searchSubject}
@@ -256,13 +257,13 @@ export default function EvaluateStudent() {
                 className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48"
               >
                 <option value="">-- หมวดวิชา --</option>
-                {divisionOptions.map((v) => (
+                {categoryOptions.map((v) => (
                   <option key={v.value} value={v.value}>
                     {v.label}
                   </option>
                 ))}
               </select>
-            )}
+            }
 
             <select
               name="form"
@@ -359,36 +360,9 @@ export default function EvaluateStudent() {
                                     > - </button>
                                   </div>
                                   <span className="sm:text-lg font-bold text-blue-800">เต็ม {maxScore}</span>
-                                  {/* <p className="text-lg font-bold text-blue-800">
-                                  {currentScore ?? "-"} / {maxScore}
-                                </p> */}
+
                                 </div>
                               </div>
-
-
-                              {/* <div className="flex flex-wrap gap-2">
-                              {Array.from({ length: maxScore }, (_, i) => {
-                                const scoreValue = i + 1;
-                                const selected =
-                                  scores?.[sec.id]?.[q.id] === scoreValue;
-                                return (
-                                  <button
-                                    type="button"
-                                    key={scoreValue}
-                                    onClick={() =>
-                                      handleScore(sec.id, q.id, scoreValue)
-                                    }
-                                    className={`px-3 py-1 rounded-lg border text-sm transition ${
-                                      selected
-                                        ? "bg-blue-600 text-white border-blue-600"
-                                        : "bg-white text-gray-700 border-gray-200 hover:border-blue-300"
-                                    }`}
-                                  >
-                                    {scoreValue} คะแนน
-                                  </button>
-                                );
-                              })}
-                            </div> */}
                             </div>
                           );
                         })}
@@ -466,7 +440,7 @@ export default function EvaluateStudent() {
               {/* คะแนนเฉลี่ย */}
               <label className="flex flex-col text-sm text-gray-700">
                 <span>คะแนนเฉลี่ย</span>
-                <p className="text-xl text-blue-800">{computedOverall}</p>
+                <p className="text-xl text-blue-800">{computedOverall} / 10</p>
                 <span className="text-xs text-gray-500 mt-1">
                   คะแนนเฉลี่ยจากผลการประเมินทั้งหมด
                 </span>
@@ -480,15 +454,18 @@ export default function EvaluateStudent() {
                   เปอร์เซ็นต์คะแนนที่ได้เมื่อเทียบกับคะแนนเต็ม
                 </span>
               </label>
-              <label className="flex flex-col text-sm text-gray-700 w-full">
-                <span>ช่วงประเมิน</span>
-                <input
-                  type="date"
-                  value={evaluationDate}
-                  onChange={(e) => setEvaluationDate(e.target.value)}
-                  className="border rounded-xl px-3 py-2 mt-1 w-full"
-                />
-              </label>
+              {templateType === "BATTALION" && (
+                <label className="flex flex-col text-sm text-gray-700 w-full">
+                  <span>กองร้อย</span>
+                  <select className="border rounded-xl px-3 py-2 mt-1 w-full" value={battalionCompany} onChange={(e) => setBattalionCompany(e.target.value)}>
+                    <option value="">- กรุณาเลือกกองร้อย -</option>
+                    {Array.from({ length: 5 }, (_, i) => i + 1).map((num) => (
+                      <option key={num} value={num}> {num} </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
               {templateType === "SERVICE" && (
                 <label className="flex flex-col text-sm text-gray-700 w-full">
                   <span>รอบการประเมิน</span>
@@ -523,7 +500,7 @@ export default function EvaluateStudent() {
                     >
                       {/* <option value="">- กรุณาเลือก -</option> */}
                       {yearOptions.map((y) => (
-                        <option key={y} value={y}>{y}</option>
+                        <option key={y} value={y}>{y + 543}</option>
                       ))}
                     </select>
                   </label>

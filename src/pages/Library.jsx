@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-
+import { useOutletContext } from "react-router-dom";
 const formatDate = (value) => {
   if (!value) return "-";
   const d = new Date(value);
@@ -9,6 +9,7 @@ const formatDate = (value) => {
 };
 
 export default function Library() {
+  const { categoryOptions } = useOutletContext();
   const CACHE_KEY = "libraryCache";
   const CACHE_TTL_MS = 15 * 60 * 1000;
   const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -190,17 +191,17 @@ export default function Library() {
       setPageInfo(nextPageInfo);
 
       try {
-            localStorage.setItem(
-              CACHE_KEY,
-              JSON.stringify({
-                timestamp: Date.now(),
-                includeInactive: Boolean(includeInactive),
-                items: normalized,
-                pageInfo: nextPageInfo,
-              })
-            );
-          } catch {
-            // ignore cache write errors
+        localStorage.setItem(
+          CACHE_KEY,
+          JSON.stringify({
+            timestamp: Date.now(),
+            includeInactive: Boolean(includeInactive),
+            items: normalized,
+            pageInfo: nextPageInfo,
+          })
+        );
+      } catch {
+        // ignore cache write errors
       }
     } catch (err) {
       setError(err?.response?.data?.message || "ไม่สามารถโหลดรายการห้องสมุดได้");
@@ -455,9 +456,8 @@ export default function Library() {
             <div className="flex flex-wrap gap-2 text-xs">
               <button
                 onClick={() => setCategoryFilter("all")}
-                className={`px-3 py-2 rounded-2xl border text-sm transition ${
-                  categoryFilter === "all" ? "bg-indigo-600 text-white border-indigo-600 shadow" : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                }`}
+                className={`px-3 py-2 rounded-2xl border text-sm transition ${categoryFilter === "all" ? "bg-indigo-600 text-white border-indigo-600 shadow" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                  }`}
               >
                 ทั้งหมด
               </button>
@@ -465,9 +465,8 @@ export default function Library() {
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat.toLowerCase())}
-                  className={`px-3 py-2 rounded-2xl border text-sm transition ${
-                    categoryFilter === cat.toLowerCase() ? "bg-indigo-600 text-white border-indigo-600 shadow" : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                  }`}
+                  className={`px-3 py-2 rounded-2xl border text-sm transition ${categoryFilter === cat.toLowerCase() ? "bg-indigo-600 text-white border-indigo-600 shadow" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`}
                 >
                   {cat}
                 </button>
@@ -517,11 +516,10 @@ export default function Library() {
                       </div>
                       {isAdminOwner && !showSkeleton && (
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold border ${
-                            doc?.isActive === false
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          }`}
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold border ${doc?.isActive === false
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            }`}
                         >
                           {doc?.isActive === false ? "ไม่เผยแพร่" : "เผยแพร่"}
                         </span>
@@ -601,13 +599,28 @@ export default function Library() {
               </label>
               <label className="flex flex-col text-sm text-gray-700">
                 หมวดหมู่
-                <input
+                <select
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  className="border rounded-xl px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+                >
+                  <option value="">- กรุณาเลือกหมวดหมู่ -</option>
+
+                  {categoryOptions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+
+                {/* <input
                   type="text"
                   name="category"
                   value={form.category}
                   onChange={handleChange}
                   className="border rounded-xl px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
-                />
+                /> */}
               </label>
               {form.fileUrl && (
                 <div className="flex flex-col gap-1 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-700">

@@ -240,7 +240,7 @@ const mapUserToForm = (data = {}) => ({
 });
 
 export default function ManageSoldier() {
-    const { rankOptions = [], divisionOptions = [], religionOptions = [] } = useOutletContext?.() || {};
+    const { rankOptions = [], categoryOptions = [], religionOptions = [] } = useOutletContext?.() || {};
     const [users, setUsers] = useState([]);
     const [roleFilter, setRoleFilter] = useState("ALL");
     const [search, setSearch] = useState("");
@@ -1602,7 +1602,7 @@ export default function ManageSoldier() {
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
                                     <span>หมวดวิชา</span>
-                                    {divisionOptions.length ? (
+                                    {categoryOptions.length ? (
                                         <select
                                             name="division"
                                             value={editForm.division}
@@ -1610,7 +1610,7 @@ export default function ManageSoldier() {
                                             className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                         >
                                             <option value="">-- เลือกหมวดวิชา --</option>
-                                            {divisionOptions.map((option) => (
+                                            {categoryOptions.map((option) => (
                                                 <option key={option.value} value={option.value}>
                                                     {option.label}
                                                 </option>

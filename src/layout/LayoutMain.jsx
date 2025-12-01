@@ -99,6 +99,14 @@ const relationOptions = [
   { value: "อื่นๆ", label: "อื่นๆ" },
 ];
 
+const categoryOptions = [
+  { value: "การเรือ", label: "การเรือ" },
+  { value: "วิชาทหาร", label: "วิชาทหาร" },
+  { value: "การอาวุธ", label: "การอาวุธ" },
+  { value: "วิชาป้องกันความเสียหาย", label: "วิชาป้องกันความเสียหาย" },
+  { value: "วิชาพละ", label: "วิชาพละ" },
+];
+
 export default function LayoutMain() {
   const navigate = useNavigate();
   const [user, setUser] = useState(() => normalizeUser(getStoredUser()));
@@ -246,7 +254,7 @@ export default function LayoutMain() {
       {/* ส่วนเนื้อหา */}
       <div className="flex flex-col flex-grow items-center p-2 px-5 mb-5">
         {/* <Outlet /> */}
-        <Outlet context={{ user, onProfileUpdated: handleProfileUpdated, rankOptions, divisionOptions, religionOptions, educationOptions, bloodOptions, relationOptions }} />
+        <Outlet context={{ user, onProfileUpdated: handleProfileUpdated, rankOptions, divisionOptions, religionOptions, educationOptions, bloodOptions, relationOptions, categoryOptions }} />
       </div>
 
       {/* Footer */}
