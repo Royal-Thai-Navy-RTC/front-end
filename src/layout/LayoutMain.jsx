@@ -51,7 +51,7 @@ const rankOptions = [
   { value: "พลฯ", label: "พลฯ" },
 ];
 
-const divisionOptions = [
+export const divisionOptions = [
   { value: "การเรือ", label: "การเรือ (ทร.101)" },
   { value: "การอาวุธ", label: "การอาวุธ (ทร.102)" },
   { value: "การป้องกันความเสียหาย", label: "การป้องกันความเสียหาย (ทร.103)" },

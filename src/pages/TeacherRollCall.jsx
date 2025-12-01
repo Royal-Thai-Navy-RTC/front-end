@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import ReactECharts from "echarts-for-react";
+import { divisionOptions as divisionChoices } from "../layout/LayoutMain";
 
 const INITIAL_FORM = {
   subject: "",
   studentCount: "",
   company: "",
   battalion: "",
+  division: "",
   trainingDate: "",
   trainingTime: "",
   location: "",
@@ -116,6 +118,7 @@ export default function TeacherRollCall() {
   const [adminSearch, setAdminSearch] = useState("");
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminTeacherStats, setAdminTeacherStats] = useState([]);
+  const [adminChartRange, setAdminChartRange] = useState("7d");
 
   const headers = useMemo(() => {
     const token = localStorage.getItem("token");
@@ -337,36 +340,80 @@ export default function TeacherRollCall() {
     });
   }, [adminSearch, adminSummary.teacherSummaries, isAdmin]);
 
-  const adminLastSevenDays = useMemo(() => {
-    if (!isAdmin) return { labels: [], values: [], total: 0 };
+  const adminChartData = useMemo(() => {
+    if (!isAdmin) return { labels: [], series: [], total: 0 };
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - 6);
+    if (adminChartRange === "month") {
+      startDate.setDate(1);
+    } else {
+      startDate.setDate(startDate.getDate() - 6);
+    }
 
-    const totalsByDay = new Map();
+    const dateKeys = [];
+    const displayLabels = [];
+    const cursor = new Date(startDate);
+    while (cursor <= today) {
+      const key = cursor.toISOString().slice(0, 10);
+      dateKeys.push(key);
+      displayLabels.push(cursor.toLocaleDateString("th-TH", { day: "2-digit", month: "short" }));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const divisions = [...divisionChoices.map((d) => d.value), "อื่นๆ"];
+    const dataMap = new Map(divisions.map((d) => [d, new Map(dateKeys.map((k) => [k, 0]))]));
+    const totalPerDate = new Map(dateKeys.map((k) => [k, 0]));
+
     sortedAdminReports.forEach((report) => {
       const reportDate = getReportDate(report);
       if (!reportDate) return;
       const dayKeyDate = new Date(reportDate);
       dayKeyDate.setHours(0, 0, 0, 0);
-      if (dayKeyDate < startDate) return;
+      if (dayKeyDate < startDate || dayKeyDate > today) return;
       const key = dayKeyDate.toISOString().slice(0, 10);
-      totalsByDay.set(key, (totalsByDay.get(key) || 0) + getParticipantsFromReport(report));
+      const participants = getParticipantsFromReport(report);
+      const division = divisions.includes(report.division) ? report.division : "อื่นๆ";
+      dataMap.get(division).set(key, (dataMap.get(division).get(key) || 0) + participants);
+      totalPerDate.set(key, (totalPerDate.get(key) || 0) + participants);
     });
 
-    const labels = [];
-    const values = [];
-    for (let i = 0; i < 7; i += 1) {
-      const day = new Date(startDate);
-      day.setDate(startDate.getDate() + i);
-      const key = day.toISOString().slice(0, 10);
-      labels.push(day.toLocaleDateString("th-TH", { day: "2-digit", month: "short" }));
-      values.push(totalsByDay.get(key) || 0);
-    }
-    const total = values.reduce((sum, value) => sum + value, 0);
-    return { labels, values, total };
-  }, [isAdmin, sortedAdminReports]);
+    const series = [];
+    // Overall series
+    series.push({
+      name: "รวมทุกหมวด",
+      type: "line",
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 6,
+      itemStyle: { color: "#1d4ed8" },
+      lineStyle: { color: "#1d4ed8", width: 3 },
+      areaStyle: { color: "rgba(37, 99, 235, 0.12)" },
+      data: dateKeys.map((k) => totalPerDate.get(k) || 0),
+    });
+
+    divisions.forEach((division, index) => {
+      const values = dateKeys.map((k) => dataMap.get(division).get(k) || 0);
+      if (values.every((v) => v === 0)) return;
+      const palette = ["#10b981", "#f59e0b", "#8b5cf6", "#06b6d4", "#f97316", "#94a3b8"];
+      const color = palette[index % palette.length];
+      series.push({
+        name: division,
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 6,
+        itemStyle: { color },
+        lineStyle: { color, width: 2 },
+        data: values,
+      });
+    });
+
+    const total = Array.from(totalPerDate.values()).reduce((sum, v) => sum + v, 0);
+
+    return { labels: displayLabels, series, total };
+  }, [adminChartRange, divisionChoices, isAdmin, sortedAdminReports]);
 
   const attendanceChartOptions = useMemo(() => {
     if (!isAdmin) return null;
@@ -378,11 +425,14 @@ export default function TeacherRollCall() {
           lineStyle: { color: "#2563eb" },
         },
       },
-      grid: { left: 32, right: 16, top: 32, bottom: 40 },
+      legend: {
+        top: 0,
+      },
+      grid: { left: 32, right: 16, top: 48, bottom: 40 },
       xAxis: {
         type: "category",
         boundaryGap: false,
-        data: adminLastSevenDays.labels,
+        data: adminChartData.labels,
         axisLine: { lineStyle: { color: "#cbd5f5" } },
         axisLabel: { color: "#475569" },
       },
@@ -394,34 +444,10 @@ export default function TeacherRollCall() {
         axisLabel: { color: "#475569" },
         splitLine: { lineStyle: { color: "#e2e8f0" } },
       },
-      series: [
-        {
-          name: "ยอดผู้เข้าร่วม",
-          type: "line",
-          smooth: true,
-          symbol: "circle",
-          symbolSize: 8,
-          itemStyle: { color: "#1d4ed8" },
-          lineStyle: { color: "#2563eb", width: 3 },
-          areaStyle: {
-            color: {
-              type: "linear",
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: "rgba(37, 99, 235, 0.25)" },
-                { offset: 1, color: "rgba(37, 99, 235, 0)" },
-              ],
-            },
-          },
-          data: adminLastSevenDays.values,
-        },
-      ],
-      color: ["#2563eb"],
+      series: adminChartData.series,
+      color: ["#2563eb", "#10b981", "#f59e0b", "#8b5cf6", "#06b6d4", "#f97316", "#94a3b8"],
     };
-  }, [adminLastSevenDays, isAdmin]);
+  }, [adminChartData, isAdmin]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -446,6 +472,7 @@ export default function TeacherRollCall() {
       participantCount: Number(form.studentCount) || 0,
       company: form.company,
       battalion: form.battalion,
+      division: form.division || undefined,
       trainingDate: form.trainingDate,
       trainingTime: form.trainingTime,
       location: form.location,
@@ -530,15 +557,37 @@ export default function TeacherRollCall() {
         <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-lg font-semibold text-gray-900">กราฟยอดนักเรียน 7 วันล่าสุด</p>
-              <p className="text-sm text-gray-500">เฉลี่ยจำนวนผู้เข้าร่วมการฝึกของแต่ละวันย้อนหลังหนึ่งสัปดาห์</p>
+              <p className="text-lg font-semibold text-gray-900">กราฟยอดนักเรียน ({adminChartRange === "7d" ? "7 วันล่าสุด" : "เดือนนี้"})</p>
+              <p className="text-sm text-gray-500">
+                เฉลี่ยจำนวนผู้เข้าร่วมการฝึกตามวัน พร้อมแยกตามหมวดวิชา
+              </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">รวม 7 วัน</p>
-              <p className="text-2xl font-bold text-blue-700">{adminLastSevenDays.total.toLocaleString("th-TH")} คน</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">รวมช่วงที่เลือก</p>
+              <p className="text-2xl font-bold text-blue-700">{adminChartData.total.toLocaleString("th-TH")} คน</p>
             </div>
           </div>
-          {adminLastSevenDays.labels.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAdminChartRange("7d")}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+                adminChartRange === "7d" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-200"
+              }`}
+            >
+              7 วันล่าสุด
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdminChartRange("month")}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+                adminChartRange === "month" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-200"
+              }`}
+            >
+              เดือนนี้
+            </button>
+          </div>
+          {adminChartData.labels.length > 0 ? (
             <ReactECharts option={attendanceChartOptions} notMerge lazyUpdate style={{ height: 320, width: "100%" }} />
           ) : (
             <p className="text-sm text-gray-400 text-center py-6">ยังไม่มีข้อมูลสำหรับการแสดงผลกราฟ</p>
@@ -677,6 +726,22 @@ export default function TeacherRollCall() {
                 className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 placeholder="เช่น 160"
               />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span>หมวดวิชา</span>
+              <select
+                name="division"
+                value={form.division}
+                onChange={handleChange}
+                className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="">-- เลือกหมวดวิชา --</option>
+                {divisionChoices.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span>ร้อยฝึกที่</span>
