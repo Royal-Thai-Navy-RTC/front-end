@@ -35,7 +35,7 @@ const NAV_GROUPS = [
     title: "นักเรียน",
     items: [
       { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
-      { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
+      { path: "/listevaluation", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
     ],
   },
   {
@@ -53,7 +53,7 @@ const pictureMap = {
   "/history": history,
   "/teaching-schedules": calendar,
   "/public-teaching-schedules": calendar,
-  "/liststudent": student,
+  "/listevaluation": student,
   "/listteacher": teacher2,
   "/evaluation-dashboard": windowpic,
   "/manage": profile,
@@ -70,7 +70,7 @@ const descriptionMap = {
   "/history": "เรื่องราวและบทบาทของศูนย์ฝึก",
   "/teaching-schedules": "ดูและจัดการตารางสอน",
   "/public-teaching-schedules": "ตารางสอนสำหรับบุคคลทั่วไป",
-  "/liststudent": "ประเมินนักเรียน",
+  "/listevaluation": "ประเมินนักเรียน",
   "/listteacher": "ประเมินครูผู้สอน",
   "/evaluation-dashboard": "สรุปผลการประเมินทั้งหมด",
   "/manage": "บริหารจัดการผู้ใช้",

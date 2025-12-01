@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
 import {
+  CircleSmall ,
   User,
   Mail,
   Bell,
@@ -135,9 +136,13 @@ export default function Nav({
   const pages = useMemo(
     () => [
       { path: "/home", label: "หน้าหลัก", icon: Home, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
-      { path: "/library", label: "ห้องสมุด", icon: BookOpen, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
-      { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
-      { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
+      {
+        label: "ทั่วไป", icon: CircleSmall, roles: ["admin", "owner"], children: [
+          { path: "/library", label: "ห้องสมุด", icon: BookOpen, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
+          { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
+          { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
+        ]
+      },
       {
         label: "Admin", icon: Settings2, roles: ["admin", "owner"], children: [
           { path: "/manage", label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"] },
@@ -150,7 +155,7 @@ export default function Nav({
       {
         label: "นักเรียน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
           { path: "/listteacher", label: "ประเมินผู้สอน", icon: ClipboardList, roles: ["admin", "owner"] },
-          { path: "/liststudent", label: "ประเมินนักเรียน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
+          { path: "/listevaluation", label: "ประเมินนักเรียน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
         ]
       },
       {

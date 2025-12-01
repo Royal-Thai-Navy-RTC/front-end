@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import { Edit } from "lucide-react";
 import axios from "axios";
 
-export default function ListStudent() {
-
+export default function ListEvaluate() {
     // ---------------- MOCK DATA (4 กองพัน × 5 กองร้อย) ----------------
     const mockData = [];
     for (let battalion = 1; battalion <= 4; battalion++) {
