@@ -235,7 +235,7 @@ const protectExcelText = (value) => {
 };
 
 export default function SoldierDashboard() {
-    const { user } = useOutletContext() ?? {};
+    const { user, educationOptions = [], religionOptions = [], bloodOptions = [] } = useOutletContext() ?? {};
     const [loading, setLoading] = useState(false);
     const [intakes, setIntakes] = useState([]);
     const [summary, setSummary] = useState({
@@ -249,6 +249,13 @@ export default function SoldierDashboard() {
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState("");
     const [provinceFilter, setProvinceFilter] = useState("");
+    const [specialSkillFilter, setSpecialSkillFilter] = useState("");
+    const [healthFilter, setHealthFilter] = useState("");
+    const [religionFilter, setReligionFilter] = useState("");
+    const [educationFilter, setEducationFilter] = useState("");
+    const [bloodFilter, setBloodFilter] = useState("");
+    const [serviceDurationFilter, setServiceDurationFilter] = useState("");
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [page, setPage] = useState(1);
     const pageSize = 10;
     const [pageMeta, setPageMeta] = useState({ totalPages: 1, total: 0 });
@@ -368,12 +375,117 @@ export default function SoldierDashboard() {
         }
     }, [selected]);
 
+    const normalizedReligionOptions = useMemo(() => {
+        const base = religionOptions.length
+            ? religionOptions.map((r) => ({ value: r.value, label: r.label }))
+            : [
+                  { value: "พุทธ", label: "ศาสนาพุทธ" },
+                  { value: "คริสต์", label: "ศาสนาคริสต์" },
+                  { value: "อิสลาม", label: "ศาสนาอิสลาม" },
+              ];
+        return [...base, { value: "อื่นๆ", label: "อื่นๆ (ศาสนาอื่นทั้งหมด)" }];
+    }, [religionOptions]);
+
+    const normalizedEducationOptions = useMemo(() => {
+        return educationOptions.length
+            ? educationOptions.map((e) => ({ value: e.value, label: e.label }))
+            : [];
+    }, [educationOptions]);
+
+    const normalizedBloodOptions = useMemo(() => {
+        const allowed = ["O", "A", "B", "AB"];
+        const mapped = bloodOptions.length ? bloodOptions.filter((b) => allowed.includes(String(b.value).toUpperCase())) : [];
+        const fallback = allowed.map((b) => ({ value: b, label: b }));
+        return mapped.length ? mapped.map((b) => ({ value: b.value.toUpperCase(), label: b.label || b.value })) : fallback;
+    }, [bloodOptions]);
+
+    const serviceDurationOptions = [
+        { value: "6", label: "6 เดือน" },
+        { value: "12", label: "1 ปี" },
+        { value: "24", label: "2 ปี" },
+    ];
+
+    const getServiceMonths = (item) => {
+        if (!item) return null;
+        const months = item.serviceMonths ?? (item.serviceYears !== undefined ? Math.round(item.serviceYears * 12) : null);
+        return Number.isNaN(months) ? null : months;
+    };
+
     const filteredIntakes = useMemo(() => {
         return intakes.filter((item) => {
             const matchesProvince = !provinceFilter || `${item.province ?? ""}` === `${provinceFilter}`;
-            return matchesProvince;
+            if (!matchesProvince) return false;
+
+            const hasSpecialSkill = !!(item.specialSkills && `${item.specialSkills}`.trim());
+            const matchesSpecial =
+                !specialSkillFilter ||
+                (specialSkillFilter === "HAS" && hasSpecialSkill) ||
+                (specialSkillFilter === "NONE" && !hasSpecialSkill);
+            if (!matchesSpecial) return false;
+
+            const hasHealthIssues =
+                !!(item.medicalNotes && `${item.medicalNotes}`.trim()) ||
+                (Array.isArray(item.chronicDiseases) && item.chronicDiseases.length > 0) ||
+                (Array.isArray(item.foodAllergies) && item.foodAllergies.length > 0) ||
+                (Array.isArray(item.drugAllergies) && item.drugAllergies.length > 0);
+            const matchesHealth =
+                !healthFilter ||
+                (healthFilter === "HAS" && hasHealthIssues) ||
+                (healthFilter === "NONE" && !hasHealthIssues);
+            if (!matchesHealth) return false;
+
+            const normalizedRel = normalizeReligion(item.religion);
+            const matchesReligion =
+                !religionFilter ||
+                (religionFilter === "อื่นๆ" ? normalizedRel === "อื่นๆ" : normalizedRel === religionFilter);
+            if (!matchesReligion) return false;
+
+            const matchesEducation = !educationFilter || `${item.education ?? ""}` === `${educationFilter}`;
+            if (!matchesEducation) return false;
+
+            const matchesBlood = !bloodFilter || `${item.bloodGroup ?? ""}`.toUpperCase() === bloodFilter.toUpperCase();
+            if (!matchesBlood) return false;
+
+            const serviceMonths = getServiceMonths(item);
+            const matchesService =
+                !serviceDurationFilter ||
+                (serviceMonths !== null &&
+                    serviceMonths !== undefined &&
+                    Number(serviceDurationFilter) === Number(serviceMonths));
+            if (!matchesService) return false;
+
+            return true;
         });
-    }, [intakes, provinceFilter]);
+    }, [intakes, provinceFilter, specialSkillFilter, healthFilter, religionFilter, educationFilter, bloodFilter, serviceDurationFilter]);
+
+    const activeFilterChips = useMemo(() => {
+        const chips = [];
+        if (specialSkillFilter) chips.push({ label: `ความสามารถพิเศษ: ${specialSkillFilter === "HAS" ? "มี" : "ไม่มี"}` });
+        if (healthFilter) chips.push({ label: `ปัญหาสุขภาพ: ${healthFilter === "HAS" ? "มี" : "ไม่มี"}` });
+        if (religionFilter) chips.push({ label: `ศาสนา: ${religionFilter}` });
+        if (educationFilter) {
+            const eduLabel = normalizedEducationOptions.find((e) => `${e.value}` === `${educationFilter}`)?.label || educationFilter;
+            chips.push({ label: `การศึกษา: ${eduLabel}` });
+        }
+        if (bloodFilter) chips.push({ label: `กรุ๊ปเลือด: ${bloodFilter.toUpperCase()}` });
+        if (serviceDurationFilter) {
+            const durLabel = serviceDurationOptions.find((d) => `${d.value}` === `${serviceDurationFilter}`)?.label || `${serviceDurationFilter} เดือน`;
+            chips.push({ label: `อายุราชการ: ${durLabel}` });
+        }
+        if (provinceFilter) chips.push({ label: `จังหวัด: ${provinceOptions.find((p) => `${p.value}` === `${provinceFilter}`)?.label || provinceFilter}` });
+        return chips;
+    }, [
+        specialSkillFilter,
+        healthFilter,
+        religionFilter,
+        educationFilter,
+        bloodFilter,
+        serviceDurationFilter,
+        provinceFilter,
+        normalizedEducationOptions,
+        serviceDurationOptions,
+        provinceOptions,
+    ]);
 
     const stats = useMemo(() => {
         const contactReady = intakes.filter((i) => i.emergencyName || i.emergencyPhone).length;
@@ -413,12 +525,6 @@ export default function SoldierDashboard() {
     const handlePageChange = (next) => {
         if (next < 1 || next > pageMeta.totalPages) return;
         setPage(next);
-    };
-
-    const getServiceMonths = (item) => {
-        if (!item) return null;
-        const months = item.serviceMonths ?? (item.serviceYears !== undefined ? Math.round(item.serviceYears * 12) : null);
-        return Number.isNaN(months) ? null : months;
     };
 
     const fetchAllIntakes = async () => {
@@ -892,6 +998,141 @@ export default function SoldierDashboard() {
                         </button>
                     </div>
 
+                    <div className="rounded-2xl border border-blue-100 bg-white/90 p-3 flex flex-wrap items-center gap-2 shadow-sm">
+                        <span className="text-sm font-semibold text-blue-900">ตัวกรอง:</span>
+                        {activeFilterChips.length ? (
+                            activeFilterChips.map((chip) => (
+                                <span
+                                    key={chip.label}
+                                    className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-100"
+                                >
+                                    {chip.label}
+                                </span>
+                            ))
+                        ) : (
+                            <span className="text-sm text-blue-500">ไม่มีตัวกรองเพิ่มเติม</span>
+                        )}
+                        <div className="ml-auto flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowAdvancedFilters((prev) => !prev)}
+                                className="rounded-xl border border-blue-100 bg-blue-600 text-white px-3 py-2 text-sm font-semibold shadow hover:bg-blue-700"
+                            >
+                                {showAdvancedFilters ? "ซ่อนตัวกรอง" : "ตัวกรองเพิ่มเติม"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSpecialSkillFilter("");
+                                    setHealthFilter("");
+                                    setReligionFilter("");
+                                    setEducationFilter("");
+                                    setBloodFilter("");
+                                    setServiceDurationFilter("");
+                                    setProvinceFilter("");
+                                    setPage(1);
+                                }}
+                                disabled={!activeFilterChips.length}
+                                className="rounded-xl border border-blue-100 bg-white text-blue-800 px-3 py-2 text-sm font-semibold shadow hover:bg-blue-50 disabled:opacity-50"
+                            >
+                                ล้างตัวกรอง
+                            </button>
+                        </div>
+                    </div>
+
+                    {showAdvancedFilters && (
+                        <div className="grid gap-3 lg:grid-cols-3">
+                            <div className="grid gap-3 sm:grid-cols-3 bg-blue-50/40 border border-blue-100 rounded-2xl p-3">
+                                <FilterSelect
+                                    label="ความสามารถพิเศษ"
+                                    value={specialSkillFilter}
+                                    onChange={(v) => {
+                                        setSpecialSkillFilter(v);
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { value: "", label: "ทั้งหมด" },
+                                        { value: "HAS", label: "มี" },
+                                        { value: "NONE", label: "ไม่มี" },
+                                    ]}
+                                />
+                                <FilterSelect
+                                    label="ปัญหาทางสุขภาพ"
+                                    value={healthFilter}
+                                    onChange={(v) => {
+                                        setHealthFilter(v);
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { value: "", label: "ทั้งหมด" },
+                                        { value: "HAS", label: "มี" },
+                                        { value: "NONE", label: "ไม่มี" },
+                                    ]}
+                                />
+                                <FilterSelect
+                                    label="เวลารับราชการ"
+                                    value={serviceDurationFilter}
+                                    onChange={(v) => {
+                                        setServiceDurationFilter(v);
+                                        setPage(1);
+                                    }}
+                                    options={[{ value: "", label: "ทั้งหมด" }, ...serviceDurationOptions]}
+                                />
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-2 bg-white border border-blue-50 rounded-2xl p-3">
+                                <FilterSelect
+                                    label="ศาสนา"
+                                    value={religionFilter}
+                                    onChange={(v) => {
+                                        setReligionFilter(v);
+                                        setPage(1);
+                                    }}
+                                    options={[{ value: "", label: "ทุกศาสนา" }, ...normalizedReligionOptions]}
+                                />
+                                <FilterSelect
+                                    label="การศึกษา"
+                                    value={educationFilter}
+                                    onChange={(v) => {
+                                        setEducationFilter(v);
+                                        setPage(1);
+                                    }}
+                                    options={[{ value: "", label: "ทุกระดับการศึกษา" }, ...normalizedEducationOptions]}
+                                />
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-2 bg-white border border-blue-50 rounded-2xl p-3">
+                                <FilterSelect
+                                    label="กรุ๊ปเลือด"
+                                    value={bloodFilter}
+                                    onChange={(v) => {
+                                        setBloodFilter(v);
+                                        setPage(1);
+                                    }}
+                                    options={[{ value: "", label: "ทุกกรุ๊ปเลือด" }, ...normalizedBloodOptions]}
+                                />
+                                <div className="flex items-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSpecialSkillFilter("");
+                                            setHealthFilter("");
+                                            setReligionFilter("");
+                                            setEducationFilter("");
+                                            setBloodFilter("");
+                                            setServiceDurationFilter("");
+                                            setProvinceFilter("");
+                                            setPage(1);
+                                        }}
+                                        className="w-full rounded-xl border border-blue-100 bg-blue-600 text-white px-3 py-2 text-sm font-semibold shadow hover:bg-blue-700"
+                                    >
+                                        ล้างตัวกรอง
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid lg:grid-cols-3 gap-4">
                         <div className="lg:col-span-2 rounded-2xl border border-blue-100 bg-white overflow-hidden shadow-[0_12px_35px_-20px_rgba(15,60,130,0.5)]">
                             <div className="flex items-center justify-between px-4 py-3 border-b bg-blue-50/70">
@@ -1191,4 +1432,23 @@ export default function SoldierDashboard() {
 
 function UsersIcon(props) {
     return <BadgeCheck {...props} />;
+}
+
+function FilterSelect({ label, value, onChange, options }) {
+    return (
+        <label className="flex flex-col gap-1 text-sm text-blue-900">
+            <span className="font-semibold text-blue-800">{label}</span>
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-blue-900 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            >
+                {options.map((opt) => (
+                    <option key={opt.value ?? opt.label} value={opt.value}>
+                        {opt.label}
+                    </option>
+                ))}
+            </select>
+        </label>
+    );
 }
