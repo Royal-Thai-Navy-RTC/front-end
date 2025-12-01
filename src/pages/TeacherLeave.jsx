@@ -320,6 +320,8 @@ export default function TeacherLeave() {
   const isSubAdmin = role === "SUB_ADMIN";
   const isOwner = role === "OWNER";
   const isAdmin = role === "ADMIN" || isOwner || isSubAdmin;
+  const [adminView, setAdminView] = useState(() => isAdmin);
+  const isAdminDashboard = isAdmin && adminView;
 
   // teacher state
   const [form, setForm] = useState(INITIAL_FORM);
@@ -349,7 +351,7 @@ export default function TeacherLeave() {
   }, []);
 
   const fetchLeaves = useCallback(async () => {
-    if (isAdmin) return;
+    if (isAdminDashboard) return;
     setLoadingLeaves(true);
     try {
       const [generalResponse, officialResponse] = await Promise.all([
@@ -380,10 +382,10 @@ export default function TeacherLeave() {
     } finally {
       setLoadingLeaves(false);
     }
-  }, [headers, isAdmin]);
+  }, [headers, isAdminDashboard]);
 
   const fetchSummary = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!isAdminDashboard) return;
     setSummaryLoading(true);
     setSummaryError("");
     try {
@@ -395,10 +397,10 @@ export default function TeacherLeave() {
     } finally {
       setSummaryLoading(false);
     }
-  }, [headers, isAdmin]);
+  }, [headers, isAdminDashboard]);
 
   const fetchAdminLeaves = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!isAdminDashboard) return;
     setAdminLeavesLoading(true);
     setAdminLeavesError("");
     try {
@@ -424,10 +426,10 @@ export default function TeacherLeave() {
     } finally {
       setAdminLeavesLoading(false);
     }
-  }, [adminFilter, headers, isAdmin]);
+  }, [adminFilter, headers, isAdminDashboard]);
 
   const fetchCurrentLeaves = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!isAdminDashboard) return;
     setCurrentLeavesLoading(true);
     setCurrentLeavesError("");
     try {
@@ -439,17 +441,17 @@ export default function TeacherLeave() {
     } finally {
       setCurrentLeavesLoading(false);
     }
-  }, [headers, isAdmin]);
+  }, [headers, isAdminDashboard]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdminDashboard) {
       fetchSummary();
       fetchAdminLeaves();
       fetchCurrentLeaves();
       return;
     }
     fetchLeaves();
-  }, [fetchAdminLeaves, fetchCurrentLeaves, fetchLeaves, fetchSummary, isAdmin]);
+  }, [fetchAdminLeaves, fetchCurrentLeaves, fetchLeaves, fetchSummary, isAdminDashboard]);
 
   useEffect(() => {
     const syncRole = () => setRole(getStoredRole());
@@ -460,6 +462,12 @@ export default function TeacherLeave() {
       window.removeEventListener("auth-change", syncRole);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAdminView(false);
+    }
+  }, [isAdmin]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -472,7 +480,7 @@ export default function TeacherLeave() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (submitting || isAdmin) return;
+    if (submitting || isAdminDashboard) return;
 
     if (!form.leaveType || !form.startDate || !form.destination) {
       Swal.fire({
@@ -522,7 +530,7 @@ export default function TeacherLeave() {
   };
 
   const handleCancelLeave = async (leaveId) => {
-    if (!leaveId || isAdmin) return;
+    if (!leaveId || isAdminDashboard) return;
     const leave = leaves.find((l) => l.id === leaveId || l._id === leaveId);
     if (leave && leave.status && mapApprovalStatus(leave.status, "PENDING") !== "PENDING") {
       Swal.fire({ icon: "info", title: "ยกเลิกไม่ได้", text: "ยกเลิกได้เฉพาะคำขอที่ยังรอดำเนินการ" });
@@ -556,7 +564,7 @@ export default function TeacherLeave() {
   };
 
   const handleUpdateStatus = async (leaveId, nextStatus) => {
-    if (!isAdmin || !leaveId || !nextStatus) return;
+    if (!isAdminDashboard || !leaveId || !nextStatus) return;
     const normalizedNextStatus = mapApprovalStatus(nextStatus, "PENDING");
     const targetLeave = adminLeaves.find((leave) => leave.id === leaveId);
     if (targetLeave) {
@@ -605,7 +613,7 @@ export default function TeacherLeave() {
     }
   };
 
-  if (isAdmin) {
+  if (isAdminDashboard) {
     const totalTeachers = summary?.totalTeachers ?? 0;
     const onLeave = summary?.onLeave ?? 0;
     const reportedAvailable = summary?.availableTeachers;
@@ -668,6 +676,7 @@ export default function TeacherLeave() {
       adminFilter === "APPROVED" ? "อนุมัติแล้ว" : adminFilter === "REJECTED" ? "ไม่อนุมัติ" : "รออนุมัติ";
     return (
       <div className="w-full flex flex-col gap-6">
+        <AdminViewTabs active={adminView ? "ADMIN" : "TEACHER"} onChange={(mode) => setAdminView(mode === "ADMIN")} />
         <header className="bg-white rounded-2xl shadow p-6 flex flex-col gap-2">
           <p className="text-sm text-blue-500 font-semibold uppercase tracking-[0.35em]">ADMIN</p>
           <h1 className="text-3xl font-bold text-blue-900">แดชบอร์ดการลาของครูผู้สอน</h1>
@@ -904,6 +913,9 @@ export default function TeacherLeave() {
 
   return (
     <div className="w-full flex flex-col gap-6">
+      {isAdmin && !isAdminDashboard && (
+        <AdminViewTabs active={adminView ? "ADMIN" : "TEACHER"} onChange={(mode) => setAdminView(mode === "ADMIN")} />
+      )}
       <header className="bg-white rounded-2xl shadow p-6 flex flex-col gap-2">
         <p className="text-sm text-blue-500 font-semibold uppercase tracking-[0.35em]">TEACHER</p>
         <h1 className="text-3xl font-bold text-blue-900">แจ้งการลา</h1>
@@ -1119,6 +1131,34 @@ function LeavePresetCard({ title, description, active, highlight, onClick }) {
       <p className="text-sm text-gray-600 mt-1">{description}</p>
       {active && <p className="text-xs text-blue-600 mt-2">กำลังเลือกประเภทนี้</p>}
     </button>
+  );
+}
+
+function AdminViewTabs({ active, onChange }) {
+  const tabs = [
+    { key: "ADMIN", label: "แดชบอร์ด ADMIN" },
+    { key: "TEACHER", label: "แจ้งการลา (โหมดครู)" },
+  ];
+  return (
+    <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-2 flex gap-2">
+      {tabs.map((tab) => {
+        const selected = active === tab.key;
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => onChange(tab.key)}
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${
+              selected
+                ? "bg-white text-blue-700 shadow border border-blue-200"
+                : "text-blue-700/70 hover:bg-white/60 border border-transparent"
+            }`}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
