@@ -149,12 +149,12 @@ export default function Nav({
           { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", icon: User, roles: ["admin", "owner"] },
+          { path: "/listteacher", label: "ประเมินผู้สอน", icon: ClipboardList, roles: ["admin", "owner"] },
           // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
       },
       {
-        label: "นักเรียน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
-          { path: "/listteacher", label: "ประเมินผู้สอน", icon: ClipboardList, roles: ["admin", "owner"] },
+        label: "ประเมิน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
           { path: "/listevaluation", label: "ประเมินนักเรียน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
         ]
       },
