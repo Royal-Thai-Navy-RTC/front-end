@@ -1042,7 +1042,37 @@ export default function SoldierDashboard() {
 
                     {showAdvancedFilters && (
                         <div className="grid gap-3 lg:grid-cols-3">
-                            <div className="grid gap-3 sm:grid-cols-3 bg-blue-50/40 border border-blue-100 rounded-2xl p-3">
+                            <div className="grid gap-3 sm:grid-cols-3 bg-white border border-blue-50 rounded-2xl p-3 lg:col-span-3">
+                                <FilterSelect
+                                    label="ศาสนา"
+                                    value={religionFilter}
+                                    onChange={(v) => {
+                                        setReligionFilter(v);
+                                        setPage(1);
+                                    }}
+                                    options={[{ value: "", label: "ทุกศาสนา" }, ...normalizedReligionOptions]}
+                                />
+                                <FilterSelect
+                                    label="การศึกษา"
+                                    value={educationFilter}
+                                    onChange={(v) => {
+                                        setEducationFilter(v);
+                                        setPage(1);
+                                    }}
+                                    options={[{ value: "", label: "ทุกระดับการศึกษา" }, ...normalizedEducationOptions]}
+                                />
+                                <FilterSelect
+                                    label="กรุ๊ปเลือด"
+                                    value={bloodFilter}
+                                    onChange={(v) => {
+                                        setBloodFilter(v);
+                                        setPage(1);
+                                    }}
+                                    options={[{ value: "", label: "ทุกกรุ๊ปเลือด" }, ...normalizedBloodOptions]}
+                                />
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-3 bg-blue-50/40 border border-blue-100 rounded-2xl p-3 lg:col-span-3">
                                 <FilterSelect
                                     label="ความสามารถพิเศษ"
                                     value={specialSkillFilter}
@@ -1080,55 +1110,23 @@ export default function SoldierDashboard() {
                                 />
                             </div>
 
-                            <div className="grid gap-3 sm:grid-cols-2 bg-white border border-blue-50 rounded-2xl p-3">
-                                <FilterSelect
-                                    label="ศาสนา"
-                                    value={religionFilter}
-                                    onChange={(v) => {
-                                        setReligionFilter(v);
+                            <div className="flex items-end">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSpecialSkillFilter("");
+                                        setHealthFilter("");
+                                        setReligionFilter("");
+                                        setEducationFilter("");
+                                        setBloodFilter("");
+                                        setServiceDurationFilter("");
+                                        setProvinceFilter("");
                                         setPage(1);
                                     }}
-                                    options={[{ value: "", label: "ทุกศาสนา" }, ...normalizedReligionOptions]}
-                                />
-                                <FilterSelect
-                                    label="การศึกษา"
-                                    value={educationFilter}
-                                    onChange={(v) => {
-                                        setEducationFilter(v);
-                                        setPage(1);
-                                    }}
-                                    options={[{ value: "", label: "ทุกระดับการศึกษา" }, ...normalizedEducationOptions]}
-                                />
-                            </div>
-
-                            <div className="grid gap-3 sm:grid-cols-2 bg-white border border-blue-50 rounded-2xl p-3">
-                                <FilterSelect
-                                    label="กรุ๊ปเลือด"
-                                    value={bloodFilter}
-                                    onChange={(v) => {
-                                        setBloodFilter(v);
-                                        setPage(1);
-                                    }}
-                                    options={[{ value: "", label: "ทุกกรุ๊ปเลือด" }, ...normalizedBloodOptions]}
-                                />
-                                <div className="flex items-end">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSpecialSkillFilter("");
-                                            setHealthFilter("");
-                                            setReligionFilter("");
-                                            setEducationFilter("");
-                                            setBloodFilter("");
-                                            setServiceDurationFilter("");
-                                            setProvinceFilter("");
-                                            setPage(1);
-                                        }}
-                                        className="w-full rounded-xl border border-blue-100 bg-blue-600 text-white px-3 py-2 text-sm font-semibold shadow hover:bg-blue-700"
-                                    >
-                                        ล้างตัวกรอง
-                                    </button>
-                                </div>
+                                    className="w-full rounded-xl border border-blue-100 bg-blue-600 text-white px-3 py-2 text-sm font-semibold shadow hover:bg-blue-700"
+                                >
+                                    ล้างตัวกรอง
+                                </button>
                             </div>
                         </div>
                     )}
