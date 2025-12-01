@@ -250,9 +250,12 @@ export default function LayoutMain() {
       </div>
 
       {/* Footer */}
-      <div className="flex justify-center items-center bg-blue-900 bg-opacity-75 text-white font-bold">
-        <p className="p-1 text-sm text-center h-full">
+      <div className="flex flex-col justify-center items-center  text-white ">
+        <p className="p-1 text-sm text-center h-full bg-blue-900 w-full">
           © 2025 ศูนย์ฝึกทหารใหม่ กรมยุทธศึกษาทหารเรือ
+        </p>
+        <p className="p-1 text-sm text-center h-full bg-yellow-600 w-full">
+          หากประสบปัญหาโปรดติดต่อ : น.อ.ศักดิ์สิทธิ์ เตชะพงศ์ประเสริฐ โทร. 089-893-8805
         </p>
       </div>
     </div>
