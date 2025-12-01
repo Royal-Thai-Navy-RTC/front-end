@@ -44,6 +44,7 @@ const NAV_GROUPS = [
       { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
       { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner"] },
       { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", roles: ["admin", "owner", "sub_admin", "teacher"] },
+      { path: "/service-evaluation-summary", label: "สรุปผลประเมินราชการ", roles: ["admin", "owner", "sub_admin", "teacher"] },
     ],
   },
 ];
@@ -56,6 +57,7 @@ const pictureMap = {
   "/listevaluation": student,
   "/listteacher": teacher2,
   "/evaluation-dashboard": windowpic,
+  "/service-evaluation-summary": windowpic,
   "/manage": profile,
   "/form-evaluate-student": exam,
   "/teacher-report": navy_team,
@@ -73,6 +75,7 @@ const descriptionMap = {
   "/listevaluation": "ประเมินนักเรียน",
   "/listteacher": "ประเมินครูผู้สอน",
   "/evaluation-dashboard": "สรุปผลการประเมินทั้งหมด",
+  "/service-evaluation-summary": "สรุปผลการประเมินราชการ",
   "/manage": "บริหารจัดการผู้ใช้",
   "/form-evaluate-student": "สร้าง/แก้ไขฟอร์มประเมินนักเรียน",
   "/teacher-report": "แจ้งยอดนักเรียนประจำวัน",

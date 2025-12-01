@@ -140,6 +140,14 @@ export default function EvaluateStudent() {
       return;
     }
 
+    const evaluatedUserId = templateType === "SERVICE" ? (serviceUser?.id ?? serviceUser?._id ?? null) : null;
+    const evaluatedUserName =
+      templateType === "SERVICE"
+        ? `${serviceUser?.firstName || ""} ${serviceUser?.lastName || ""}`.trim() ||
+        serviceUser?.username ||
+        ""
+        : "";
+
     const payload = {
       templateId: formEvaluate.id,
       intake: templateType === "SERVICE" ? undefined : intake,
@@ -154,6 +162,13 @@ export default function EvaluateStudent() {
       answers: answerList,
       evaluatorName: evaluatorName || undefined,
     };
+
+    if (templateType === "SERVICE" && evaluatedUserId) {
+      payload.userId = evaluatedUserId;
+      if (evaluatedUserName) {
+        payload.evaluatedPerson = evaluatedUserName;
+      }
+    }
 
     setSaving(true);
     try {

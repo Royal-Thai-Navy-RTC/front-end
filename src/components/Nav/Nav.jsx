@@ -163,6 +163,7 @@ export default function Nav({
           { path: "/teacher-report", label: "แจ้งยอดนักเรียน", icon: ClipboardList, roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/teacher-leave", label: "แจ้งการลา", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"] },
           { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", icon: CalendarClock, roles: ["admin", "owner", "sub_admin", "teacher"] },
+          { path: "/service-evaluation-summary", label: "สรุปผลประเมินราชการ", icon: ClipboardList, roles: ["admin", "owner", "sub_admin", "teacher"] },
         ]
       },
     ],
