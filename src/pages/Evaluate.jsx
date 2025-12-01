@@ -3,7 +3,7 @@ import { useLocation, useOutletContext } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
 
-export default function EvaluateStudent() {
+export default function Evaluate() {
   const { categoryOptions } = useOutletContext();
   const { state } = useLocation();
   const battalion = state?.battalion;
@@ -140,7 +140,6 @@ export default function EvaluateStudent() {
       return;
     }
 
-<<<<<<< Updated upstream
     const evaluatedUserId = templateType === "SERVICE" ? (serviceUser?.id ?? serviceUser?._id ?? null) : null;
     const evaluatedUserName =
       templateType === "SERVICE"
@@ -148,9 +147,7 @@ export default function EvaluateStudent() {
         serviceUser?.username ||
         ""
         : "";
-=======
     const evaluationDate = new Date().toISOString().split("T")[0];
->>>>>>> Stashed changes
 
     const payload = {
       templateId: formEvaluate.id,
