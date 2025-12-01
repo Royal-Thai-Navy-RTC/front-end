@@ -64,7 +64,7 @@ export default function Nav({
   messages = [],
   onProfileUpdated = () => { },
   rankOptions,
-  divisionOptions,
+  categoryOptions,
   religionOptions,
 }) {
   const profileSections = [
@@ -93,7 +93,7 @@ export default function Nav({
     {
       title: "ข้อมูลเพิ่มเติม", fields: [
         { name: "position", label: "ตำแหน่ง/หน้าที่", type: "text" },
-        { name: "division", label: "หมวดวิชา", type: "select", option: divisionOptions },
+        { name: "division", label: "หมวดวิชา", type: "select", option: categoryOptions },
         { name: "religion", label: "ศาสนา", type: "select", option: religionOptions },
         { name: "specialSkills", label: "ความสามารถพิเศษ", type: "input", placeholder: "ระบุ เช่น ว่ายน้ำ, ภาษาอังกฤษ" },
         { name: "secondaryOccupation", label: "อาชีพเสริม", type: "input", placeholder: "" },
@@ -137,7 +137,7 @@ export default function Nav({
     () => [
       { path: "/home", label: "หน้าหลัก", icon: Home, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
       {
-        label: "ทั่วไป", icon: CircleSmall, roles: ["admin", "owner"], children: [
+        label: "ทั่วไป", icon: CircleSmall, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"], children: [
           { path: "/library", label: "ห้องสมุด", icon: BookOpen, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
           { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
           { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
@@ -153,11 +153,12 @@ export default function Nav({
           // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
       },
-      {
-        label: "ประเมิน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
-          { path: "/listevaluation", label: "ประเมินนักเรียน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
-        ]
-      },
+      { path: "/listevaluation", label: "ประเมิน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
+      // {
+      //   label: "ประเมิน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
+      //     { path: "/listevaluation", label: "ประเมินนักเรียน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
+      //   ]
+      // },
       {
         label: "ข้าราชการ", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
           { path: "/teacher-report", label: "แจ้งยอดนักเรียน", icon: ClipboardList, roles: ["admin", "owner", "teacher", "sub_admin"] },
@@ -445,7 +446,7 @@ export default function Nav({
           onProfileUpdated={onProfileUpdated}
           closeModal={() => setProfileModalOpen(false)}
           rankOptions={rankOptions}
-          divisionOptions={divisionOptions}
+          categoryOptions={categoryOptions}
           avatarVersion={avatarVersion}
           setAvatarVersion={setAvatarVersion}
         />

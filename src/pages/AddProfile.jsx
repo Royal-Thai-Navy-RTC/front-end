@@ -40,7 +40,7 @@ const requiredFields = [
 ];
 
 export default function AddProfile() {
-    const { user, rankOptions, divisionOptions } = useOutletContext();
+    const { user, rankOptions, categoryOptions } = useOutletContext();
     const [form, setForm] = useState(INITIAL_FORM);
     const [submitting, setSubmitting] = useState(false);
 
@@ -246,7 +246,7 @@ export default function AddProfile() {
                             <span>หมวดวิชา</span>
                             <select name='rank' value={form.rank} onChange={handleChange} className='border rounded-xl px-3 py-2' >
                                 <option value=""> --กรุณาเลือก หมวดวิชา--</option>
-                                {divisionOptions.map(({ value, label }) => (<option key={value} value={value}> {label} </option>))}
+                                {categoryOptions.map(({ value, label }) => (<option key={value} value={value}> {label} </option>))}
                             </select>
                         </label>
                     </div>

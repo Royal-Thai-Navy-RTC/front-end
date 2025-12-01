@@ -294,7 +294,7 @@ export default function ListEvaluate() {
 
                                 <td className="p-3 border-b text-center">
                                     <Link
-                                        to="/evaluatestudent"
+                                        to="/evaluate"
                                         state={
                                             activeTab === "COMPANY"
                                                 ? {

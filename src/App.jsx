@@ -13,7 +13,7 @@ import UserDetail from "./pages/UserDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import TeacherRollCall from "./pages/TeacherRollCall";
 import TeacherLeave from "./pages/TeacherLeave";
-import EvaluateStudent from "./pages/EvaluateStudent";
+import Evaluate from "./pages/Evaluate";
 import ListEvaluate from "./pages/ListEvaluate";
 import FormEvaluateStudent from "./pages/FormEvaluateStudent";
 import SoilderProfile from "./pages/SoldierProfile";
@@ -118,10 +118,10 @@ const router = createBrowserRouter([
                 )
             },
             {
-                path: "evaluatestudent",
+                path: "evaluate",
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
-                        <EvaluateStudent />
+                        <Evaluate />
                     </ProtectedRoute>
                 )
             },

@@ -33,7 +33,7 @@ export default function ProfileModal({
     onProfileUpdated,
     closeModal,
     rankOptions,
-    divisionOptions,
+    categoryOptions,
     avatarVersion,
     setAvatarVersion,
 }) {
