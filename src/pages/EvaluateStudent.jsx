@@ -285,7 +285,7 @@ export default function EvaluateStudent() {
             {formEvaluate.sections
               ?.sort((a, b) => a.sectionOrder - b.sectionOrder)
               .map((sec) => {
-                return templateType == "COMPANY" ? (
+                return templateType === "COMPANY" || templateType === "SERVICE" ? (
                   <div key={sec.id}
                     className="w-full mb-6 border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
                     <div className="bg-blue-800 text-white px-4 py-3 font-semibold">
@@ -438,7 +438,7 @@ export default function EvaluateStudent() {
               })
             }
 
-            <div className="grid sm:grid-cols-3 gap-4 mt-4">
+            <div className={`grid gap-4 mt-4 ${templateType === "SERVICE" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
               {/* คะแนนรวม (Total Score) */}
               <label className="flex flex-col text-sm text-gray-700">
                 <span>คะแนนรวม</span>
@@ -486,46 +486,34 @@ export default function EvaluateStudent() {
                   />
                 </label>
               )}
-              <label className="flex flex-col text-sm text-gray-700 w-full">
-                <span>ผลัด</span>
-                {templateType === "SERVICE" ? (
-                  <input
-                    disabled
-                    value="-"
-                    className="border rounded-xl px-3 py-2 mt-1 w-full text-center bg-gray-50 text-gray-400"
-                  />
-                ) : (
-                  <select className="border rounded-xl px-3 py-2 mt-1 w-full text-center" value={intake}
-                    onChange={(e) => setIntake(e.target.value)}>
-                    <option value="">- กรุณาเลือกผลัด -</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                  </select>
-                )}
-              </label>
-              <label className="flex flex-col text-sm text-gray-700 w-full">
-                <span>ปี</span>
-                {templateType === "SERVICE" ? (
-                  <input
-                    disabled
-                    value="-"
-                    className="border rounded-xl px-3 py-2 mt-1 w-full text-center bg-gray-50 text-gray-400"
-                  />
-                ) : (
-                  <select
-                    className="border rounded-xl px-3 py-2 mt-1 w-full text-center"
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                  >
-                    {/* <option value="">- กรุณาเลือก -</option> */}
-                    {yearOptions.map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                )}
-              </label>
+              {templateType !== "SERVICE" && (
+                <>
+                  <label className="flex flex-col text-sm text-gray-700 w-full">
+                    <span>ผลัด</span>
+                    <select className="border rounded-xl px-3 py-2 mt-1 w-full text-center" value={intake}
+                      onChange={(e) => setIntake(e.target.value)}>
+                      <option value="">- กรุณาเลือกผลัด -</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                    </select>
+                  </label>
+                  <label className="flex flex-col text-sm text-gray-700 w-full">
+                    <span>ปี</span>
+                    <select
+                      className="border rounded-xl px-3 py-2 mt-1 w-full text-center"
+                      value={year}
+                      onChange={(e) => setYear(e.target.value)}
+                    >
+                      {/* <option value="">- กรุณาเลือก -</option> */}
+                      {yearOptions.map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
 
             </div>
 

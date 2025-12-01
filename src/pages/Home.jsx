@@ -1,60 +1,117 @@
 import { Link } from "react-router-dom";
+import { useMemo } from "react";
 import history from "../assets/history.png";
 import student from "../assets/student.png";
 import teacher from "../assets/teacher.png";
 import exam from "../assets/exam.png";
 import book from "../assets/book.png";
+import calendar from "../assets/calendar.png";
+import teacher2 from "../assets/teacher2.png";
+import profile from "../assets/profile.png";
+import windowpic from "../assets/window.png";
+import hand from "../assets/hand.png";
+import navy_team from "../assets/navy_team.png";
 
-const featureSections = [
+const NAV_GROUPS = [
   {
-    title: "ข้อมูลสำคัญ",
+    title: "ทั่วไป",
     items: [
-      {
-        title: "ประวัติความเป็นมา",
-        path: "/history",
-        description: "เรื่องราว จุดเริ่มต้น และบทบาทของศูนย์ฝึกทหารใหม่",
-        picture: history,
-      },
-      {
-        title: "โครงสร้างหลักสูตร",
-        path: "",
-        description: "ภาพรวมหลักสูตร การจัดการฝึก และหน่วยงานที่เกี่ยวข้อง",
-        picture: book,
-      },
+      { path: "/library", label: "ห้องสมุด", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
+      { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
+      // { path: "/teaching-schedules", label: "จัดการตารางสอน", roles: ["admin", "owner", "guest"] },
+      { path: "/public-teaching-schedules", label: "ตารางสอน", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
     ],
   },
   {
-    title: "ระบบสนับสนุนการฝึก",
+    title: "แอดมิน",
     items: [
-      {
-        title: "ประเมินนักเรียน",
-        path: "",
-        description: "ติดตามความก้าวหน้าและประสิทธิภาพของนักเรียนในแต่ละหลักสูตร",
-        picture: student,
-      },
-      {
-        title: "ประเมินครูฝึก",
-        path: "/evaluateteachers",
-        description: "แบบประเมินครูฝึกเพื่อยกระดับคุณภาพบุคลากร",
-        picture: teacher,
-      },
-      {
-        title: "สอบออนไลน์",
-        path: "",
-        description: "พื้นที่สอบและทดสอบศักยภาพผ่านระบบออนไลน์",
-        picture: exam,
-      },
-      {
-        title: "ตารางสอน",
-        path: "/public-teaching-schedules",
-        description: "ดูตารางสอนล่าสุด เปิดให้นักเรียนและผู้ใช้ทั่วไปเข้าดูได้",
-        picture: book,
-      },
+      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
+      { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", roles: ["admin", "owner"] },
+      { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", roles: ["admin", "owner"] },
+      { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", roles: ["admin", "owner"] },
+    ],
+  },
+  {
+    title: "นักเรียน",
+    items: [
+      { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
+      { path: "/liststudent", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
+    ],
+  },
+  {
+    title: "ข้าราชการ",
+    items: [
+      { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
+      { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner"] },
+      { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", roles: ["admin", "owner", "sub_admin", "teacher"] },
     ],
   },
 ];
 
+const pictureMap = {
+  "/library": book,
+  "/history": history,
+  "/teaching-schedules": calendar,
+  "/public-teaching-schedules": calendar,
+  "/liststudent": student,
+  "/listteacher": teacher2,
+  "/evaluation-dashboard": windowpic,
+  "/manage": profile,
+  "/form-evaluate-student": exam,
+  "/teacher-report": navy_team,
+  "/teacher-leave": hand,
+  "/soilderprofile": teacher,
+  "/soldiers": windowpic,
+};
+
+const descriptionMap = {
+  "/home": "กลับสู่หน้าหลัก",
+  "/library": "อ่านเอกสารและคู่มือการฝึก",
+  "/history": "เรื่องราวและบทบาทของศูนย์ฝึก",
+  "/teaching-schedules": "ดูและจัดการตารางสอน",
+  "/public-teaching-schedules": "ตารางสอนสำหรับบุคคลทั่วไป",
+  "/liststudent": "ประเมินนักเรียน",
+  "/listteacher": "ประเมินครูผู้สอน",
+  "/evaluation-dashboard": "สรุปผลการประเมินทั้งหมด",
+  "/manage": "บริหารจัดการผู้ใช้",
+  "/form-evaluate-student": "สร้าง/แก้ไขฟอร์มประเมินนักเรียน",
+  "/teacher-report": "แจ้งยอดนักเรียนประจำวัน",
+  "/teacher-leave": "แจ้งการลา",
+};
+
+const getRole = () => {
+  if (typeof window === "undefined") return "guest";
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user.role) return user.role.toString().toLowerCase();
+  } catch {
+    // ignore parse error
+  }
+  const storedRole = localStorage.getItem("role");
+  return storedRole ? storedRole.toString().toLowerCase() : "guest";
+};
+
 export default function Home() {
+  const role = useMemo(() => getRole(), []);
+
+  const roleFeatureSections = useMemo(() => {
+    const groups = NAV_GROUPS.map((group) => {
+      const items = group.items
+        .filter((p) => p.roles.includes(role))
+        .map((p) => ({
+          title: p.label,
+          path: p.path,
+          description: descriptionMap[p.path] || "เข้าสู่เมนูนี้",
+          picture: pictureMap[p.path] || book,
+        }));
+      return items.length ? { title: group.title, items } : null;
+    }).filter(Boolean);
+
+    return groups;
+  }, [role]);
+
+  const featureSections = roleFeatureSections;
+
   return (
     <div className="flex flex-col gap-8 w-full">
       <HeroSection />
