@@ -56,9 +56,26 @@ const toFiniteNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const ADMIN_LEVEL_ROLES = ["ADMIN", "OWNER", "SUB_ADMIN"];
+
+const matchesAdminLevelRole = (leave) => {
+  if (!leave) return false;
+  const roleCandidate =
+    leave.role ??
+    leave.teacherRole ??
+    leave.teacher?.role ??
+    leave.teacher?.userRole ??
+    leave.teacher?.position ??
+    leave.teacher?.title;
+  if (!roleCandidate) return true; // ถ้าไม่ทราบ role ให้รวมไว้เพื่อไม่ให้ตัวเลขหายไป
+  const normalized = roleCandidate.toString().trim().toUpperCase();
+  return ADMIN_LEVEL_ROLES.includes(normalized);
+};
+
 const normalizeSummary = (payload) => {
   const source = payload?.data ?? payload ?? {};
   const overview = source.overview || {};
+  const commander = source.commanderOverview || overview.commanderOverview || {};
   const totalTeachers = toFiniteNumber(overview.totalTeachers ?? source.totalTeachers ?? source.total) ?? 0;
   const totalLeaveRequests = toFiniteNumber(overview.totalLeaveRequests ?? source.totalLeaveRequests) ?? 0;
   const onLeave = toFiniteNumber(overview.currentOnLeave ?? source.currentOnLeave ?? source.onLeave) ?? 0;
@@ -81,6 +98,28 @@ const normalizeSummary = (payload) => {
   } else if (source.officialDutyPending !== undefined) {
     officialDutySource.pending = source.officialDutyPending;
   }
+  if (commander.officialDutyPending !== undefined) {
+    officialDutySource.pending = commander.officialDutyPending;
+  }
+  if (overview.officialDutyTotal !== undefined) {
+    officialDutySource.total = overview.officialDutyTotal;
+  } else if (source.officialDutyTotal !== undefined) {
+    officialDutySource.total = source.officialDutyTotal;
+  }
+  if (commander.totalCommanders !== undefined) {
+    officialDutySource.total = commander.totalCommanders;
+  }
+  if (overview.officialDutyAvailable !== undefined) {
+    officialDutySource.available = overview.officialDutyAvailable;
+  } else if (source.officialDutyAvailable !== undefined) {
+    officialDutySource.available = source.officialDutyAvailable;
+  }
+  if (commander.availableCommanders !== undefined) {
+    officialDutySource.available = commander.availableCommanders;
+  }
+  if (commander.officialDutyOnLeave !== undefined) {
+    officialDutySource.current = commander.officialDutyOnLeave;
+  }
   const officialDuty = {
     current:
       toFiniteNumber(
@@ -90,6 +129,18 @@ const normalizeSummary = (payload) => {
       toFiniteNumber(officialDutySource.pending ?? officialDutySource.pendingApproval ?? officialDutySource.waiting) ?? null,
     approved: toFiniteNumber(officialDutySource.approved) ?? null,
     rejected: toFiniteNumber(officialDutySource.rejected ?? officialDutySource.denied) ?? null,
+    total:
+      toFiniteNumber(
+        officialDutySource.total ??
+          officialDutySource.all ??
+          officialDutySource.count ??
+          officialDutySource.overall ??
+          officialDutySource.totalTeachers
+      ) ?? null,
+    available:
+      toFiniteNumber(
+        officialDutySource.available ?? officialDutySource.ready ?? officialDutySource.readyToSupport ?? officialDutySource.supporting
+      ) ?? null,
   };
   return {
     totalTeachers,
@@ -561,6 +612,9 @@ export default function TeacherLeave() {
     const hasSummaryCurrentLeaves = Array.isArray(summary?.currentLeaves);
     const currentLeaves = hasSummaryCurrentLeaves ? summary.currentLeaves : currentActiveLeaves;
     const activeLeaves = (currentLeaves || []).filter((leave) => isLeaveOngoing(leave));
+    const officialDutyActiveLeaves = activeLeaves.filter(
+      (leave) => isOfficialDutyLeave(leave.leaveType) && matchesAdminLevelRole(leave)
+    );
     const activeTeacherCount = countUniqueTeachers(activeLeaves);
     const available =
       typeof reportedAvailable === "number" ? reportedAvailable : Math.max(totalTeachers - activeTeacherCount, 0);
@@ -575,7 +629,17 @@ export default function TeacherLeave() {
     const officialDutyCurrent =
       typeof officialDutySummary.current === "number"
         ? officialDutySummary.current
-        : activeLeaves.filter((leave) => isOfficialDutyLeave(leave.leaveType)).length;
+        : officialDutyActiveLeaves.length;
+    const officialDutyTotalFromStatuses = [officialDutySummary.approved, officialDutySummary.pending, officialDutySummary.rejected]
+      .map((item) => toFiniteNumber(item))
+      .filter((item) => typeof item === "number")
+      .reduce((acc, val) => acc + val, 0);
+    const officialDutyTotal =
+      toFiniteNumber(officialDutySummary.total ?? officialDutySummary.count ?? officialDutySummary.all) ??
+      (officialDutyTotalFromStatuses > 0 ? officialDutyTotalFromStatuses : null) ??
+      (officialDutyActiveLeaves.length > 0 ? officialDutyActiveLeaves.length : null);
+    const officialDutyAvailable =
+      toFiniteNumber(officialDutySummary.available ?? officialDutySummary.ready ?? officialDutySummary.readyToSupport) ?? null;
     const officialDutyByFilter =
       adminFilter === "APPROVED"
         ? officialDutySummary.approved
@@ -585,7 +649,19 @@ export default function TeacherLeave() {
     const officialDutyInView =
       typeof officialDutyByFilter === "number"
         ? officialDutyByFilter
-        : adminLeaves.filter((leave) => isOfficialDutyLeave(leave.leaveType)).length;
+        : adminLeaves.filter((leave) => isOfficialDutyLeave(leave.leaveType) && matchesAdminLevelRole(leave)).length;
+    const officialDutyReady =
+      typeof officialDutyAvailable === "number"
+        ? officialDutyAvailable
+        : typeof officialDutyTotal === "number"
+        ? Math.max(officialDutyTotal - officialDutyCurrent, 0)
+        : 0;
+    const officialDutyOverall =
+      typeof officialDutyTotal === "number"
+        ? officialDutyTotal
+        : typeof officialDutyReady === "number"
+        ? officialDutyReady + officialDutyCurrent
+        : officialDutyCurrent;
     const activeLeaveCount = activeTeacherCount || onLeave;
     const refreshDisabled = summaryLoading || adminLeavesLoading || currentLeavesBusy;
     const adminFilterLabel =
@@ -640,10 +716,22 @@ export default function TeacherLeave() {
                   accent="from-rose-500 to-amber-500"
                 />
                 <AdminLeaveStatCard label="ครูที่พร้อมสอน" value={available.toLocaleString("th-TH")} accent="from-emerald-600 to-emerald-400" />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <AdminLeaveStatCard
-                  label="ไปราชการตอนนี้"
+                  label="ราชการ ทั้งหมด"
+                  value={officialDutyOverall.toLocaleString("th-TH")}
+                  accent="from-orange-600 to-amber-500"
+                />
+                <AdminLeaveStatCard
+                  label="ราชการ ที่กำลังลา"
                   value={officialDutyCurrent.toLocaleString("th-TH")}
-                  accent="from-amber-500 to-orange-500"
+                  accent="from-amber-500 to-orange-400"
+                />
+                <AdminLeaveStatCard
+                  label="ราชการ ที่พร้อมสนับสนุนการสอน"
+                  value={officialDutyReady.toLocaleString("th-TH")}
+                  accent="from-emerald-500 to-teal-400"
                 />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
