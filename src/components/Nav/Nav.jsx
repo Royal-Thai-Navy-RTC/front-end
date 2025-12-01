@@ -139,10 +139,10 @@ export default function Nav({
       { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
       { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner"] },
       {
-        label: "Admin", icon: Settings2, roles: ["admin", "owner"], children: [
+        label: "แอดมิน", icon: Settings2, roles: ["admin", "owner"], children: [
           { path: "/manage", label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"] },
           { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
-          { path: "/soldiers", label: "Dashboard ทหารใหม่", icon: ClipboardList, roles: ["admin", "owner"] },
+          { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", icon: User, roles: ["admin", "owner"] },
           // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
