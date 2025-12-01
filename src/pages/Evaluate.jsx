@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useOutletContext } from "react-router-dom";
+import { useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import axios from "axios";
 import Swal from "sweetalert2";
 
 export default function Evaluate() {
   const { categoryOptions } = useOutletContext();
   const { state } = useLocation();
+  const navigate = useNavigate();
   const battalion = state?.battalion;
   const company = state?.company;
   const templateType = state?.templateType;
@@ -223,63 +224,95 @@ export default function Evaluate() {
 
   return (
     <div className="flex flex-col w-full gap-6">
-      <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-2">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex flex-col">
-            {templateType === "BATTALION" ? (
-              <h1 className="text-3xl font-bold text-blue-900">กองพันที่ {battalion}</h1>
-            ) : templateType === "SERVICE" ? (
-              <>
-                <h1 className="text-3xl font-bold text-blue-900">ประเมินราชการ</h1>
-                {serviceUser && (
-                  <p className="text-xl text-gray-500">
-                    ผู้รับการประเมิน: {`${serviceUser.firstName || ""} ${serviceUser.lastName || ""}`.trim() || serviceUser.username || "-"} ({(serviceUser.role || "").toUpperCase()})
-                  </p>
+      <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 shadow hover:from-blue-500 hover:to-indigo-500 active:scale-[0.99] transition"
+          >
+            ย้อนกลับ
+          </button>
+          <div className="flex-1" />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+          <div className="rounded-2xl bg-gradient-to-r from-blue-900 via-blue-700 to-indigo-700 text-white p-5 shadow">
+            <div className="flex flex-wrap items-center gap-3 justify-between">
+              <div className="flex flex-col gap-1">
+                {templateType === "BATTALION" ? (
+                  <>
+                    <h1 className="text-3xl font-bold">กองพันที่ {battalion}</h1>
+                    <p className="text-sm text-white/80">เลือกหมวดวิชาและแบบฟอร์มเพื่อเริ่มประเมิน</p>
+                  </>
+                ) : templateType === "SERVICE" ? (
+                  <>
+                    <h1 className="text-3xl font-bold">ประเมินราชการ</h1>
+                    {serviceUser && (
+                      <p className="text-sm text-white/80">
+                        ผู้รับการประเมิน: {`${serviceUser.firstName || ""} ${serviceUser.lastName || ""}`.trim() || serviceUser.username || "-"} ({(serviceUser.role || "").toUpperCase()})
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <h1 className="text-3xl font-bold">กองร้อย {company}</h1>
+                    <p className="text-sm text-white/80">กองพันที่ {battalion}</p>
+                  </>
                 )}
-              </>
-            ) : (
-              <>
-                <h1 className="text-3xl font-bold text-blue-900">กองร้อย {company}</h1>
-                <p className="text-xl text-gray-500">กองพันที่ {battalion}</p>
-              </>
-            )}
+              </div>
+              <div className="flex flex-wrap gap-2 text-[12px] font-semibold">
+                {battalion && (
+                  <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur">
+                    กองพัน {battalion}
+                  </span>
+                )}
+                {company && templateType !== "BATTALION" && (
+                  <span className="px-3 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur">
+                    กองร้อย {company}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 text-gray-600">
-            {templateType !== "SERVICE" &&
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex flex-col gap-3">
+            <p className="text-sm font-semibold text-gray-700">เลือกหมวดและแบบฟอร์ม</p>
+            <div className="flex flex-col sm:flex-row gap-3 text-gray-600">
+              {templateType !== "SERVICE" && (
+                <select
+                  name="subject"
+                  value={searchSubject}
+                  onChange={(e) => setSearchSubject(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48"
+                >
+                  <option value="">-- หมวดวิชา --</option>
+                  {categoryOptions.map((v) => (
+                    <option key={v.value} value={v.value}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               <select
-                name="subject"
-                value={searchSubject}
-                onChange={(e) => setSearchSubject(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48"
+                name="form"
+                value={searchForm}
+                onChange={(e) => {
+                  const formId = e.target.value;
+                  setSearchForm(formId);
+                  const selectedForm = listEvaluate.find((f) => f.id == formId);
+                  setFormEvaluate(selectedForm || null);
+                }}
+                className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-60"
               >
-                <option value="">-- หมวดวิชา --</option>
-                {categoryOptions.map((v) => (
+                <option value="">-- แบบฟอร์มการประเมิน --</option>
+                {optionEvaluate.map((v) => (
                   <option key={v.value} value={v.value}>
                     {v.label}
                   </option>
                 ))}
               </select>
-            }
-
-            <select
-              name="form"
-              value={searchForm}
-              onChange={(e) => {
-                const formId = e.target.value;
-                setSearchForm(formId);
-                const selectedForm = listEvaluate.find((f) => f.id == formId);
-                setFormEvaluate(selectedForm || null);
-              }}
-              className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-60"
-            >
-              <option value="">-- แบบฟอร์มการประเมิน --</option>
-              {optionEvaluate.map((v) => (
-                <option key={v.value} value={v.value}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
+            </div>
           </div>
         </div>
       </section>
