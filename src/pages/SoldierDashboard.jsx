@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { useOutletContext } from "react-router-dom";
@@ -13,8 +13,9 @@ import {
     Search,
     ShieldCheck,
     UserRound,
+    X,
 } from "lucide-react";
-import addressData from "../assets/address-data.json";
+import rawAddressData from "../assets/address-data.json";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
 
@@ -25,14 +26,24 @@ const resolveFileUrl = (value = "") => {
     return `${API_BASE_URL}${path}`;
 };
 
+const isMeaningfulHealthValue = (value) => {
+    const text = (value ?? "").toString().trim();
+    if (!text) return false;
+    const normalized = text.toLowerCase();
+    return normalized !== "-" && normalized !== "ไม่มี";
+};
+
 const normalizeList = (value) => {
     if (!value) return [];
-    if (Array.isArray(value)) return value.filter(Boolean).map((v) => v.toString().trim()).filter(Boolean);
+    if (Array.isArray(value))
+        return value
+            .map((v) => (v ?? "").toString().trim())
+            .filter(isMeaningfulHealthValue);
     if (typeof value === "string") {
         return value
             .split(",")
             .map((v) => v.trim())
-            .filter(Boolean);
+            .filter(isMeaningfulHealthValue);
     }
     return [];
 };
@@ -119,8 +130,26 @@ const normalizeIntake = (raw = {}) => {
 const formatDate = (value) => {
     if (!value) return "-";
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "-";
+    if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" });
+};
+
+const formatDateInput = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toISOString().slice(0, 10);
+};
+
+const calcAgeYears = (value) => {
+    if (!value) return null;
+    const birth = new Date(value);
+    if (Number.isNaN(birth.getTime())) return null;
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    const m = now.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age -= 1;
+    return age >= 0 ? age : null;
 };
 
 const DetailField = ({ label, value }) => (
@@ -171,7 +200,7 @@ const mapIntakeToForm = (intake = {}) => ({
     firstName: intake.firstName || "",
     lastName: intake.lastName || "",
     citizenId: intake.citizenId || "",
-    birthDate: intake.birthDate || "",
+    birthDate: formatDateInput(intake.birthDate),
     weightKg: intake.weightKg || "",
     heightCm: intake.heightCm || "",
     education: intake.education || "",
@@ -263,6 +292,17 @@ export default function SoldierDashboard() {
     const [editing, setEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
     const [editFile, setEditFile] = useState(null);
+    const [editPreview, setEditPreview] = useState(null);
+    const [editMedical, setEditMedical] = useState({
+        medicalNotes: "",
+        chronicDiseases: [],
+        foodAllergies: [],
+        drugAllergies: [],
+        newDisease: "",
+        newFood: "",
+        newDrug: "",
+    });
+    const imageInputRef = useRef(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
@@ -270,44 +310,45 @@ export default function SoldierDashboard() {
     const [exportingPdf, setExportingPdf] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);
 
+    const addressList = useMemo(() => (Array.isArray(rawAddressData) ? rawAddressData : []), []);
     const token = useMemo(() => localStorage.getItem("token"), []);
     const currentRole = (user?.role || "").toString().toUpperCase();
 
     const subdistrictMap = useMemo(() => {
         const map = new Map();
-        addressData.forEach((item) => {
+        addressList.forEach((item) => {
             map.set(Number(item.id), item);
         });
         return map;
-    }, []);
+    }, [addressList]);
 
     const provinceOptions = useMemo(() => {
         const unique = new Map();
-        addressData.forEach((item) => {
+        addressList.forEach((item) => {
             const p = item.district?.province;
             if (p?.id && !unique.has(p.id)) {
                 unique.set(p.id, { value: p.id, label: p.name_th });
             }
         });
         return [...unique.values()];
-    }, []);
+    }, [addressList]);
     const districtOptions = useMemo(() => {
         if (!editForm.province) return [];
         const unique = new Map();
-        addressData
+        addressList
             .filter((i) => i.district?.province?.id === Number(editForm.province))
             .forEach((i) => {
                 const d = i.district;
                 if (d?.id && !unique.has(d.id)) unique.set(d.id, { value: d.id, label: d.name_th });
             });
         return [...unique.values()];
-    }, [editForm.province]);
+    }, [editForm.province, addressList]);
     const subdistrictOptions = useMemo(() => {
         if (!editForm.district) return [];
-        return addressData
+        return addressList
             .filter((i) => i.district?.id === Number(editForm.district))
             .map((i) => ({ value: i.id, label: i.name_th, zip: i.zip_code }));
-    }, [editForm.district]);
+    }, [editForm.district, addressList]);
 
     const fetchIntakes = useCallback(async () => {
         setLoading(true);
@@ -370,21 +411,24 @@ export default function SoldierDashboard() {
 
     useEffect(() => {
         if (selected) {
-            setEditForm(mapIntakeToForm(selected));
+            setEditForm({ ...mapIntakeToForm(selected), religion_other: "" });
+            setEditMedical({
+                medicalNotes: selected.medicalNotes || "",
+                chronicDiseases: Array.isArray(selected.chronicDiseases) ? selected.chronicDiseases : splitList(selected.chronicDiseases),
+                foodAllergies: Array.isArray(selected.foodAllergies) ? selected.foodAllergies : splitList(selected.foodAllergies),
+                drugAllergies: Array.isArray(selected.drugAllergies) ? selected.drugAllergies : splitList(selected.drugAllergies),
+                newDisease: "",
+                newFood: "",
+                newDrug: "",
+            });
             setEditFile(null);
+            setEditPreview(null);
             setEditing(false);
         }
     }, [selected]);
 
-    const normalizedReligionOptions = useMemo(() => {
-        const base = religionOptions.length
-            ? religionOptions.map((r) => ({ value: r.value, label: r.label }))
-            : [
-                  { value: "พุทธ", label: "ศาสนาพุทธ" },
-                  { value: "คริสต์", label: "ศาสนาคริสต์" },
-                  { value: "อิสลาม", label: "ศาสนาอิสลาม" },
-              ];
-        return [...base, { value: "อื่นๆ", label: "อื่นๆ (ศาสนาอื่นทั้งหมด)" }];
+        const normalizedReligionOptions = useMemo(() => {
+        return religionOptions.length ? religionOptions.map((r) => ({ value: r.value, label: r.label })) : [];
     }, [religionOptions]);
 
     const normalizedEducationOptions = useMemo(() => {
@@ -404,6 +448,11 @@ export default function SoldierDashboard() {
         { value: "6", label: "6 เดือน" },
         { value: "12", label: "1 ปี" },
         { value: "24", label: "2 ปี" },
+    ];
+    const serviceYearOptions = [
+        { value: "0.6", label: "6 เดือน" },
+        { value: "1", label: "1 ปี" },
+        { value: "2", label: "2 ปี" },
     ];
 
     const getServiceMonths = (item) => {
@@ -425,10 +474,10 @@ export default function SoldierDashboard() {
             if (!matchesSpecial) return false;
 
             const hasHealthIssues =
-                !!(item.medicalNotes && `${item.medicalNotes}`.trim()) ||
-                (Array.isArray(item.chronicDiseases) && item.chronicDiseases.length > 0) ||
-                (Array.isArray(item.foodAllergies) && item.foodAllergies.length > 0) ||
-                (Array.isArray(item.drugAllergies) && item.drugAllergies.length > 0);
+                isMeaningfulHealthValue(item.medicalNotes) ||
+                (Array.isArray(item.chronicDiseases) && item.chronicDiseases.some(isMeaningfulHealthValue)) ||
+                (Array.isArray(item.foodAllergies) && item.foodAllergies.some(isMeaningfulHealthValue)) ||
+                (Array.isArray(item.drugAllergies) && item.drugAllergies.some(isMeaningfulHealthValue));
             const matchesHealth =
                 !healthFilter ||
                 (healthFilter === "HAS" && hasHealthIssues) ||
@@ -459,6 +508,22 @@ export default function SoldierDashboard() {
         });
     }, [intakes, provinceFilter, specialSkillFilter, healthFilter, religionFilter, educationFilter, bloodFilter, serviceDurationFilter]);
 
+    const ageYears = useMemo(() => calcAgeYears(selected?.birthDate), [selected?.birthDate]);
+    const healthDisplay = useMemo(() => {
+        const chronicList = Array.isArray(selected?.chronicDiseases) ? selected.chronicDiseases : [];
+        const foodList = Array.isArray(selected?.foodAllergies) ? selected.foodAllergies : [];
+        const drugList = Array.isArray(selected?.drugAllergies) ? selected.drugAllergies : [];
+        const chronicText = chronicList.length ? chronicList.join(", ") : "ไม่มี";
+        const foodText = foodList.length ? foodList.join(", ") : "ไม่มี";
+        const drugText = drugList.length ? drugList.join(", ") : "ไม่มี";
+        const notesText = isMeaningfulHealthValue(selected?.medicalNotes) ? selected.medicalNotes : "ไม่มี";
+        const hasIssues =
+            chronicList.length > 0 ||
+            foodList.length > 0 ||
+            drugList.length > 0 ||
+            isMeaningfulHealthValue(selected?.medicalNotes);
+        return { chronicText, foodText, drugText, notesText, hasIssues };
+    }, [selected]);
     const activeFilterChips = useMemo(() => {
         const chips = [];
         if (specialSkillFilter) chips.push({ label: `ความสามารถพิเศษ: ${specialSkillFilter === "HAS" ? "มี" : "ไม่มี"}` });
@@ -720,6 +785,28 @@ export default function SoldierDashboard() {
 
     const handleEditChange = (e) => {
         const { name, value } = e.target;
+
+        if (name === "phone" || name === "emergencyPhone") {
+            const filtered = value.replace(/\D/g, "");
+            if (filtered.length <= 10) {
+                setEditForm((prev) => ({ ...prev, [name]: filtered }));
+            }
+            return;
+        }
+
+        if (name === "citizenId") {
+            const filtered = value.replace(/\D/g, "");
+            if (filtered.length <= 13) {
+                setEditForm((prev) => ({ ...prev, [name]: filtered }));
+            }
+            return;
+        }
+
+        if (name.endsWith("_other")) {
+            setEditForm((prev) => ({ ...prev, [name]: value }));
+            return;
+        }
+
         if (name === "province") {
             setEditForm((prev) => ({
                 ...prev,
@@ -730,6 +817,7 @@ export default function SoldierDashboard() {
             }));
             return;
         }
+
         if (name === "district") {
             setEditForm((prev) => ({
                 ...prev,
@@ -739,8 +827,9 @@ export default function SoldierDashboard() {
             }));
             return;
         }
+
         if (name === "subdistrict") {
-            const selectedSub = addressData.find((i) => i.id === Number(value));
+            const selectedSub = addressList.find((i) => i.id === Number(value));
             setEditForm((prev) => ({
                 ...prev,
                 subdistrict: value,
@@ -748,30 +837,84 @@ export default function SoldierDashboard() {
             }));
             return;
         }
+
+        if (name === "religion") {
+            setEditForm((prev) => ({
+                ...prev,
+                religion: value,
+                religion_other: "",
+            }));
+            return;
+        }
+
+        if (name === "weightKg" || name === "heightCm") {
+            if (value === "") {
+                setEditForm((prev) => ({ ...prev, [name]: "" }));
+                return;
+            }
+            const num = Number(value);
+            if (!Number.isNaN(num) && num >= 0) {
+                setEditForm((prev) => ({ ...prev, [name]: value }));
+            }
+            return;
+        }
+
         setEditForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleMedicalChange = (e) => {
+        const { name, value } = e.target;
+        setEditMedical((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const addMedicalItem = (field, value) => {
+        const val = `${value ?? ""}`.trim();
+        if (!val) return;
+        setEditMedical((prev) => {
+            const arr = Array.isArray(prev[field]) ? prev[field] : [];
+            if (arr.includes(val)) return prev;
+            return { ...prev, [field]: [...arr, val] };
+        });
+    };
+
+    const removeMedicalItem = (field, idx) => {
+        setEditMedical((prev) => {
+            const arr = Array.isArray(prev[field]) ? prev[field] : [];
+            return { ...prev, [field]: arr.filter((_, i) => i !== idx) };
+        });
     };
 
     const handleEditFile = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setEditing(true);
         setEditFile(file);
+        setEditPreview(URL.createObjectURL(file));
     };
 
+    const triggerImageUpload = () => {
+        imageInputRef.current?.click();
+    };
     const handleSaveEdit = async () => {
         if (!selected?.id) return;
         setSaving(true);
         try {
             const fd = new FormData();
             Object.entries(editForm).forEach(([key, val]) => {
-                if (["chronicDiseases", "foodAllergies", "drugAllergies"].includes(key)) {
-                    const list = splitList(val);
-                    list.forEach((item) => fd.append(`${key}[]`, item));
-                    return;
-                }
+                if (["chronicDiseases", "foodAllergies", "drugAllergies", "medicalNotes"].includes(key)) return;
                 if (val !== undefined && val !== null && `${val}`.trim() !== "") {
                     fd.append(key, val);
                 }
             });
+            if (editMedical.medicalNotes) fd.append("medicalNotes", editMedical.medicalNotes);
+            const isReligionOtherSelected =
+                editForm.religion === "อื่นๆ" ||
+                !normalizedReligionOptions.some((r) => `${r.value}` === `${editForm.religion}`);
+            const religionValue = isReligionOtherSelected && editForm.religion_other ? editForm.religion_other : editForm.religion;
+            if (religionValue) fd.append("religion", religionValue);
+            (editMedical.chronicDiseases || []).forEach((item) => fd.append("chronicDiseases[]", item));
+            (editMedical.foodAllergies || []).forEach((item) => fd.append("foodAllergies[]", item));
+            (editMedical.drugAllergies || []).forEach((item) => fd.append("drugAllergies[]", item));
             if (editFile) {
                 fd.append("file", editFile);
             }
@@ -1056,7 +1199,7 @@ export default function SoldierDashboard() {
                                         setReligionFilter(v);
                                         setPage(1);
                                     }}
-                                    options={[{ value: "", label: "ทุกศาสนา" }, ...normalizedReligionOptions]}
+                                    options={[{ value: "", label: "ทุกศาสนา" }, ...normalizedReligionOptions, { value: "อื่นๆ", label: "อื่นๆ" }]}
                                 />
                                 <FilterSelect
                                     label="การศึกษา"
@@ -1235,195 +1378,313 @@ export default function SoldierDashboard() {
                     onClick={(e) => e.stopPropagation()}
                 >
                     {!selected ? (
-                        <div className="text-center text-blue-100 py-6">เลือกทหารใหม่จากรายการเพื่อดูรายละเอียด</div>
+                        <div className="text-center text-blue-100 py-6">ยังไม่ได้เลือกข้อมูลทหารใหม่</div>
                     ) : (
                         <>
-                            <div className="flex items-start justify-between gap-2">
-                                <div>
-                                    <p className="text-xs uppercase tracking-wide text-blue-100 font-semibold">รายละเอียด</p>
-                                    <h2 className="text-2xl font-bold">
-                                        {(selected.firstName || "") + " " + (selected.lastName || "")}
-                                    </h2>
-                                    <p className="text-sm text-blue-100/90">{formatLocation(selected)}</p>
-                                    {selected.createdAt && (
-                                        <p className="text-xs text-blue-100/80 mt-1">
-                                            ส่งข้อมูลเมื่อ {formatDate(selected.createdAt)}
-                                        </p>
-                                    )}
+                            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-3">
+                                <div className="space-y-1">
+                                    <p className="text-xs uppercase tracking-wide text-blue-100 font-semibold">ข้อมูลทหาร</p>
+                                    <h2 className="text-3xl font-bold leading-tight">{(selected.firstName || "") + " " + (selected.lastName || "")}</h2>
+                                    <p className="text-sm text-blue-100/90 flex items-center gap-2">
+                                        <MapPin className="w-4 h-4" />
+                                        {formatLocation(selected)}
+                                    </p>
+                                    <div className="flex flex-wrap gap-2 text-xs text-blue-100/90">
+                                        {ageYears !== null && <span className="rounded-full bg-white/10 border border-white/20 px-3 py-1 font-semibold">อายุ {ageYears} ปี</span>}
+                                        {selected.createdAt && <span className="rounded-full bg-white/10 border border-white/20 px-3 py-1 font-semibold">บันทึกเมื่อ {formatDate(selected.createdAt)}</span>}
+                                    </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2 text-right text-blue-100">
-                                    <button
-                                        type="button"
-                                        onClick={closeDetailModal}
-                                        className="rounded-full bg-white/10 px-3 py-1 border border-white/20 text-xs font-semibold hover:bg-white/20"
-                                    >
-                                        ปิด
-                                    </button>
-                                    <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 text-xs font-semibold">
-                                        อายุราชการ {formatServiceDuration(getServiceMonths(selected))}
-                                    </span>
+                                    {/* <div className="flex gap-2 flex-wrap justify-end">
+                                        <span className="rounded-full bg-white/15 px-3 py-1 border border-white/20 text-xs font-semibold">ระยะรับราชการ {formatServiceDuration(getServiceMonths(selected))}</span>
+                                        <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 text-xs font-semibold">กรุ๊ปเลือด {selected.bloodGroup || "-"}</span>
+                                        {ageYears !== null && <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 text-xs font-semibold">อายุ {ageYears} ปี</span>}
+                                    </div> */}
                                     <div className="flex flex-wrap gap-2 justify-end">
-                                        <button
-                                            onClick={() => setEditing((v) => !v)}
-                                            className="rounded-xl border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold hover:bg-white/20"
-                                            disabled={saving || deleting}
-                                        >
+                                        <button onClick={() => setEditing((v) => !v)} className="rounded-xl border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold hover:bg-white/20" disabled={saving || deleting}>
                                             {editing ? "ยกเลิก" : "แก้ไข"}
                                         </button>
-                                        <button
-                                            onClick={handleDelete}
-                                            className="rounded-xl border border-red-200 bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/30"
-                                            disabled={saving || deleting}
-                                        >
+                                        <button onClick={handleDelete} className="rounded-xl border border-red-200 bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/30" disabled={saving || deleting}>
                                             {deleting ? "กำลังลบ..." : "ลบ"}
+                                        </button>
+                                        <button type="button" onClick={closeDetailModal} className="rounded-full bg-white/10 px-3 py-1 border border-white/20 text-xs font-semibold hover:bg-white/20 flex items-center gap-1">
+                                            <X className="w-3 h-3" />
+                                            ปิด
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            {editing ? (
-                                <div className="grid sm:grid-cols-2 gap-3">
-                                    <input name="firstName" value={editForm.firstName || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="ชื่อ" />
-                                    <input name="lastName" value={editForm.lastName || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="นามสกุล" />
-                                    <input name="citizenId" value={editForm.citizenId || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="เลขบัตรประชาชน" />
-                                    <input type="date" name="birthDate" value={editForm.birthDate || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" />
-                                    <input name="weightKg" value={editForm.weightKg || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="น้ำหนัก (กก.)" />
-                                    <input name="heightCm" value={editForm.heightCm || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="ส่วนสูง (ซม.)" />
-                                    <input name="bloodGroup" value={editForm.bloodGroup || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="กรุ๊ปเลือด" />
-                                    <input name="serviceYears" value={editForm.serviceYears || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="อายุราชการ (ปี)" />
-                                    <input name="education" value={editForm.education || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="การศึกษา" />
-                                    <input name="previousJob" value={editForm.previousJob || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="อาชีพก่อนเป็นทหาร" />
-                                    <input name="religion" value={editForm.religion || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="ศาสนา" />
-                                    <input name="specialSkills" value={editForm.specialSkills || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="ทักษะพิเศษ" />
-                                    <input name="email" value={editForm.email || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="อีเมล" />
-                                    <input name="phone" value={editForm.phone || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="เบอร์โทรศัพท์" />
-                                    <input name="emergencyName" value={editForm.emergencyName || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="ผู้ติดต่อฉุกเฉิน" />
-                                    <input name="emergencyPhone" value={editForm.emergencyPhone || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="เบอร์ผู้ติดต่อฉุกเฉิน" />
-                                    <input name="addressLine" value={editForm.addressLine || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white sm:col-span-2" placeholder="ที่อยู่" />
-                                    <select name="province" value={editForm.province || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-blue-900">
-                                        <option value="">เลือกจังหวัด</option>
-                                        {provinceOptions.map((p) => (
-                                            <option key={p.value} value={p.value}>{p.label}</option>
-                                        ))}
-                                    </select>
-                                    <select name="district" value={editForm.district || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-blue-900">
-                                        <option value="">เลือกอำเภอ</option>
-                                        {districtOptions.map((d) => (
-                                            <option key={d.value} value={d.value}>{d.label}</option>
-                                        ))}
-                                    </select>
-                                    <select name="subdistrict" value={editForm.subdistrict || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-blue-900">
-                                        <option value="">เลือกตำบล</option>
-                                        {subdistrictOptions.map((s) => (
-                                            <option key={s.value} value={s.value}>{s.label}</option>
-                                        ))}
-                                    </select>
-                                    <input name="postalCode" value={editForm.postalCode || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="รหัสไปรษณีย์" />
-                                    <textarea name="medicalNotes" value={editForm.medicalNotes || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white sm:col-span-2" rows={3} placeholder="หมายเหตุทางการแพทย์" />
-                                    <textarea name="chronicDiseases" value={editForm.chronicDiseases || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white sm:col-span-2" rows={2} placeholder="โรคประจำตัว (คั่นด้วย ,)" />
-                                    <textarea name="drugAllergies" value={editForm.drugAllergies || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white sm:col-span-2" rows={2} placeholder="แพ้ยา (คั่นด้วย ,)" />
-                                    <textarea name="foodAllergies" value={editForm.foodAllergies || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white sm:col-span-2" rows={2} placeholder="แพ้อาหาร (คั่นด้วย ,)" />
-                                    <div className="flex flex-col gap-2 sm:col-span-2 text-xs text-blue-100">
-                                        <label className="flex flex-col gap-1">
-                                            <span>อัปโหลดบัตรใหม่ (ถ้ามี)</span>
-                                            <input type="file" accept="image/*" onChange={handleEditFile} className="text-white text-xs" />
-                                        </label>
-                                    </div>
-                                    <div className="sm:col-span-2 flex justify-end gap-3 mt-2">
-                                        <button
-                                            onClick={handleSaveEdit}
-                                            disabled={saving}
-                                            className="rounded-xl bg-white/90 text-blue-800 px-4 py-2 font-semibold hover:bg-white disabled:opacity-60"
-                                        >
-                                            {saving ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="grid sm:grid-cols-2 gap-3">
-                                    <DetailField label="เลขบัตรประชาชน" value={selected.citizenId} />
-                                    <DetailField label="วันเกิด" value={formatDate(selected.birthDate)} />
-                                    <DetailField label="น้ำหนัก (กก.)" value={selected.weightKg || "-"} />
-                                    <DetailField label="ส่วนสูง (ซม.)" value={selected.heightCm || "-"} />
-                                    <DetailField label="กรุ๊ปเลือด" value={selected.bloodGroup} />
-                                    <DetailField label="อายุราชการ (ปี)" value={selected.serviceYears ? `${Math.round(selected.serviceYears * 10) / 10}` : "-"} />
-                                    <DetailField label="การศึกษา" value={selected.education} />
-                                    <DetailField label="อาชีพก่อนเป็นทหาร" value={selected.previousJob} />
-                                    <DetailField label="ศาสนา" value={selected.religion} />
-                                    <DetailField label="ทักษะพิเศษ" value={selected.specialSkills} />
-                                    <DetailField label="อีเมล" value={selected.email} />
-                                    <DetailField label="เบอร์โทรศัพท์" value={selected.phone} />
-                                    <DetailField label="ติดต่อฉุกเฉิน" value={selected.emergencyName} />
-                                    <DetailField label="เบอร์ติดต่อฉุกเฉิน" value={selected.emergencyPhone} />
-                                </div>
-                            )}
-
-                            {(selected.medicalNotes ||
-                                selected.chronicDiseases.length ||
-                                selected.foodAllergies.length ||
-                                selected.drugAllergies.length) && (
-                                <div className="rounded-xl border border-amber-200/60 bg-amber-50/20 p-3 space-y-2">
-                                    <div className="flex items-center gap-2 text-amber-200 font-semibold">
-                                        <AlertTriangle className="w-4 h-4" />
-                                        ข้อมูลสุขภาพ
-                                    </div>
-                                    <div className="grid sm:grid-cols-2 gap-2 text-sm text-white">
-                                        {!!selected.chronicDiseases.length && (
-                                            <span>โรคประจำตัว: {selected.chronicDiseases.join(", ")}</span>
+                            <div className="grid lg:grid-cols-3 gap-4">
+                                <div className="flex flex-col gap-3 lg:col-span-1">
+                                    <div className="rounded-2xl border border-white/15 bg-white/10 p-3 flex flex-col gap-3">
+                                        {editPreview || selected.idCardImageUrl || selected.avatar ? (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setPreviewImage(
+                                                        editPreview || resolveFileUrl(selected.idCardImageUrl || selected.avatar)
+                                                    )
+                                                }
+                                                className="rounded-xl overflow-hidden border border-white/20 bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/40"
+                                            >
+                                                <img
+                                                    src={editPreview || resolveFileUrl(selected.idCardImageUrl || selected.avatar)}
+                                                    alt="บัตรประชาชน/รูปประจำตัว"
+                                                    className="w-full max-h-72 object-contain"
+                                                />
+                                            </button>
+                                        ) : (
+                                            <div className="rounded-xl border border-dashed border-white/30 bg-white/5 py-10 text-center text-blue-100 text-sm">ไม่มีรูปประจำตัว</div>
                                         )}
-                                        {!!selected.foodAllergies.length && (
-                                            <span>แพ้อาหาร: {selected.foodAllergies.join(", ")}</span>
-                                        )}
-                                        {!!selected.drugAllergies.length && (
-                                            <span>แพ้ยา: {selected.drugAllergies.join(", ")}</span>
-                                        )}
-                                        {selected.medicalNotes && <span className="sm:col-span-2">หมายเหตุ: {selected.medicalNotes}</span>}
+                                        <div className="flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={triggerImageUpload}
+                                                className="rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/20"
+                                            >
+                                                อัปโหลดรูปใหม่
+                                            </button>
+                                            <input
+                                                ref={imageInputRef}
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={handleEditFile}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col gap-1 text-sm text-blue-100">
+                                            <span className="font-semibold text-white">ข้อมูลติดต่อ</span>
+                                            <span>โทร: {selected.phone || "-"}</span>
+                                            <span>อีเมล: {selected.email || "-"}</span>
+                                            <span>ติดต่อฉุกเฉิน: {selected.emergencyName || "-"} ({selected.emergencyPhone || "-"})</span>
+                                        </div>
                                     </div>
                                 </div>
-                            )}
 
-                            {selected.idCardImageUrl || selected.avatar ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setPreviewImage(resolveFileUrl(selected.idCardImageUrl || selected.avatar))}
-                                    className="rounded-xl overflow-hidden border border-white/20 bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
-                                >
-                                    <img
-                                        src={resolveFileUrl(selected.idCardImageUrl || selected.avatar)}
-                                        alt="บัตรประชาชน/ไฟล์แนบ"
-                                        className="w-full object-cover"
-                                    />
-                                </button>
-                            ) : null}
+                                <div className="flex flex-col gap-3 lg:col-span-2">
+                                    {editing ? (
+                                        <div className="grid sm:grid-cols-2 gap-3">
+                                            <input name="firstName" value={editForm.firstName || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="ชื่อ" />
+                                            <input name="lastName" value={editForm.lastName || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="นามสกุล" />
+                                            <input name="citizenId" value={editForm.citizenId || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="หมายเลขบัตรประชาชน" />
+                                            <input type="date" name="birthDate" value={editForm.birthDate || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" />
+                                            <input name="weightKg" value={editForm.weightKg || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="น้ำหนัก (กก.)" />
+                                            <input name="heightCm" value={editForm.heightCm || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="ส่วนสูง (ซม.)" />
+                                            <select name="bloodGroup" value={editForm.bloodGroup || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white">
+                                                <option value="">เลือกกรุ๊ปเลือด</option>
+                                                {normalizedBloodOptions.map((b) => (
+                                                    <option key={b.value} value={b.value}>{b.label}</option>
+                                                ))}
+                                            </select>
+                                            <select name="serviceYears" value={editForm.serviceYears || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white">
+                                                <option value="">เลือกอายุราชการ</option>
+                                                {serviceYearOptions.map((o) => (
+                                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                                ))}
+                                            </select>
+                                            <select name="education" value={editForm.education || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white">
+                                                <option value="">เลือกการศึกษา</option>
+                                                {normalizedEducationOptions.map((e) => (
+                                                    <option key={e.value} value={e.value}>{e.label}</option>
+                                                ))}
+                                            </select>
+                                            <input name="previousJob" value={editForm.previousJob || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="อาชีพก่อนหน้า" />
+                                            <div className="flex flex-col gap-2">
+                                                <select name="religion" value={editForm.religion || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white">
+                                                    <option value="">เลือกศาสนา</option>
+                                                {normalizedReligionOptions.map((r) => (
+                                                    <option key={r.value} value={r.value}>{r.label}</option>
+                                                ))}
+                                            </select>
+                                                {(editForm.religion === "อื่นๆ" || !normalizedReligionOptions.some((r) => `${r.value}` === `${editForm.religion}`)) && (
+                                                    <input
+                                                        type="text"
+                                                        name="religion_other"
+                                                        value={editForm.religion_other || ""}
+                                                        onChange={handleEditChange}
+                                                        placeholder="ใส่ข้อมูลเพิ่มเติม"
+                                                        className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+                                                    />
+                                                )}
+                                            </div>
+                                            <input name="specialSkills" value={editForm.specialSkills || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="ทักษะพิเศษ" />
+                                            <input name="email" value={editForm.email || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="อีเมล" />
+                                            <input name="phone" value={editForm.phone || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="เบอร์โทรศัพท์" />
+                                            <input name="emergencyName" value={editForm.emergencyName || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="บุคคลติดต่อฉุกเฉิน" />
+                                            <input name="emergencyPhone" value={editForm.emergencyPhone || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="เบอร์โทรศัพท์ฉุกเฉิน" />
+                                            <input name="addressLine" value={editForm.addressLine || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white sm:col-span-2" placeholder="ที่อยู่" />
+                                            <select name="province" value={editForm.province || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white">
+                                                <option value="">เลือกจังหวัด</option>
+                                                {provinceOptions.map((p) => (
+                                                    <option key={p.value} value={p.value}>{p.label}</option>
+                                                ))}
+                                            </select>
+                                            <select name="district" value={editForm.district || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white">
+                                                <option value="">เลือกอำเภอ</option>
+                                                {districtOptions.map((d) => (
+                                                    <option key={d.value} value={d.value}>{d.label}</option>
+                                                ))}
+                                            </select>
+                                            <select name="subdistrict" value={editForm.subdistrict || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white">
+                                                <option value="">เลือกตำบล</option>
+                                                {subdistrictOptions.map((s) => (
+                                                    <option key={s.value} value={s.value}>{s.label}</option>
+                                                ))}
+                                            </select>
+                                            <input name="postalCode" value={editForm.postalCode || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white" placeholder="รหัสไปรษณีย์" />
+                                            <textarea name="medicalNotes" value={editMedical.medicalNotes || ""} onChange={handleMedicalChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white sm:col-span-2" rows={3} placeholder="หมายเหตุแพทย์ / ประวัติสุขภาพ" />
+                                            <div className="sm:col-span-2 grid sm:grid-cols-2 gap-3">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-sm text-white">โรคประจำตัว</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={editMedical.newDisease || ""}
+                                                            onChange={(e) => setEditMedical((prev) => ({ ...prev, newDisease: e.target.value }))}
+                                                            className="flex-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+                                                            placeholder="เพิ่มโรคประจำตัว"
+                                                        />
+                                                        <button type="button" onClick={() => addMedicalItem("chronicDiseases", editMedical.newDisease)} className="rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20">
+                                                            เพิ่ม
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {(editMedical.chronicDiseases || []).map((item, idx) => (
+                                                            <span key={`${item}-${idx}`} className="flex items-center gap-2 bg-white/15 text-white px-3 py-1 rounded-full text-xs">
+                                                                {item}
+                                                                <button type="button" onClick={() => removeMedicalItem("chronicDiseases", idx)} className="p-1 rounded-full hover:bg-white/20">
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-sm text-white">แพ้อาหาร</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={editMedical.newFood || ""}
+                                                            onChange={(e) => setEditMedical((prev) => ({ ...prev, newFood: e.target.value }))}
+                                                            className="flex-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+                                                            placeholder="เพิ่มอาหารที่แพ้"
+                                                        />
+                                                        <button type="button" onClick={() => addMedicalItem("foodAllergies", editMedical.newFood)} className="rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20">
+                                                            เพิ่ม
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {(editMedical.foodAllergies || []).map((item, idx) => (
+                                                            <span key={`${item}-${idx}`} className="flex items-center gap-2 bg-white/15 text-white px-3 py-1 rounded-full text-xs">
+                                                                {item}
+                                                                <button type="button" onClick={() => removeMedicalItem("foodAllergies", idx)} className="p-1 rounded-full hover:bg-white/20">
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col gap-2 sm:col-span-2">
+                                                    <label className="text-sm text-white">แพ้ยา</label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={editMedical.newDrug || ""}
+                                                            onChange={(e) => setEditMedical((prev) => ({ ...prev, newDrug: e.target.value }))}
+                                                            className="flex-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+                                                            placeholder="เพิ่มยาที่แพ้"
+                                                        />
+                                                        <button type="button" onClick={() => addMedicalItem("drugAllergies", editMedical.newDrug)} className="rounded-xl border border-white/30 bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20">
+                                                            เพิ่ม
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {(editMedical.drugAllergies || []).map((item, idx) => (
+                                                            <span key={`${item}-${idx}`} className="flex items-center gap-2 bg-white/15 text-white px-3 py-1 rounded-full text-xs">
+                                                                {item}
+                                                                <button type="button" onClick={() => removeMedicalItem("drugAllergies", idx)} className="p-1 rounded-full hover:bg-white/20">
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="sm:col-span-2 flex justify-end gap-3 mt-2">
+                                                <button onClick={handleSaveEdit} disabled={saving} className="rounded-xl bg-white/90 text-blue-800 px-4 py-2 font-semibold hover:bg-white disabled:opacity-60">
+                                                    {saving ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid gap-3">
+                                            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 grid sm:grid-cols-2 gap-3">
+                                                <DetailField label="หมายเลขบัตรประชาชน" value={selected.citizenId} />
+                                                <DetailField label="วันเกิด" value={formatDate(editForm.birthDate || selected.birthDate)} />
+                                                <DetailField label="น้ำหนัก (กก.)" value={selected.weightKg || "-"} />
+                                                <DetailField label="ส่วนสูง (ซม.)" value={selected.heightCm || "-"} />
+                                                <DetailField label="การศึกษา" value={selected.education} />
+                                                <DetailField label="อาชีพก่อนหน้า" value={selected.previousJob} />
+                                                <DetailField label="ศาสนา" value={selected.religion} />
+                                                <DetailField label="กรุ๊ปเลือด" value={selected.bloodGroup || "-"} />
+                                                <DetailField label="ระยะรับราชการ" value={formatServiceDuration(getServiceMonths(selected))} />
+                                                <DetailField label="ทักษะพิเศษ" value={selected.specialSkills} />
+                                            </div>
 
-                            <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
-                                <div className="flex items-center gap-2 text-white font-semibold">
-                                    <MapPin className="w-4 h-4" />
-                                    ตำแหน่งที่อยู่
+                                            <div className={`rounded-2xl border p-3 space-y-2 border-amber-200/60 bg-amber-50/20`}>
+                                                <div className={`flex items-center gap-2 font-semibold text-amber-200`}>
+                                                    {healthDisplay.hasIssues ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                                                    ข้อมูลสุขภาพ
+                                                </div>
+                                                <div className="grid sm:grid-cols-2 gap-2 text-sm text-white">
+                                                    <span>โรคประจำตัว: {healthDisplay.chronicText}</span>
+                                                    <span>อาหารที่แพ้: {healthDisplay.foodText}</span>
+                                                    <span>ยาที่แพ้: {healthDisplay.drugText}</span>
+                                                    <span className="sm:col-span-2">หมายเหตุแพทย์: {healthDisplay.notesText}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-2xl border border-white/10 bg-white/5 p-3 space-y-2">
+                                                <div className="flex items-center gap-2 text-white font-semibold">
+                                                    <MapPin className="w-4 h-4" />
+                                                    ที่อยู่ปัจจุบัน
+                                                </div>
+                                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                    <p className="text-sm text-blue-100/90">{formatLocation(selected)}</p>
+                                                    {mapEmbedUrl && (
+                                                        <a
+                                                            href={mapEmbedUrl.replace("output=embed", "")}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-xs font-semibold text-blue-200 underline hover:text-white"
+                                                        >
+                                                            เปิดใน Google Maps
+                                                        </a>
+                                                    )}
+                                                </div>
+                                                {selected.postalCode && <p className="text-xs text-blue-100/80">รหัสไปรษณีย์: {selected.postalCode}</p>}
+                                                {selectedSubdistrict && (
+                                                    <p className="text-xs text-blue-100/80">เขต/อำเภอ: {selectedSubdistrict.name_th} จ.{selectedSubdistrict.district?.name_th}</p>
+                                                )}
+                                                {mapEmbedUrl ? (
+                                                    <div className="mt-2 rounded-xl overflow-hidden border border-white/10 bg-blue-950/40">
+                                                        <iframe
+                                                            title="แผนที่ที่อยู่"
+                                                            src={mapEmbedUrl}
+                                                            className="w-full h-56"
+                                                            allowFullScreen
+                                                            loading="lazy"
+                                                            referrerPolicy="no-referrer-when-downgrade"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-amber-200">ไม่พบพิกัดตำบลสำหรับแผนที่</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <p className="text-sm text-blue-100/90">{formatLocation(selected)}</p>
-                                {selected.postalCode && (
-                                    <p className="text-xs text-blue-100/80">รหัสไปรษณีย์: {selected.postalCode}</p>
-                                )}
-                                {selectedSubdistrict && (
-                                    <p className="text-xs text-blue-100/80">
-                                        พิกัดตำบล: {selectedSubdistrict.name_th} · {selectedSubdistrict.district?.name_th}
-                                    </p>
-                                )}
-                                {mapEmbedUrl ? (
-                                    <div className="mt-2 rounded-xl overflow-hidden border border-white/10 bg-blue-950/40">
-                                        <iframe
-                                            title="ตำแหน่งบนแผนที่"
-                                            src={mapEmbedUrl}
-                                            className="w-full h-56"
-                                            allowFullScreen
-                                            loading="lazy"
-                                            referrerPolicy="no-referrer-when-downgrade"
-                                        />
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-amber-200">ยังไม่มีพิกัดสำหรับตำบลนี้ในข้อมูล</p>
-                                )}
                             </div>
                         </>
                     )}
@@ -1481,3 +1742,15 @@ function FilterSelect({ label, value, onChange, options }) {
         </label>
     );
 }
+
+
+
+
+
+
+
+
+
+
+
+

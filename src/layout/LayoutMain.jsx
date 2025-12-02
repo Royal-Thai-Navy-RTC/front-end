@@ -67,6 +67,7 @@ const religionOptions = [
   { value: "พุทธ", label: "ศาสนาพุทธ" },
   { value: "อิสลาม", label: "ศาสนาอิสลาม" },
   { value: "คริสต์", label: "ศาสนาคริสต์" },
+  { value: "อื่นๆ", label: "อื่นๆ" },
 ];
 
 const educationOptions = [

@@ -159,12 +159,15 @@ export default function Evaluate() {
       // companyCode: company != null ? String(company) : "",
       battalionCode: battalion != null ? String(battalion) : "",
       evaluationPeriod: evaluationDate,
-      companyCode:battalionCompany,
+      companyCode: company != null ? String(company) : battalionCompany,
       summary: summary || "",
       overallScore: Number(overallScore || computedOverall || 0),
       answers: answerList,
       evaluatorName: evaluatorName || undefined,
     };
+
+    console.log(battalionCompany);
+
 
     if (templateType === "SERVICE" && evaluatedUserId) {
       payload.userId = evaluatedUserId;
@@ -275,7 +278,7 @@ export default function Evaluate() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm flex flex-col gap-3">
+          <div className="rounded-2xl border border-gray-300 bg-white p-4 shadow-sm flex flex-col gap-3">
             <p className="text-sm font-semibold text-gray-700">เลือกหมวดและแบบฟอร์ม</p>
             <div className="flex flex-col sm:flex-row gap-3 text-gray-600">
               {templateType !== "SERVICE" && (
@@ -283,7 +286,7 @@ export default function Evaluate() {
                   name="subject"
                   value={searchSubject}
                   onChange={(e) => setSearchSubject(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-48"
+                  className="px-3 py-2 border border-gray-300 rounded-xl w-full sm:w-35 md:w-48"
                 >
                   <option value="">-- หมวดวิชา --</option>
                   {categoryOptions.map((v) => (
@@ -303,7 +306,7 @@ export default function Evaluate() {
                   const selectedForm = listEvaluate.find((f) => f.id == formId);
                   setFormEvaluate(selectedForm || null);
                 }}
-                className="px-3 py-2 border border-gray-200 rounded-xl w-full sm:w-35 md:w-60"
+                className="px-3 py-2 border border-gray-300 rounded-xl w-full sm:w-35 md:w-60"
               >
                 <option value="">-- แบบฟอร์มการประเมิน --</option>
                 {optionEvaluate.map((v) => (
