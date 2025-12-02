@@ -1,0 +1,40 @@
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import Swal from "sweetalert2";
+import { useOutletContext } from "react-router-dom";
+
+const SUMMARY_TYPES = {
+  COMPANY: "COMPANY",
+  BATTALION: "BATTALION",
+};
+
+export default function EvaluationDashboard() {
+  const { user } = useOutletContext();
+  const role = (user?.role || "").toString().toUpperCase();
+  const canDelete = role === "ADMIN" || role === "OWNER";
+  const [templates, setTemplates] = useState([]);
+  const battalionOptions = useMemo(() => Array.from({ length: 5 }, (_, i) => `${i + 1}`), []);
+  const companyOptions = useMemo(() => Array.from({ length: 5 }, (_, i) => `${i + 1}`), []);
+  const [summaryType, setSummaryType] = useState(SUMMARY_TYPES.COMPANY);
+  const [filters, setFilters] = useState({
+    templateId: "",
+    battalionCode: battalionOptions[0] || "",
+    companyCode: companyOptions[0] || "",
+  });
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [fetchingTemplates, setFetchingTemplates] = useState(false);
+  const isCompanySummary = summaryType === SUMMARY_TYPES.COMPANY;
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      setFetchingTemplates(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("/api/admin/student-evaluation-templates", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = response.data?.data || [];
+        setTemplates(data);
+      } catch (err) {
+        Swal.fire({

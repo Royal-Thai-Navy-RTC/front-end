@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 
 export const SummaryCard = ({ label, value, accent }) => (
   <div className={`rounded-2xl p-4 text-white shadow-lg bg-gradient-to-br ${accent}`}>
@@ -22,15 +22,21 @@ export const SearchDetailField = ({ label, value }) => (
   </div>
 );
 
-export const ActiveFiltersBar = ({ roleFilter, roleLabel, searchValue, onClearRoleFilter, onClearSearch }) => {
+export const ActiveFiltersBar = ({
+  roleFilter,
+  roleLabel,
+  divisionFilter,
+  divisionLabel,
+  searchValue,
+  onClearRoleFilter,
+  onClearDivisionFilter,
+  onClearSearch,
+}) => {
   const hasRoleFilter = roleFilter !== "ALL";
+  const hasDivisionFilter = divisionFilter && divisionFilter !== "ALL";
   const hasSearch = Boolean(searchValue);
-  if (!hasRoleFilter && !hasSearch) {
-    return (
-      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
-        <span>กำลังแสดงทุกบทบาท</span>
-      </div>
-    );
+  if (!hasRoleFilter && !hasDivisionFilter && !hasSearch) {
+    return null;
   }
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -42,7 +48,15 @@ export const ActiveFiltersBar = ({ roleFilter, roleLabel, searchValue, onClearRo
           className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition"
         >
           บทบาท: {roleLabel || roleFilter}
-          <span className="text-blue-500 text-sm font-bold">×</span>
+        </button>
+      )}
+      {hasDivisionFilter && (
+        <button
+          type="button"
+          onClick={onClearDivisionFilter}
+          className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition"
+        >
+          Division: {divisionLabel || divisionFilter}
         </button>
       )}
       {hasSearch && (
@@ -51,8 +65,7 @@ export const ActiveFiltersBar = ({ roleFilter, roleLabel, searchValue, onClearRo
           onClick={onClearSearch}
           className="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
         >
-          คำที่หา: “{searchValue}”
-          <span className="text-emerald-500 text-sm font-bold">×</span>
+          คำค้นหา: "{searchValue}"
         </button>
       )}
     </div>

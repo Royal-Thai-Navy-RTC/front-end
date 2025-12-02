@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { Users, RefreshCw, Search, UserPlus } from "lucide-react";
@@ -104,17 +104,25 @@ const extractUsers = (payload) => {
     return [];
 };
 
-const filterUsersForDisplay = (users = [], roleFilter = "ALL", currentUserId, currentUsername) => {
+const filterUsersForDisplay = (
+    users = [],
+    roleFilter = "ALL",
+    divisionFilter = "ALL",
+    currentUserId,
+    currentUsername
+) => {
     const normalizedUsername = (currentUsername || "").toString().toLowerCase();
     return users.filter((user) => {
         const candidateId = user?.id ?? user?._id;
         const userRole = (user?.role || "").toString().toUpperCase();
+        const userDivision = (user?.division || "").toString();
         const username = (user?.username || "").toString().toLowerCase();
         const isSelf =
             (currentUserId != null && candidateId === currentUserId) ||
             (!!normalizedUsername && username === normalizedUsername);
         if (isSelf) return false;
         if (roleFilter !== "ALL" && userRole !== roleFilter) return false;
+        if (divisionFilter !== "ALL" && divisionFilter && userDivision !== divisionFilter) return false;
         return true;
     });
 };
@@ -167,6 +175,7 @@ export default function ManageUsers() {
     const { rankOptions = [], categoryOptions = [], religionOptions = [] } = useOutletContext?.() || {};
     const [users, setUsers] = useState([]);
     const [roleFilter, setRoleFilter] = useState("ALL");
+    const [divisionFilter, setDivisionFilter] = useState("ALL");
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -214,6 +223,21 @@ export default function ManageUsers() {
         },
         [rankSelectOptions]
     );
+
+    const divisionSelectOptions = useMemo(() => {
+        if (categoryOptions.length) return categoryOptions;
+        const unique = new Set();
+        users.forEach((user) => {
+            const division = (user?.division || "").toString().trim();
+            if (division) unique.add(division);
+        });
+        return Array.from(unique).map((value) => ({ value, label: value }));
+    }, [categoryOptions, users]);
+
+    const divisionFilterLabel = useMemo(() => {
+        if (divisionFilter === "ALL") return "All divisions";
+        return divisionSelectOptions.find((option) => option.value === divisionFilter)?.label || divisionFilter;
+    }, [divisionFilter, divisionSelectOptions]);
 
     useEffect(() => {
         if (!isAdmin) return;
@@ -293,17 +317,32 @@ export default function ManageUsers() {
     }, [debouncedSearch, isAdmin]);
 
     const filteredUsers = useMemo(
-        () => filterUsersForDisplay(users, roleFilter, currentUserId, currentUsername),
-        [users, roleFilter, currentUserId, currentUsername]
+        () => filterUsersForDisplay(users, roleFilter, divisionFilter, currentUserId, currentUsername),
+        [users, roleFilter, divisionFilter, currentUserId, currentUsername]
     );
 
     const filteredSearchResults = useMemo(
-        () => filterUsersForDisplay(searchResults, roleFilter, currentUserId, currentUsername),
-        [searchResults, roleFilter, currentUserId, currentUsername]
+        () =>
+            filterUsersForDisplay(searchResults, roleFilter, divisionFilter, currentUserId, currentUsername),
+        [searchResults, roleFilter, divisionFilter, currentUserId, currentUsername]
     );
 
     const handleClearSearch = useCallback(() => {
         setSearch("");
+        setDebouncedSearch("");
+        setSearchResults([]);
+        setSearchError("");
+        setPage(1);
+    }, []);
+
+    const handleClearAllFilters = useCallback(() => {
+        setRoleFilter("ALL");
+        setDivisionFilter("ALL");
+        handleClearSearch();
+    }, [handleClearSearch]);
+
+    const handleClearDivisionFilter = useCallback(() => {
+        setDivisionFilter("ALL");
         setPage(1);
     }, []);
 
@@ -848,6 +887,21 @@ const mapUserToForm = (data = {}) => ({
                 <div className="flex flex-col gap-2">
                     <div className="flex flex-col gap-2 md:flex-row">
                         <select
+                            value={divisionFilter}
+                            onChange={(e) => {
+                                setDivisionFilter(e.target.value);
+                                setPage(1);
+                            }}
+                            className="border rounded-xl px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+                        >
+                            <option value="ALL">- หมวดวิชา -</option>
+                            {divisionSelectOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                        <select
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value)}
                             className="border rounded-xl px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
@@ -874,7 +928,7 @@ const mapUserToForm = (data = {}) => ({
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <button
-                            onClick={handleClearSearch}
+                            onClick={handleClearAllFilters}
                             className="px-3 py-2 rounded-xl border border-gray-300 text-gray-600 text-sm hover:bg-gray-50 transition"
                         >
                             ล้าง
@@ -892,8 +946,11 @@ const mapUserToForm = (data = {}) => ({
                 <ActiveFiltersBar
                     roleFilter={roleFilter}
                     roleLabel={ROLE_FILTER_LABELS[roleFilter] || roleFilter}
+                    divisionFilter={divisionFilter}
+                    divisionLabel={divisionFilterLabel}
                     searchValue={debouncedSearch}
                     onClearRoleFilter={handleClearRoleFilter}
+                    onClearDivisionFilter={handleClearDivisionFilter}
                     onClearSearch={handleClearSearch}
                 />
             </section>
@@ -1544,3 +1601,4 @@ const mapUserToForm = (data = {}) => ({
         </div>
     );
 }
+

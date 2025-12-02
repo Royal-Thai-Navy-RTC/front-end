@@ -367,11 +367,12 @@ export default function SoldierDashboard() {
             const totalPages = payload?.totalPages || payload?.data?.totalPages || 1;
             const total = payload?.total || payload?.data?.total || normalized.length;
             setPageMeta({ totalPages, total });
-            if (normalized.length) {
-                setSelected((prev) => prev ?? normalized[0]);
-            } else {
-                setSelected(null);
-            }
+            setSelected((prev) => {
+                if (!normalized.length) return null;
+                if (!prev) return normalized[0];
+                const updated = normalized.find((i) => `${i.id}` === `${prev.id}`);
+                return updated || normalized[0];
+            });
         } catch (error) {
             Swal.fire({
                 icon: "error",
@@ -901,7 +902,8 @@ export default function SoldierDashboard() {
         try {
             const fd = new FormData();
             Object.entries(editForm).forEach(([key, val]) => {
-                if (["chronicDiseases", "foodAllergies", "drugAllergies", "medicalNotes"].includes(key)) return;
+                // Skip religion fields here because they are handled separately below
+                if (["chronicDiseases", "foodAllergies", "drugAllergies", "medicalNotes", "religion", "religion_other"].includes(key)) return;
                 if (val !== undefined && val !== null && `${val}`.trim() !== "") {
                     fd.append(key, val);
                 }

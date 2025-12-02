@@ -1,15 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { useOutletContext } from "react-router-dom";
+
+const SUMMARY_TYPES = {
+  COMPANY: "COMPANY",
+  BATTALION: "BATTALION",
+};
 
 export default function EvaluationDashboard() {
   const { user } = useOutletContext();
   const role = (user?.role || "").toString().toUpperCase();
   const canDelete = role === "ADMIN" || role === "OWNER";
-  const [templates, setTemplates] = useState([]);
-  const battalionOptions = useMemo(() => Array.from({ length: 5 }, (_, i) => `${i + 1}`), []);
+
+  const battalionOptions = useMemo(() => Array.from({ length: 4 }, (_, i) => `${i + 1}`), []);
   const companyOptions = useMemo(() => Array.from({ length: 5 }, (_, i) => `${i + 1}`), []);
+
+  const [templates, setTemplates] = useState([]);
+  const [summaryType, setSummaryType] = useState(SUMMARY_TYPES.COMPANY);
   const [filters, setFilters] = useState({
     templateId: "",
     battalionCode: battalionOptions[0] || "",
@@ -18,6 +26,15 @@ export default function EvaluationDashboard() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetchingTemplates, setFetchingTemplates] = useState(false);
+
+  const isCompanySummary = summaryType === SUMMARY_TYPES.COMPANY;
+  const filtersReady = isCompanySummary
+    ? Boolean(filters.templateId && filters.battalionCode && filters.companyCode)
+    : Boolean(filters.templateId && filters.battalionCode);
+  const lastFetchKey = useRef("");
+
+  const buildFetchKey = () =>
+    `${summaryType}|${filters.templateId}|${filters.battalionCode}|${isCompanySummary ? filters.companyCode : "-"}`;
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -33,7 +50,7 @@ export default function EvaluationDashboard() {
         Swal.fire({
           icon: "error",
           title: "โหลดแบบประเมินไม่สำเร็จ",
-          text: err?.response?.data?.message || err?.message || "กรุณาลองใหม่",
+          text: err?.response?.data?.message || err?.message || "ไม่สามารถดึงรายการแบบประเมินได้",
         });
       } finally {
         setFetchingTemplates(false);
@@ -42,26 +59,66 @@ export default function EvaluationDashboard() {
     fetchTemplates();
   }, []);
 
-  const handleFetch = async () => {
-    if (!filters.templateId || !filters.companyCode || !filters.battalionCode) {
-      Swal.fire({
-        icon: "warning",
-        title: "กรุณากรอกข้อมูลให้ครบ",
-        text: "ระบุแบบประเมิน กองพัน และกองร้อยให้ครบก่อน",
-      });
+  useEffect(() => {
+    setSummary(null);
+    setFilters((prev) => {
+      if (isCompanySummary && !prev.companyCode) {
+        return { ...prev, companyCode: companyOptions[0] || "" };
+      }
+      if (!isCompanySummary && prev.companyCode) {
+        return { ...prev, companyCode: "" };
+      }
+      return prev;
+    });
+    // allow re-fetch when switching summary type
+    lastFetchKey.current = "";
+  }, [companyOptions, isCompanySummary]);
+
+  useEffect(() => {
+    if (!filtersReady) return;
+    handleFetch({ silent: true });
+  }, [filtersReady, summaryType, filters.templateId, filters.battalionCode, filters.companyCode]);
+
+  const handleResetFilters = () => {
+    setFilters({
+      templateId: "",
+      battalionCode: battalionOptions[0] || "",
+      companyCode: isCompanySummary ? companyOptions[0] || "" : "",
+    });
+    setSummary(null);
+    lastFetchKey.current = "";
+  };
+
+  const handleFetch = async ({ silent = false, force = false } = {}) => {
+    if (!filtersReady) {
+      if (!silent) {
+        Swal.fire({
+          icon: "warning",
+          title: "กรุณากรอกข้อมูลให้ครบ",
+          text: "เลือกแบบประเมิน กองพัน และกองร้อยให้ครบก่อนดึงข้อมูล",
+        });
+      }
       return;
     }
+
+    const key = buildFetchKey();
+    if (!force && key === lastFetchKey.current) return;
+
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
       const params = {
         templateId: filters.templateId,
-        companyCode: filters.companyCode,
         battalionCode: filters.battalionCode,
         page: 1,
         pageSize: 20,
         includeAnswers: true,
+        summaryType,
       };
+      if (isCompanySummary) {
+        params.companyCode = filters.companyCode;
+      }
+
       const response = await axios.get("/api/student-evaluations", {
         params,
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -120,7 +177,7 @@ export default function EvaluationDashboard() {
           if (!questionMap.has(qid)) {
             questionMap.set(qid, {
               questionId: qid,
-              prompt: ans?.question?.prompt || `หัวข้อ ${qid}`,
+              prompt: ans?.question?.prompt || `คำถามที่ ${qid}`,
               sectionTitle: ans?.question?.section?.title || "",
               totalScore: 0,
               evaluationCount: 0,
@@ -149,12 +206,13 @@ export default function EvaluationDashboard() {
         }),
       };
 
+      lastFetchKey.current = key;
       setSummary(summaryPayload);
     } catch (err) {
       Swal.fire({
         icon: "error",
-        title: "ไม่สามารถดึงสรุปผลได้",
-        text: err?.response?.data?.message || err?.message || "กรุณาลองใหม่",
+        title: "ดึงข้อมูลสรุปไม่สำเร็จ",
+        text: err?.response?.data?.message || err?.message || "ไม่สามารถดึงข้อมูลสรุปการประเมินได้",
       });
       setSummary(null);
     } finally {
@@ -166,8 +224,8 @@ export default function EvaluationDashboard() {
     if (!evaluationId) return;
     const confirm = await Swal.fire({
       icon: "warning",
-      title: "ยืนยันการลบแบบประเมิน",
-      text: "ต้องการลบข้อมูลนี้หรือไม่?",
+      title: "ยืนยันลบรายการประเมิน?",
+      text: "คุณต้องการลบข้อมูลการประเมินนี้หรือไม่",
       showCancelButton: true,
       confirmButtonText: "ลบ",
       cancelButtonText: "ยกเลิก",
@@ -180,13 +238,13 @@ export default function EvaluationDashboard() {
       await axios.delete(`/api/student-evaluations/${evaluationId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      await handleFetch();
-      Swal.fire({ icon: "success", title: "ลบข้อมูลสำเร็จ" });
+      await handleFetch({ silent: true, force: true });
+      Swal.fire({ icon: "success", title: "ลบข้อมูลเรียบร้อย" });
     } catch (err) {
       Swal.fire({
         icon: "error",
         title: "ลบข้อมูลไม่สำเร็จ",
-        text: err?.response?.data?.message || err?.message || "กรุณาลองใหม่",
+        text: err?.response?.data?.message || err?.message || "เกิดข้อผิดพลาดในการลบข้อมูล",
       });
     }
   };
@@ -195,7 +253,7 @@ export default function EvaluationDashboard() {
     if (!summary?.questionSummaries) return [];
     const groups = {};
     summary.questionSummaries.forEach((q) => {
-      const section = q.sectionTitle || "อื่นๆ";
+      const section = q.sectionTitle || "ไม่ระบุหมวด";
       if (!groups[section]) groups[section] = [];
       groups[section].push(q);
     });
@@ -206,7 +264,6 @@ export default function EvaluationDashboard() {
         items: items.sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0)),
       }));
   }, [summary]);
-
 
   const formatScore = (value) => {
     const num = Number(value || 0);
@@ -230,63 +287,120 @@ export default function EvaluationDashboard() {
             <span className="inline-flex px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold w-fit">
               Dashboard
             </span>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">สรุปผลการประเมินกองร้อย</h1>
-            {/* <p className="text-sm text-gray-500">Owner / Admin / Sub Admin / Teacher</p> */}
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              {isCompanySummary ? "สรุปผลการประเมินกองร้อย" : "สรุปผลการประเมินกองพัน"}
+            </h1>
           </div>
-          <button
-            onClick={handleFetch}
-            disabled={loading}
-            className="px-4 py-2 rounded-xl bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 disabled:opacity-60 shadow"
-          >
-            {loading ? "กำลังโหลด..." : "ดึงข้อมูลสรุป"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleResetFilters}
+              disabled={loading}
+              className="px-3 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              รีเซ็ตตัวกรอง
+            </button>
+            <button
+              onClick={() => handleFetch({ force: true })}
+              disabled={loading}
+              className="px-4 py-2 rounded-xl bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 disabled:opacity-60 shadow"
+            >
+              {loading ? "กำลังโหลด..." : "รีเฟรช"}
+            </button>
+          </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-3">
-          <label className="flex flex-col text-sm text-gray-700">
-            <span>แบบประเมิน</span>
-            <select
-              value={filters.templateId}
-              onChange={(e) => setFilters((prev) => ({ ...prev, templateId: e.target.value }))}
-              className="border rounded-xl px-3 py-2 mt-1"
-            >
-              <option value="">-- เลือกแบบประเมิน --</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            {fetchingTemplates && <span className="text-xs text-gray-400 mt-1">กำลังโหลด...</span>}
-          </label>
-          <label className="flex flex-col text-sm text-gray-700">
-            <span>กองพัน</span>
-            <select
-              value={filters.battalionCode}
-              onChange={(e) => setFilters((prev) => ({ ...prev, battalionCode: e.target.value }))}
-              className="border rounded-xl px-3 py-2 mt-1"
-            >
-              {battalionOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col text-sm text-gray-700">
-            <span>กองร้อย</span>
-            <select
-              value={filters.companyCode}
-              onChange={(e) => setFilters((prev) => ({ ...prev, companyCode: e.target.value }))}
-              className="border rounded-xl px-3 py-2 mt-1"
-            >
-              {companyOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="bg-gray-50 border border-gray-300 rounded-2xl p-4 flex flex-col gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.08em] text-gray-500">ตัวกรองผลสรุป</p>
+              <p className="text-sm text-gray-700">
+                เลือกประเภทสรุปและข้อมูลหน่วย เพื่อแสดงผลเฉพาะที่ต้องการ
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[SUMMARY_TYPES.COMPANY, SUMMARY_TYPES.BATTALION].map((mode) => {
+                const active = summaryType === mode;
+                const label = mode === SUMMARY_TYPES.COMPANY ? "กองร้อย" : "กองพัน";
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setSummaryType(mode)}
+                    className={`px-3 py-2 rounded-xl text-sm font-semibold border transition ${
+                      active
+                        ? "bg-blue-700 text-white border-blue-700 shadow-sm"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-blue-400"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <label className="flex flex-col text-sm text-gray-700">
+              <span>แบบประเมิน</span>
+              <select
+                value={filters.templateId}
+                onChange={(e) => setFilters((prev) => ({ ...prev, templateId: e.target.value }))}
+                className="border rounded-xl px-3 py-2 mt-1"
+              >
+                <option value="">-- เลือกแบบประเมิน --</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              {fetchingTemplates && <span className="text-xs text-gray-400 mt-1">กำลังโหลด...</span>}
+            </label>
+            <label className="flex flex-col text-sm text-gray-700">
+              <span>กองพัน</span>
+              <select
+                value={filters.battalionCode}
+                onChange={(e) => setFilters((prev) => ({ ...prev, battalionCode: e.target.value }))}
+                className="border rounded-xl px-3 py-2 mt-1"
+              >
+                {battalionOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {isCompanySummary && (
+              <label className="flex flex-col text-sm text-gray-700">
+                <span>กองร้อย</span>
+                <select
+                  value={filters.companyCode}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, companyCode: e.target.value }))}
+                  className="border rounded-xl px-3 py-2 mt-1"
+                >
+                  {companyOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-xs text-gray-600">
+            <span className="px-3 py-1 rounded-full bg-white border border-gray-200">
+              สรุปแบบ: {isCompanySummary ? "กองร้อย + กองพัน" : "กองพันรวม"}
+            </span>
+            <span className="px-3 py-1 rounded-full bg-white border border-gray-200">
+              กองพันที่: {filters.battalionCode || "-"}
+            </span>
+            {isCompanySummary && (
+              <span className="px-3 py-1 rounded-full bg-white border border-gray-200">
+                กองร้อยที่: {filters.companyCode || "-"}
+              </span>
+            )}
+          </div>
         </div>
       </section>
 
@@ -295,30 +409,29 @@ export default function EvaluationDashboard() {
           <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <p className="text-xs uppercase tracking-[0.12em] text-gray-500">ภาพรวม</p>
+                <p className="text-xs uppercase tracking-[0.12em] text-gray-500">ข้อมูลสรุป</p>
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {summary.template?.name || "แบบประเมิน"}
+                  {summary.template?.name || "ยังไม่ระบุแบบประเมิน"}
                 </h2>
                 <p className="text-sm text-gray-600">
-                  ล่าสุด: <span className="font-semibold">{latestText}</span>
+                  อัปเดตล่าสุด: <span className="font-semibold">{latestText}</span>
                 </p>
               </div>
               <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                ประเมินแล้ว {summary.evaluationCount || 0} ครั้ง
+                จำนวนการประเมิน {summary.evaluationCount || 0} ครั้ง
               </span>
             </div>
 
             <div className="grid sm:grid-cols-3 gap-3">
-              <SummaryCard label="คะแนนรวม" value={formatScore(summary.totalScore)} hint="จากทุกหัวข้อ" />
-              <SummaryCard label="คะแนนเฉลี่ย" value={formatScore(summary.averageScore)} hint="จากทุกหัวข้อ" />
-              <SummaryCard label="คะแนนภาพรวม" value={formatScore(summary.overallScoreAverage)} hint="จากทุกการประเมิน" />
+              <SummaryCard label="คะแนนรวมทั้งหมด" value={formatScore(summary.totalScore)} hint="รวมคะแนนทุกข้อ" />
+              <SummaryCard label="คะแนนเฉลี่ยต่อข้อ" value={formatScore(summary.averageScore)} hint="เฉลี่ยคะแนนทุกคำถาม" />
+              <SummaryCard label="คะแนนเฉลี่ยรวมแบบประเมิน" value={formatScore(summary.overallScoreAverage)} hint="เฉลี่ยคะแนนรวมต่อการประเมิน" />
             </div>
-
 
           {summary.evaluations?.length ? (
             <div className="border border-gray-100 rounded-xl overflow-hidden">
               <div className="bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700">
-                รายการแบบประเมินที่ถูกส่ง
+                รายการการประเมินล่าสุด
               </div>
               <div className="divide-y divide-gray-100">
                 {summary.evaluations.map((ev) => (
@@ -329,7 +442,7 @@ export default function EvaluationDashboard() {
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">{ev.template}</p>
                       <p className="text-xs text-gray-500">
-                        ผู้ประเมิน: {ev.evaluator || "-"} | วิชา: {ev.subject || "-"}
+                        ผู้ประเมิน: {ev.evaluator || "-"} | หัวข้อ/บุคคล: {ev.subject || "-"}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -355,20 +468,20 @@ export default function EvaluationDashboard() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">ยังไม่มีแบบประเมินในตัวกรองนี้</p>
+            <p className="text-sm text-gray-500">ยังไม่มีข้อมูลการประเมิน</p>
           )}
         </section>
 
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">รายละเอียดหัวข้อที่ถูกประเมิน</h3>
+              <h3 className="text-lg font-semibold text-gray-900">สรุปคะแนนรายคำถาม</h3>
               <span className="text-xs text-gray-500">
-                เรียงตามหมวด &gt; คะแนนเฉลี่ย
+                เรียงจากคะแนนรวมสูง &gt; ต่ำ
               </span>
             </div>
             <div className="flex flex-col gap-4">
               {groupedQuestions.length === 0 && (
-                <p className="text-sm text-gray-500">ยังไม่มีรายการ</p>
+                <p className="text-sm text-gray-500">ยังไม่มีข้อมูลคำถาม</p>
               )}
               {groupedQuestions.map((section) => (
                 <div key={section.section} className="border border-gray-100 rounded-xl overflow-hidden">
@@ -388,11 +501,11 @@ export default function EvaluationDashboard() {
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-gray-900">{q.prompt}</p>
                             <p className="text-xs text-gray-500">
-                              ประเมิน {q.evaluationCount || 0} ครั้ง
+                              จำนวนการประเมิน {q.evaluationCount || 0} ครั้ง
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs text-gray-500">เฉลี่ย</p>
+                            <p className="text-xs text-gray-500">คะแนนเฉลี่ย</p>
                             <p className="text-lg font-bold text-blue-800">
                               {formatScore(avg)} / {q.maxScore || 5}
                             </p>
