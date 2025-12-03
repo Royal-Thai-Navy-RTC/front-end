@@ -10,6 +10,11 @@ const SUMMARY_SCOPE = {
   COMPANY: "COMPANY",
 };
 
+const SORT_ORDER = {
+  DESC: "DESC",
+  ASC: "ASC",
+};
+
 const COMPANY_CODES = ["1", "2", "3", "4", "5"];
 const DEFAULT_BATTALION_CODES = ["1", "2", "3", "4"];
 const DEFAULT_COMPANY_CODES = [...COMPANY_CODES];
@@ -163,6 +168,7 @@ export default function Exam() {
   const [latestDeletingId, setLatestDeletingId] = useState(null);
   const [latestFetched, setLatestFetched] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [companySortOrder, setCompanySortOrder] = useState(SORT_ORDER.DESC);
   const [summaryScope, setSummaryScope] = useState(SUMMARY_SCOPE.BATTALION);
   const [filters, setFilters] = useState({ battalion: SAMPLE_RESULTS[0].battalion, company: "ALL" });
   const [uploadStatus, setUploadStatus] = useState({ fileName: "", message: "", state: "" });
@@ -362,15 +368,18 @@ export default function Exam() {
 
   const companySummaryAllBattalions = useMemo(() => {
     if (summaryData?.length) {
-      return summaryData.flatMap((battalion) =>
+      const rows = summaryData.flatMap((battalion) =>
         (battalion.companies || []).map((company) => ({
-          label: `พัน ${battalion.battalionCode} / ร้อย ${company.companyCode}`,
+          label: `ร้อย ${company.companyCode} / พัน ${battalion.battalionCode}`,
           average: Number(company.averageScore || 0),
         }))
       );
+      return rows.sort((a, b) =>
+        companySortOrder === SORT_ORDER.DESC ? b.average - a.average : a.average - b.average
+      );
     }
     const battalionCodes = Array.from(new Set(records.map((r) => r.battalion))).sort();
-    return battalionCodes.flatMap((bn) =>
+    const rows = battalionCodes.flatMap((bn) =>
       COMPANY_CODES.map((co) => {
         const targeted = records.filter((r) => r.battalion === bn && r.company === co);
         const totalScore = targeted.reduce((sum, rec) => sum + Number(rec.score || 0), 0);
@@ -380,22 +389,28 @@ export default function Exam() {
         };
       })
     );
-  }, [records, summaryData]);
+    return rows.sort((a, b) =>
+      companySortOrder === SORT_ORDER.DESC ? b.average - a.average : a.average - b.average
+    );
+  }, [records, summaryData, companySortOrder]);
 
   const companySummarySelectedBattalion = useMemo(() => {
     const battalion = filters.battalion || battalionOptions[0] || "";
     if (summaryData?.length) {
       const target = summaryData.find((item) => `${item.battalionCode}` === `${battalion}`);
       const companies = target?.companies || [];
-      return COMPANY_CODES.map((co) => {
+      const rows = COMPANY_CODES.map((co) => {
         const matched = companies.find((company) => `${company.companyCode}` === `${co}`);
         return {
           label: `กองร้อย ${co}`,
           average: matched ? Number(matched.averageScore || 0) : 0,
         };
       });
+      return rows.sort((a, b) =>
+        companySortOrder === SORT_ORDER.DESC ? b.average - a.average : a.average - b.average
+      );
     }
-    return COMPANY_CODES.map((co) => {
+    const rows = COMPANY_CODES.map((co) => {
       const targeted = records.filter((r) => r.battalion === battalion && r.company === co);
       const totalScore = targeted.reduce((sum, rec) => sum + Number(rec.score || 0), 0);
       return {
@@ -403,7 +418,10 @@ export default function Exam() {
         average: targeted.length ? Number((totalScore / targeted.length).toFixed(2)) : 0,
       };
     });
-  }, [filters.battalion, records, battalionOptions, summaryData]);
+    return rows.sort((a, b) =>
+      companySortOrder === SORT_ORDER.DESC ? b.average - a.average : a.average - b.average
+    );
+  }, [filters.battalion, records, battalionOptions, summaryData, companySortOrder]);
 
   const battalionSummary = useMemo(() => {
     if (summaryData?.length) {
@@ -781,6 +799,28 @@ export default function Exam() {
                   เทียบกองร้อย (ทุกกองพัน)
                 </button>
               </div>
+              {summaryScope === SUMMARY_SCOPE.COMPANY && (
+                <div className="flex items-center bg-gray-100 rounded-xl p-1">
+                  <button
+                    type="button"
+                    onClick={() => setCompanySortOrder(SORT_ORDER.DESC)}
+                    className={`px-3 py-2 text-xs font-semibold rounded-lg transition ${
+                      companySortOrder === SORT_ORDER.DESC ? "bg-blue-600 text-white shadow" : "text-gray-600"
+                    }`}
+                  >
+                    มากไปน้อย
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCompanySortOrder(SORT_ORDER.ASC)}
+                    className={`px-3 py-2 text-xs font-semibold rounded-lg transition ${
+                      companySortOrder === SORT_ORDER.ASC ? "bg-blue-600 text-white shadow" : "text-gray-600"
+                    }`}
+                  >
+                    น้อยไปมาก
+                  </button>
+                </div>
+              )}
               <select
                 value={filters.battalion}
                 onChange={(e) => setFilters((prev) => ({ ...prev, battalion: e.target.value }))}
