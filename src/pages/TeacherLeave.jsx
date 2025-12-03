@@ -1137,7 +1137,7 @@ function LeavePresetCard({ title, description, active, highlight, onClick }) {
 function AdminViewTabs({ active, onChange }) {
   const tabs = [
     { key: "ADMIN", label: "แดชบอร์ด ADMIN" },
-    { key: "TEACHER", label: "แจ้งการลา (โหมดครู)" },
+    { key: "TEACHER", label: "ระบบแจ้งการลา" },
   ];
   return (
     <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-2 flex gap-2">
