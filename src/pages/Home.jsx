@@ -29,6 +29,7 @@ const NAV_GROUPS = [
       { path: "/form-evaluate", label: "สร้างฟอร์มการประเมิน", roles: ["admin", "owner"] },
       { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", roles: ["admin", "owner"] },
       { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", roles: ["admin", "owner"] },
+      { path: "/soldier-intake-settings", label: "ตั้งค่ารับสมัครทหารใหม่", roles: ["admin", "owner"] },
     ],
   },
   {
@@ -64,6 +65,7 @@ const pictureMap = {
   "/teacher-leave": hand,
   "/soilderprofile": teacher,
   "/soldiers": windowpic,
+  "/soldier-intake-settings": windowpic,
 };
 
 const descriptionMap = {
@@ -80,6 +82,7 @@ const descriptionMap = {
   "/form-evaluate": "สร้าง/แก้ไขฟอร์มประเมินนักเรียน",
   "/teacher-report": "แจ้งยอดนักเรียนประจำวัน",
   "/teacher-leave": "แจ้งการลา",
+  "/soldier-intake-settings": "เปิด/ปิดฟอร์มลงทะเบียนทหารใหม่",
 };
 
 const getRole = () => {

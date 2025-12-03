@@ -168,6 +168,7 @@ export default function Exam() {
   const [latestDeletingId, setLatestDeletingId] = useState(null);
   const [latestFetched, setLatestFetched] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [latestSearch, setLatestSearch] = useState("");
   const [companySortOrder, setCompanySortOrder] = useState(SORT_ORDER.DESC);
   const [summaryScope, setSummaryScope] = useState(SUMMARY_SCOPE.BATTALION);
   const [filters, setFilters] = useState({ battalion: SAMPLE_RESULTS[0].battalion, company: "ALL" });
@@ -263,6 +264,7 @@ export default function Exam() {
             page: nextPage,
             pageSize: latestMeta.pageSize || 10,
             sort: "-timestamp",
+            search: latestSearch || undefined,
           },
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -282,7 +284,7 @@ export default function Exam() {
         setLatestLoading(false);
       }
     },
-    [latestMeta.page, latestMeta.pageSize]
+    [latestMeta.page, latestMeta.pageSize, latestSearch]
   );
 
   useEffect(() => {
@@ -903,6 +905,22 @@ export default function Exam() {
             <span className="text-xs text-gray-500">
               แสดง {displayResults.length} รายการ (หน้า {latestMeta.page}/{Math.max(latestMeta.totalPages, 1)})
             </span>
+            <input
+              type="text"
+              value={latestSearch}
+              onChange={(e) => setLatestSearch(e.target.value)}
+              placeholder="ค้นหาชื่อ / เลข ทร. / หน่วย"
+              className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+            />
+            <button
+              type="button"
+              onClick={() => fetchLatestResults(1)}
+              disabled={latestLoading}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {latestLoading ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+              ค้นหา
+            </button>
             <button
               type="button"
               onClick={() => fetchLatestResults()}
