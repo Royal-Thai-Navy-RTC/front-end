@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { useOutletContext } from "react-router-dom";
+import ReactECharts from "echarts-for-react";
 
 const SUMMARY_TYPES = {
   COMPANY: "COMPANY",
@@ -26,6 +27,18 @@ export default function EvaluationDashboard() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetchingTemplates, setFetchingTemplates] = useState(false);
+  const [comparisonData, setComparisonData] = useState({
+    companyAverages: [],
+    battalionAverages: [],
+    overallCompanyAverage: 0,
+    templateName: "",
+  });
+  const [comparisonTemplateId, setComparisonTemplateId] = useState("");
+  const [loadingComparison, setLoadingComparison] = useState(false);
+  const nonServiceTemplates = useMemo(
+    () => templates.filter((t) => (t.templateType || "").toUpperCase() !== "SERVICE"),
+    [templates]
+  );
 
   const isCompanySummary = summaryType === SUMMARY_TYPES.COMPANY;
   const filtersReady = isCompanySummary
@@ -78,6 +91,98 @@ export default function EvaluationDashboard() {
     if (!filtersReady) return;
     handleFetch({ silent: true });
   }, [filtersReady, summaryType, filters.templateId, filters.battalionCode, filters.companyCode]);
+
+  const fetchComparison = useCallback(
+    async (templateIdParam) => {
+      setLoadingComparison(true);
+      try {
+        const token = localStorage.getItem("token");
+        const params = {
+          battalionCodes: battalionOptions.join(","),
+          companyCodes: companyOptions.join(","),
+        };
+        const selectedTemplate = nonServiceTemplates.find((t) => `${t.id}` === `${templateIdParam || comparisonTemplateId}`);
+        if (selectedTemplate) {
+          params.templateId = selectedTemplate.id;
+        }
+
+        const res = await axios.get("/api/student-evaluations/comparison", {
+          params,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const comparisonPayload = res.data?.comparison || res.data || {};
+        const companySource = Array.isArray(comparisonPayload.companies)
+          ? comparisonPayload.companies
+          : Array.isArray(comparisonPayload.battalions)
+            ? comparisonPayload.battalions.flatMap((b) =>
+                (b.companies || []).map((c) => ({ ...c, battalionCode: c.battalionCode ?? b.battalionCode }))
+              )
+            : [];
+
+        const companyAverages = companySource
+          .map((c) => ({
+            code: c.companyCode ?? "-",
+            battalionCode: c.battalionCode ?? "-",
+            totalScore: Number(c.totalScore || 0),
+            totalEvaluations: Number(c.totalEvaluations || 0),
+            average: Number(c.averageOverallScore || 0),
+            label: c.companyCode
+              ? `กองร้อย ${c.companyCode}${c.battalionCode ? ` / กองพัน ${c.battalionCode}` : ""}`
+              : "ไม่ระบุกองร้อย",
+          }))
+          .sort((a, b) => (b.average || 0) - (a.average || 0));
+
+        const battalionAverages = Array.isArray(comparisonPayload.battalions)
+          ? comparisonPayload.battalions
+              .map((b) => ({
+                code: b.battalionCode ?? "-",
+                totalScore: Number(b.totalScore || 0),
+                totalEvaluations: Number(b.totalEvaluations || 0),
+                average: Number(b.averageOverallScore || 0),
+                label: b.battalionCode ? `กองพัน ${b.battalionCode}` : "ไม่ระบุกองพัน",
+              }))
+              .sort((a, b) => (b.average || 0) - (a.average || 0))
+          : [];
+
+        const overallCompanyAverage = (() => {
+          const totalScoreAll = companyAverages.reduce((sum, item) => sum + (item.totalScore || 0), 0);
+          const totalEvalAll = companyAverages.reduce((sum, item) => sum + (item.totalEvaluations || 0), 0);
+          if (totalEvalAll) return totalScoreAll / totalEvalAll;
+          const totalAvg = companyAverages.reduce((sum, item) => sum + (item.average || 0), 0);
+          return companyAverages.length ? totalAvg / companyAverages.length : 0;
+        })();
+
+        const templateNameResolved = selectedTemplate?.name || "-";
+
+        setComparisonData({
+          companyAverages,
+          battalionAverages,
+          overallCompanyAverage,
+          templateName: templateNameResolved,
+        });
+      } catch {
+        setComparisonData({
+          companyAverages: [],
+          battalionAverages: [],
+          overallCompanyAverage: 0,
+          templateName: "ทุกแบบประเมิน",
+        });
+      } finally {
+        setLoadingComparison(false);
+      }
+    },
+    [battalionOptions, companyOptions, nonServiceTemplates, comparisonTemplateId]
+  );
+
+  useEffect(() => {
+    fetchComparison(comparisonTemplateId);
+  }, [fetchComparison, comparisonTemplateId]);
+
+  useEffect(() => {
+    if (!comparisonTemplateId && nonServiceTemplates.length) {
+      setComparisonTemplateId(nonServiceTemplates[0].id);
+    }
+  }, [comparisonTemplateId, nonServiceTemplates]);
 
   const handleResetFilters = () => {
     setFilters({
@@ -265,6 +370,104 @@ export default function EvaluationDashboard() {
       }));
   }, [summary]);
 
+  const companyChartOption = useMemo(() => {
+    const list = comparisonData?.companyAverages || [];
+    if (!list.length) return null;
+    const categories = list.map((item) => item.label || "-");
+    const data = list.map((item) => ({
+      value: Number.isFinite(Number(item.average)) ? Math.round(Number(item.average) * 100) / 100 : 0,
+    }));
+    return {
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        formatter: (params) => {
+          const point = params?.[0];
+          if (!point) return "";
+          const valueText = Number(point.data?.value ?? 0).toFixed(2);
+          return `${point.name}<br/>กองร้อย: ${valueText}`;
+        },
+      },
+      grid: { left: 50, right: 20, top: 30, bottom: 60 },
+      xAxis: {
+        type: "category",
+        data: categories,
+        axisLabel: {
+          interval: 0,
+          rotate: categories.some((c) => c.length > 12) ? 20 : 0,
+        },
+      },
+      yAxis: {
+        type: "value",
+        name: "คะแนนเฉลี่ย",
+        min: 0,
+      },
+      series: [
+        {
+          type: "bar",
+          barMaxWidth: 42,
+          itemStyle: { color: "#2563eb" },
+          data,
+          label: {
+            show: true,
+            position: "top",
+            formatter: ({ data }) => Number(data?.value ?? 0).toFixed(2),
+          },
+        },
+      ],
+      animationDuration: 500,
+    };
+  }, [comparisonData?.companyAverages]);
+
+  const battalionChartOption = useMemo(() => {
+    const list = comparisonData?.battalionAverages || [];
+    if (!list.length) return null;
+    const categories = list.map((item) => item.label || "-");
+    const data = list.map((item) => ({
+      value: Number.isFinite(Number(item.average)) ? Math.round(Number(item.average) * 100) / 100 : 0,
+    }));
+    return {
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        formatter: (params) => {
+          const point = params?.[0];
+          if (!point) return "";
+          const valueText = Number(point.data?.value ?? 0).toFixed(2);
+          return `${point.name}<br/>กองพัน: ${valueText}`;
+        },
+      },
+      grid: { left: 50, right: 20, top: 30, bottom: 60 },
+      xAxis: {
+        type: "category",
+        data: categories,
+        axisLabel: {
+          interval: 0,
+          rotate: categories.some((c) => c.length > 12) ? 20 : 0,
+        },
+      },
+      yAxis: {
+        type: "value",
+        name: "คะแนนเฉลี่ย",
+        min: 0,
+      },
+      series: [
+        {
+          type: "bar",
+          barMaxWidth: 42,
+          itemStyle: { color: "#10b981" },
+          data,
+          label: {
+            show: true,
+            position: "top",
+            formatter: ({ data }) => Number(data?.value ?? 0).toFixed(2),
+          },
+        },
+      ],
+      animationDuration: 500,
+    };
+  }, [comparisonData?.battalionAverages]);
+
   const formatScore = (value) => {
     const num = Number(value || 0);
     if (Number.isNaN(num)) return "0";
@@ -281,6 +484,79 @@ export default function EvaluationDashboard() {
 
   return (
     <div className="flex flex-col gap-5 w-full">
+      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.08em] text-gray-500">กราฟเปรียบเทียบคะแนนเฉลี่ย</p>
+            <p className="text-sm text-gray-700">
+              เปรียบเทียบคะแนนเฉลี่ยของกองพันและกองร้อยที่เกี่ยวข้อง (จัดอันดับมากไปหาน้อย)
+            </p>
+            <p className="text-xs text-gray-500">
+              เทมเพลต: <span className="font-semibold text-gray-800">{comparisonData.templateName || "-"}</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">กองร้อย</span>
+            <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">กองพัน</span>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="flex flex-col text-sm text-gray-700">
+            <span>เลือกแบบประเมิน (สำหรับกราฟ)</span>
+            <select
+              value={comparisonTemplateId}
+              onChange={(e) => setComparisonTemplateId(e.target.value)}
+              className="border rounded-xl px-3 py-2 mt-1"
+            >
+              {nonServiceTemplates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+            <span className="text-xs uppercase tracking-[0.08em] text-blue-700">สรุปทุกกองร้อย</span>
+            <p className="text-lg font-bold text-blue-900 mt-1">
+              คะแนนเฉลี่ยรวมทุกกองร้อย: {formatScore(comparisonData?.overallCompanyAverage || 0)}
+            </p>
+            <p className="text-xs text-blue-800/80">
+              รวม {comparisonData?.companyAverages?.length || 0} กองร้อยในข้อมูลนี้
+            </p>
+          </div>
+        </div>
+        <div>
+          {loadingComparison ? (
+            <p className="text-sm text-gray-500">กำลังโหลดกราฟ...</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="rounded-xl border border-gray-100 p-3 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-800">กองร้อย</p>
+                  <span className="text-xs text-gray-500">จัดอันดับมากไปหาน้อย</span>
+                </div>
+                {companyChartOption ? (
+                  <ReactECharts option={companyChartOption} notMerge lazyUpdate style={{ height: 320, width: "100%" }} />
+                ) : (
+                  <p className="text-sm text-gray-500 mt-2">ยังไม่มีข้อมูลกองร้อย</p>
+                )}
+              </div>
+              <div className="rounded-xl border border-gray-100 p-3 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-800">กองพัน</p>
+                  <span className="text-xs text-gray-500">จัดอันดับมากไปหาน้อย</span>
+                </div>
+                {battalionChartOption ? (
+                  <ReactECharts option={battalionChartOption} notMerge lazyUpdate style={{ height: 320, width: "100%" }} />
+                ) : (
+                  <p className="text-sm text-gray-500 mt-2">ยังไม่มีข้อมูลกองพัน</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
       <section className="bg-white rounded-2xl shadow p-6 border border-gray-100 flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex flex-col gap-1">
@@ -348,7 +624,7 @@ export default function EvaluationDashboard() {
                 className="border rounded-xl px-3 py-2 mt-1"
               >
                 <option value="">-- เลือกแบบประเมิน --</option>
-                {templates.map((t) => (
+                {nonServiceTemplates.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
