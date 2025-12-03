@@ -27,6 +27,7 @@ import Message from "./pages/Message";
 import SoldierDashboard from "./pages/SoldierDashboard";
 import ServiceEvaluationSummary from "./pages/ServiceEvaluationSummary";
 import Exam from "./pages/Exam";
+import CreateTasks from "./pages/CreateTasks";
 
 const normalizeRole = (role = "") => role.toUpperCase();
 
@@ -194,6 +195,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "STUDENT", "OWNER", "SUB_ADMIN"]}>
                         <Message />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "createtask",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
+                        <CreateTasks />
                     </ProtectedRoute>
                 )
             }

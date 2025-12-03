@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import ReactECharts from "echarts-for-react";
@@ -133,10 +133,10 @@ const normalizeSummary = (payload) => {
     total:
       toFiniteNumber(
         officialDutySource.total ??
-          officialDutySource.all ??
-          officialDutySource.count ??
-          officialDutySource.overall ??
-          officialDutySource.totalTeachers
+        officialDutySource.all ??
+        officialDutySource.count ??
+        officialDutySource.overall ??
+        officialDutySource.totalTeachers
       ) ?? null,
     available:
       toFiniteNumber(
@@ -695,6 +695,12 @@ export default function TeacherLeave() {
     }
   };
 
+  const adminTabs = isAdmin ? (
+    <div className="sticky top-4 z-20 flex lg:justify-end items-end">
+      <AdminViewTabs active={adminView ? "ADMIN" : "TEACHER"} onChange={(mode) => setAdminView(mode === "ADMIN")} />
+    </div>
+  ) : null;
+
   if (isAdminDashboard) {
     const totalTeachers = summary?.totalTeachers ?? 0;
     const onLeave = summary?.onLeave ?? 0;
@@ -734,8 +740,8 @@ export default function TeacherLeave() {
       adminFilter === "APPROVED"
         ? officialDutySummary.approved
         : adminFilter === "REJECTED"
-        ? officialDutySummary.rejected
-        : officialDutySummary.pending;
+          ? officialDutySummary.rejected
+          : officialDutySummary.pending;
     const officialDutyInView =
       typeof officialDutyByFilter === "number"
         ? officialDutyByFilter
@@ -744,25 +750,28 @@ export default function TeacherLeave() {
       typeof officialDutyAvailable === "number"
         ? officialDutyAvailable
         : typeof officialDutyTotal === "number"
-        ? Math.max(officialDutyTotal - officialDutyCurrent, 0)
-        : 0;
+          ? Math.max(officialDutyTotal - officialDutyCurrent, 0)
+          : 0;
     const officialDutyOverall =
       typeof officialDutyTotal === "number"
         ? officialDutyTotal
         : typeof officialDutyReady === "number"
-        ? officialDutyReady + officialDutyCurrent
-        : officialDutyCurrent;
+          ? officialDutyReady + officialDutyCurrent
+          : officialDutyCurrent;
     const activeLeaveCount = activeTeacherCount || onLeave;
     const refreshDisabled = summaryLoading || adminLeavesLoading || currentLeavesBusy;
     const adminFilterLabel =
       adminFilter === "APPROVED" ? "อนุมัติแล้ว" : adminFilter === "REJECTED" ? "ไม่อนุมัติ" : "รออนุมัติ";
     return (
       <div className="w-full flex flex-col gap-6">
-        <AdminViewTabs active={adminView ? "ADMIN" : "TEACHER"} onChange={(mode) => setAdminView(mode === "ADMIN")} />
-        <header className="bg-white rounded-2xl shadow p-6 flex flex-col gap-2">
-          <p className="text-sm text-blue-500 font-semibold uppercase tracking-[0.35em]">ADMIN</p>
-          <h1 className="text-3xl font-bold text-blue-900">แดชบอร์ดการลาของครูผู้สอน</h1>
-          <p className="text-sm text-gray-600">สรุปจำนวนครูทั้งหมด ผู้ที่กำลังลาปัจจุบัน และรายละเอียดคำขอลาแบบล่าสุด</p>
+
+        <header className="bg-white rounded-2xl shadow p-6 flex flex-col lg:flex-row lg:justify-between">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-blue-500 font-semibold uppercase tracking-[0.35em]">ADMIN</p>
+            <h1 className="text-3xl font-bold text-blue-900">แดชบอร์ดการลาของครูผู้สอน</h1>
+            <p className="text-sm text-gray-600">สรุปจำนวนครูทั้งหมด ผู้ที่กำลังลาปัจจุบัน และรายละเอียดคำขอลาแบบล่าสุด</p>
+          </div>
+          {adminTabs}
         </header>
 
         <section className="bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-100 shadow-lg p-6 lg:p-8 flex flex-col gap-6">
@@ -1024,13 +1033,14 @@ export default function TeacherLeave() {
 
   return (
     <div className="w-full flex flex-col gap-6">
-      {isAdmin && !isAdminDashboard && (
-        <AdminViewTabs active={adminView ? "ADMIN" : "TEACHER"} onChange={(mode) => setAdminView(mode === "ADMIN")} />
-      )}
-      <header className="bg-white rounded-2xl shadow p-6 flex flex-col gap-2">
-        <p className="text-sm text-blue-500 font-semibold uppercase tracking-[0.35em]">TEACHER</p>
-        <h1 className="text-3xl font-bold text-blue-900">แจ้งการลา</h1>
-        <p className="text-sm text-gray-600">บันทึกคำขอลา พร้อมตรวจสอบประวัติการลาของคุณภายในหน้าเดียว</p>
+
+      <header className="bg-white rounded-2xl shadow p-6 flex flex-col lg:flex-row justify-between">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-blue-500 font-semibold uppercase tracking-[0.35em]">TEACHER</p>
+          <h1 className="text-3xl font-bold text-blue-900">แจ้งการลา</h1>
+          <p className="text-sm text-gray-600">บันทึกคำขอลา พร้อมตรวจสอบประวัติการลาของคุณภายในหน้าเดียว</p>
+        </div>
+        {adminTabs}
       </header>
 
       <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-6">
@@ -1175,12 +1185,12 @@ export default function TeacherLeave() {
               statusMapped === "APPROVED"
                 ? { bg: "bg-emerald-50", text: "text-emerald-700", label: "อนุมัติแล้ว" }
                 : statusMapped === "REJECTED"
-                ? { bg: "bg-rose-50", text: "text-rose-700", label: "ไม่อนุมัติ" }
-                : statusMapped === "ACTIVE"
-                ? { bg: "bg-blue-50", text: "text-blue-700", label: "กำลังลา" }
-                : statusMapped === "CANCEL"
-                ? { bg: "bg-slate-100", text: "text-rose-700", label: "ยกเลิกแล้ว" }
-                : { bg: "bg-amber-50", text: "text-amber-700", label: "รออนุมัติ" };
+                  ? { bg: "bg-rose-50", text: "text-rose-700", label: "ไม่อนุมัติ" }
+                  : statusMapped === "ACTIVE"
+                    ? { bg: "bg-blue-50", text: "text-blue-700", label: "กำลังลา" }
+                    : statusMapped === "CANCEL"
+                      ? { bg: "bg-slate-100", text: "text-rose-700", label: "ยกเลิกแล้ว" }
+                      : { bg: "bg-amber-50", text: "text-amber-700", label: "รออนุมัติ" };
             return (
               <div
                 key={leave.id || leave._id || `${leave.leaveType}-${leave.startDate}-${leave.createdAt}`}
@@ -1234,9 +1244,8 @@ function LeavePresetCard({ title, description, active, highlight, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`text-left rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${
-        active ? "ring-2 ring-blue-200" : "ring-0"
-      } ${accent}`}
+      className={`text-left rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${active ? "ring-2 ring-blue-200" : "ring-0"
+        } ${accent}`}
     >
       <p className="text-base font-semibold text-gray-900">{title}</p>
       <p className="text-sm text-gray-600 mt-1">{description}</p>
@@ -1251,7 +1260,7 @@ function AdminViewTabs({ active, onChange }) {
     { key: "TEACHER", label: "ระบบแจ้งการลา" },
   ];
   return (
-    <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-2 flex gap-2">
+    <div className="rounded-2xl w-full h-fit border border-blue-100 bg-blue-50/60 p-2 flex gap-2">
       {tabs.map((tab) => {
         const selected = active === tab.key;
         return (
@@ -1259,11 +1268,10 @@ function AdminViewTabs({ active, onChange }) {
             key={tab.key}
             type="button"
             onClick={() => onChange(tab.key)}
-            className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${
-              selected
-                ? "bg-white text-blue-700 shadow border border-blue-200"
-                : "text-blue-700/70 hover:bg-white/60 border border-transparent"
-            }`}
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${selected
+              ? "bg-white text-blue-700 shadow border border-blue-200"
+              : "text-blue-700/70 hover:bg-white/60 border border-transparent"
+              }`}
           >
             {tab.label}
           </button>
@@ -1335,3 +1343,4 @@ function LeaveApprovalSteps({ leave, compact = false }) {
     </div>
   );
 }
+

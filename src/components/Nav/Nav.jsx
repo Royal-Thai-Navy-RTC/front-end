@@ -148,6 +148,7 @@ export default function Nav({
           { path: "/manage", label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"] },
           { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", icon: User, roles: ["admin", "owner"] },
+          { path: "/createtask", label: "มอบหมายงาน", icon: ClipboardList, roles: ["admin", "owner"] },
 
           // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
@@ -399,7 +400,7 @@ export default function Nav({
                     <ChevronDownIcon open={openDropdown === item.label} />
                   </button>
 
-                  {openDropdown === item.label && (
+                    {openDropdown === item.label && (
                     <div className="pl-4 flex flex-col gap-2 bg-blue-50 rounded-xl py-2 mt-2">
                       {item.children.map(child => (
                         <Link key={child.label} to={child.path} className="py-2 px-3 text-gray-700 flex items-center gap-2 rounded-lg hover:bg-white" onClick={() => setMenuOpen(false)}>
