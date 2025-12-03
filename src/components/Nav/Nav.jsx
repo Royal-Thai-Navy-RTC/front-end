@@ -155,7 +155,7 @@ export default function Nav({
       // { path: "/listevaluation", label: "ประเมิน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
       {
         label: "ประเมิน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
-          { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
+          { path: "/form-evaluate", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/listevaluation", label: "ประเมิน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/listteacher", label: "ประเมินผู้สอน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/evaluation-dashboard", label: "ผลการประเมินนักเรียน", icon: CalendarClock, roles: ["admin", "owner", "sub_admin", "teacher"] },

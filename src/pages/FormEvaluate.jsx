@@ -15,7 +15,7 @@ const reorderQuestionIds = (sections) => {
 };
 
 /* -------------------- MAIN COMPONENT -------------------- */
-export default function FormEvaluateStudent() {
+export default function FormEvaluate() {
     // const { divisionOptions } = useOutletContext();
 
     const [listEvaluate, setListEvaluate] = useState([]);
@@ -35,8 +35,8 @@ export default function FormEvaluateStudent() {
         name: "",
         description: "",
         templateType: "SERVICE",
-        battalionCount: 0,
-        teacherEvaluatorCount: 0,
+        battalionCount: "",
+        teacherEvaluatorCount: "",
         sections: [],
     };
 
@@ -139,13 +139,23 @@ export default function FormEvaluateStudent() {
             }))
             : [];
 
+        const battalionCount = 4; // fixed value
+        const teacherEvaluatorCount = Number(template.teacherEvaluatorCount);
+
+        if (template.templateType === "BATTALION") {
+            if (!Number.isFinite(teacherEvaluatorCount) || teacherEvaluatorCount < 1) {
+                Swal.fire({ icon: "warning", title: "Please enter teacher evaluator count (at least 1)." });
+                return null;
+            }
+        }
+
         const payload = {
             id: template.id ?? null,
             name: (template.name || "").trim(),
             description: (template.description || "").trim(),
             templateType: template.templateType || "SERVICE",
-            battalionCount: template.templateType === "BATTALION" ? Number(template.battalionCount || 0) : undefined,
-            teacherEvaluatorCount: template.templateType === "BATTALION" ? Number(template.teacherEvaluatorCount || 0) : undefined,
+            battalionCount: template.templateType === "BATTALION" ? 4 : undefined,
+            teacherEvaluatorCount: template.templateType === "BATTALION" ? teacherEvaluatorCount : undefined,
             sections: sanitizedSections,
         };
 
@@ -213,159 +223,180 @@ export default function FormEvaluateStudent() {
         setSaving(false);
     };
 
+    const filteredTemplates = listEvaluate
+        .filter(v => {
+            const matchName = (v.name || "").toLowerCase().includes(searchKey.toLowerCase());
+            const matchType = searchType ? v.templateType === searchType : true;
+            return matchName && matchType;
+        })
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const stats = {
+        total: listEvaluate.length,
+        battalion: listEvaluate.filter(t => t.templateType === "BATTALION").length,
+        company: listEvaluate.filter(t => t.templateType === "COMPANY").length,
+        service: listEvaluate.filter(t => t.templateType === "SERVICE").length,
+    };
+
     return (
         <div className="w-full flex flex-col gap-6">
-            {/* --- HEADER --- */}
-            <header className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
-                <p className="text-sm text-gray-500">Evaluation Form Manager</p>
-                <h1 className="text-3xl font-bold text-blue-900">ระบบจัดการแบบฟอร์มประเมิน</h1>
-                <p className="text-gray-600 text-sm">สร้าง จัดการ และแก้ไขแบบฟอร์มการประเมิน</p>
-            </header>
+            <section className="rounded-3xl overflow-hidden shadow bg-gradient-to-r from-blue-900 via-indigo-800 to-blue-700 text-white">
+                <div className="p-6 sm:p-8 flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.25em] text-white/70 font-semibold">Form Evaluate</p>
+                            <h1 className="text-3xl sm:text-4xl font-bold leading-tight">จัดการแบบฟอร์มประเมิน</h1>
+                            <p className="text-sm text-white/80 max-w-2xl">
+                                สร้างและแก้ไขเทมเพลตการประเมิน เลือกประเภทฟอร์ม เพิ่มคำถามและหมวดหมู่ได้ทันที
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setEditTemplate(JSON.parse(JSON.stringify(emptyTemplate)));
+                                setShowCreateModal(true);
+                                setOpenForm(true);
+                            }}
+                            className="px-4 py-2 rounded-xl bg-white text-blue-900 font-semibold shadow hover:shadow-lg transition"
+                        >
+                            + สร้างฟอร์มใหม่
+                        </button>
+                    </div>
 
-            {/* --- LIST TEMPLATE --- */}
-            <section className="bg-white rounded-2xl p-5 shadow flex flex-col">
-
-                {/* Search */}
-                <div className="flex flex-col sm:flex-row items-center justify-between">
-                    <h2 className="text-xl font-bold text-blue-900">จัดการแบบฟอร์มประเมิน</h2>
-
-                    <button
-                        onClick={() => {
-                            setEditTemplate(JSON.parse(JSON.stringify(emptyTemplate)));
-                            setShowCreateModal(true);
-                            setOpenForm(true);
-                        }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 m-3 sm:m-0 w-full sm:w-fit"
-                    >
-                        + เพิ่มฟอร์มใหม่
-                    </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm font-semibold">
+                        <StatBadge label="ทั้งหมด" value={stats.total} />
+                        <StatBadge label="กองพัน" value={stats.battalion} />
+                        <StatBadge label="กองร้อย" value={stats.company} />
+                        <StatBadge label="ราชการ" value={stats.service} />
+                    </div>
                 </div>
+            </section>
 
-                {/* Search Input */}
-                <div className="flex flex-col gap-2 mb-5">
-                    <label className="text-sm text-gray-600">เลือกแบบฟอร์มที่ต้องการจัดการ</label>
-
-                    <div className='flex sm:flex-row flex-col gap-3 w-full'>
-
-                        {/* เลือกประเภท */}
+            <section className="bg-white rounded-2xl shadow p-5 flex flex-col gap-4 border border-slate-100">
+                <div className="grid md:grid-cols-[1fr_1.5fr] gap-3 items-center">
+                    <div className="flex flex-col gap-2">
+                        <p className="text-sm font-semibold text-slate-800">ค้นหาแบบฟอร์ม</p>
+                        <p className="text-xs text-slate-500">เลือกประเภทหรือค้นหาด้วยชื่อเพื่อเจอฟอร์มที่ต้องการ</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3">
                         <select
-                            className="border border-gray-400 rounded-lg p-2 pr-10 text-gray-700"
+                            className="border border-gray-200 rounded-xl px-3 py-2 w-full sm:w-48"
                             value={searchType}
                             onChange={(e) => setSearchType(e.target.value)}
                         >
-                            <option value="">- ประเภทการประเมิน -</option>
+                            <option value="">ทุกประเภท</option>
                             <option value="BATTALION">กองพัน</option>
                             <option value="COMPANY">กองร้อย</option>
-                            <option value="SERVICE">ข้าราชการ</option>
+                            <option value="SERVICE">ราชการ</option>
                         </select>
-
-                        {/* ค้นหาตามชื่อ */}
                         <div className="relative w-full">
                             <input
-                                className="border border-gray-400 rounded-lg p-2 pr-10 w-full text-gray-700"
-                                placeholder="ชื่อแบบฟอร์ม..."
+                                className="border border-gray-200 rounded-xl px-3 py-2 w-full pr-10"
+                                placeholder="พิมพ์ชื่อฟอร์ม..."
                                 value={searchKey}
                                 onChange={(e) => setSearchKey(e.target.value)}
                             />
-                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                         </div>
                     </div>
                 </div>
+            </section>
 
-                {/* LIST */}
-                {listEvaluate
-                    .filter(v => {
-                        const matchName = v.name.toLowerCase().includes(searchKey.toLowerCase());
-                        const matchType = searchType ? v.templateType === searchType : true;
-                        return matchName && matchType;
-                    })
-                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                    .map(v => (
+            <section className="grid gap-4">
+                {filteredTemplates.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-gray-500">
+                        ไม่พบแบบฟอร์มที่ตรงกับการค้นหา
+                    </div>
+                )}
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                    {filteredTemplates.map(v => (
                         <div
                             key={v.id}
-                            className="border border-gray-400 rounded-xl p-4 bg-white mb-5 hover:bg-gray-100 flex flex-col gap-3"
+                            className="rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition p-4 flex flex-col gap-3"
                         >
-                            {/* HEADER */}
-                            <div
-                                className="flex flex-col sm:flex-row gap-3 sm:justify-between items-center cursor-pointer"
-                                onClick={() => toggleExpand(v.id)}
-                            >
-                                <div className="flex flex-col w-full">
-                                    <h3 className="text-xl sm:text-2xl font-bold text-blue-800">{v.name}</h3>
-                                    <p className="text-gray-600 text-sm">{v.description}</p>
-                                    <p className="text-xs text-blue-700 font-semibold">
-                                        {/* ประเภทฟอร์ม: {v.templateType === "COMPANY" ? "ประเมินกองร้อย" : "ประเมินกองพัน"} */}
-                                        ประเภทฟอร์ม: {v.templateType === "COMPANY" ? "ประเมินกองร้อย" : v.templateType === "BATTALION" ? "ประเมินกองพัน" : "ประเมินข้าราชการ"}
-                                    </p>
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2 text-xs font-semibold">
+                                        <TypeChip type={v.templateType} />
+                                        <span className="text-gray-400">•</span>
+                                        <span className="text-gray-500">สร้างเมื่อ {v.createdAt ? new Date(v.createdAt).toLocaleDateString() : "-"}</span>
+                                    </div>
+                                    <h3 className="text-xl font-bold text-blue-900">{v.name}</h3>
+                                    <p className="text-sm text-gray-600 line-clamp-2">{v.description || "ไม่มีคำอธิบาย"}</p>
                                 </div>
-
-                                <div className="flex items-center gap-3 min-w-fit">
-                                    <ChevronDownIcon open={expandedId === v.id} />
-
+                                <div className="flex items-center gap-2 min-w-fit">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); openEdit(v); }}
-                                        className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+                                        className="px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 text-sm font-semibold hover:bg-amber-200"
                                     >
-                                        แก้ไขฟอร์ม
+                                        แก้ไข
                                     </button>
-
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleDelete(v.id); }}
-                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                        className="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 text-sm font-semibold hover:bg-red-200"
                                     >
-                                        ลบฟอร์ม
+                                        ลบ
+                                    </button>
+                                    <button
+                                        onClick={() => toggleExpand(v.id)}
+                                        className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    >
+                                        <ChevronDownIcon open={expandedId === v.id} />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* DETAILS */}
+                            <div className="flex flex-wrap gap-2 text-xs font-semibold text-blue-700">
+                                <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-100">
+                                    Sections {v.sections?.length || 0}
+                                </span>
+                                <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-100">
+                                    Questions {v.sections?.reduce((s, sec) => s + (sec.questions?.length || 0), 0)}
+                                </span>
+                                {v.templateType === "BATTALION" && (
+                                    <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-100">
+                                        ผู้ประเมิน {v.teacherEvaluatorCount || 0} คน
+                                    </span>
+                                )}
+                            </div>
+
                             <div className={`overflow-hidden transition-all duration-300 ${expandedId === v.id ? "max-h-[2000px] opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"}`}>
 
                                 {/* IF BATTALION */}
                                 {v.templateType === "BATTALION" ? (
-                                    <div className="border-t pt-3 border-gray-400">
-                                        <div className="flex gap-x-5 mb-4 text-sm text-gray-700">
-                                            {/* <p>{v.battalionCount} กองพัน</p> */}
-                                            <p>ผู้ประเมินจำนวน {v.teacherEvaluatorCount} คน</p>
-                                        </div>
-                                        <div className=' flex flex-col'>
-                                            {v.sections
-                                                .sort((a, b) => a.sectionOrder - b.sectionOrder)
-                                                .map(section => (
-                                                    <div key={section.id} className="mb-3">
-                                                        {/* <p className="font-bold text-blue-700">
-                                                            {section.sectionOrder}. {section.title}
-                                                        </p> */}
-                                                        <ul className="pl-6 text-sm text-gray-700 list-decimal flex flex-col gap-1">
-                                                            {section.questions.map((q, i) => (
-                                                                <li key={i} className="flex flex-col sm:flex-row sm:justify-between">
-                                                                    <p className="font-bold text-blue-700">{section.sectionOrder}. {q.prompt}</p>
-                                                                    <span className="text-blue-700 text-xs w-1/2 text-start font-semibold">
-                                                                        คะแนนเต็ม {q.maxScore}
-                                                                    </span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="border-t pt-3 border-gray-400">
+                                    <div className="border-t pt-3 border-gray-200 space-y-3">
                                         {v.sections
                                             .sort((a, b) => a.sectionOrder - b.sectionOrder)
                                             .map(section => (
-                                                <div key={section.id} className="mb-3">
-                                                    <p className="font-bold text-blue-700">
+                                                <div key={section.id} className="rounded-xl border border-gray-200 p-3 bg-gray-50">
+                                                    <p className="font-bold text-blue-800 mb-2">
                                                         {section.sectionOrder}. {section.title}
                                                     </p>
-                                                    <ul className="pl-6 text-sm text-gray-700 list-decimal flex flex-col gap-1">
+                                                    <ul className="pl-5 text-sm text-gray-700 list-disc space-y-1">
                                                         {section.questions.map((q, i) => (
-                                                            <li key={i} className="flex flex-col sm:flex-row sm:justify-between">
-                                                                <p>{q.prompt}</p>
-                                                                <span className="text-blue-700 text-xs w-1/2 text-start font-semibold">
-                                                                    คะแนนเต็ม {q.maxScore}
-                                                                </span>
+                                                            <li key={i} className="flex justify-between gap-3">
+                                                                <span className="font-semibold text-blue-800">{q.prompt}</span>
+                                                                <span className="text-xs text-blue-700 font-semibold">คะแนนเต็ม {q.maxScore}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            ))}
+                                    </div>
+                                ) : (
+                                    <div className="border-t pt-3 border-gray-200 space-y-3">
+                                        {v.sections
+                                            .sort((a, b) => a.sectionOrder - b.sectionOrder)
+                                            .map(section => (
+                                                <div key={section.id} className="rounded-xl border border-gray-200 p-3 bg-gray-50">
+                                                    <p className="font-bold text-blue-800 mb-2">
+                                                        {section.sectionOrder}. {section.title}
+                                                    </p>
+                                                    <ul className="pl-5 text-sm text-gray-700 list-disc space-y-1">
+                                                        {section.questions.map((q, i) => (
+                                                            <li key={i} className="flex justify-between gap-3">
+                                                                <span>{q.prompt}</span>
+                                                                <span className="text-xs text-blue-700 font-semibold">คะแนนเต็ม {q.maxScore}</span>
                                                             </li>
                                                         ))}
                                                     </ul>
@@ -374,12 +405,10 @@ export default function FormEvaluateStudent() {
                                     </div>
                                 )
                                 }
-
-
-
                             </div>
                         </div>
                     ))}
+                </div>
             </section>
 
             {/* MODAL */}
@@ -401,6 +430,31 @@ export default function FormEvaluateStudent() {
     );
 }
 
+/* -------------------- SMALL COMPONENTS -------------------- */
+const typeLabelMap = {
+    BATTALION: "กองพัน",
+    COMPANY: "กองร้อย",
+    SERVICE: "ราชการ",
+};
+
+function TypeChip({ type }) {
+    const label = typeLabelMap[type] || "ไม่ระบุ";
+    return (
+        <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-semibold">
+            {label}
+        </span>
+    );
+}
+
+function StatBadge({ label, value }) {
+    return (
+        <div className="rounded-2xl bg-white/10 border border-white/30 backdrop-blur px-3 py-2 flex flex-col">
+            <span className="text-xs text-white/80">{label}</span>
+            <span className="text-xl font-bold">{value}</span>
+        </div>
+    );
+}
+
 /* -------------------- ICON -------------------- */
 function ChevronDownIcon({ open }) {
     return (
@@ -412,34 +466,66 @@ function ChevronDownIcon({ open }) {
 
 /* -------------------- MODAL -------------------- */
 function ModalEditForm({ template, setTemplate, onClose, onSave, saving, teachers }) {
-    return (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+    const sectionCount = Array.isArray(template?.sections) ? template.sections.length : 0;
+    const questionCount = Array.isArray(template?.sections)
+        ? template.sections.reduce((sum, sec) => sum + (sec.questions?.length || 0), 0)
+        : 0;
 
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <p className="text-sm text-blue-500 font-semibold">แก้ไขแบบฟอร์มประเมิน</p>
-                        <h3 className="sm:text-2xl text-lg font-semibold text-gray-900">{template.name}</h3>
+    return (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-5xl max-h-[92vh] overflow-hidden rounded-3xl shadow-2xl border border-blue-100 bg-white/95">
+                <div className="bg-gradient-to-r from-blue-900 via-indigo-800 to-sky-700 text-white px-6 py-5 flex flex-col sm:flex-row gap-4 sm:items-start sm:justify-between">
+                    <div className="space-y-2">
+                        <p className="text-[11px] uppercase tracking-[0.25em] text-white/80 font-semibold">Evaluation form builder</p>
+                        <h3 className="text-2xl sm:text-3xl font-semibold leading-tight">
+                            {template.name?.trim() || "ชื่อแบบฟอร์ม"}
+                        </h3>
+                        <div className="flex flex-wrap gap-2 text-xs text-white/85">
+                            <span className="px-3 py-1 rounded-full bg-white/15 border border-white/25">
+                                Type: {(template.templateType || "SERVICE").toUpperCase()}
+                            </span>
+                            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20">
+                                Sections: {sectionCount}
+                            </span>
+                            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20">
+                                Questions: {questionCount}
+                            </span>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl font-semibold">
-                        ✕
-                    </button>
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 rounded-xl border border-white/40 bg-white/10 text-white hover:bg-white/20 transition"
+                        >
+                            Close
+                        </button>
+                        <button
+                            onClick={onSave}
+                            disabled={saving}
+                            className="px-5 py-2 rounded-xl bg-white text-blue-900 font-semibold shadow-lg hover:shadow-xl disabled:opacity-60 transition"
+                        >
+                            {saving ? "Saving..." : "Save form"}
+                        </button>
+                    </div>
                 </div>
 
-                <FormEvaluate template={template} setTemplate={setTemplate} teachers={teachers} />
-
-                <div className="flex justify-end gap-3 mt-6">
-                    <button onClick={onClose} className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50">
-                        ยกเลิก
-                    </button>
-                    <button
-                        onClick={onSave}
-                        className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700"
-                        disabled={saving}
-                    >
-                        {saving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
-                    </button>
+                <div className="grid lg:grid-cols-[2fr_1fr] gap-4 p-6 overflow-y-auto max-h-[calc(92vh-110px)] bg-gradient-to-br from-white via-white to-slate-50">
+                    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                        <BuildFormEvaluate template={template} setTemplate={setTemplate} teachers={teachers} />
+                    </div>
+                    <aside className="bg-gradient-to-b from-slate-50 to-white border border-gray-100 rounded-2xl shadow-sm p-4 space-y-3">
+                        <p className="text-sm font-semibold text-slate-800">รายการตรวจสอบ</p>
+                        <ul className="text-xs text-slate-600 space-y-2 list-disc list-inside">
+                            <li>กรอกชื่อและคำอธิบายแบบฟอร์ม</li>
+                            <li>เพิ่มหมวด (Section) อย่างน้อย 1 หมวด พร้อมกำหนดคะแนนคำถาม</li>
+                            <li>ถ้าเป็นฟอร์มกองพัน ให้กรอกจำนวนกองพันและจำนวนผู้ประเมิน</li>
+                        </ul>
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-900 space-y-1">
+                            <p className="font-semibold">Progress</p>
+                            <p>Sections ready: {sectionCount}</p>
+                            <p>Questions ready: {questionCount}</p>
+                        </div>
+                    </aside>
                 </div>
             </div>
         </div>
@@ -447,7 +533,7 @@ function ModalEditForm({ template, setTemplate, onClose, onSave, saving, teacher
 }
 
 /* -------------------- FORM COMPONENT -------------------- */
-function FormEvaluate({ template, setTemplate }) {
+function BuildFormEvaluate({ template, setTemplate }) {
     const [openSections, setOpenSections] = useState(
         template.sections.map(() => true)
     );
@@ -562,83 +648,92 @@ function FormEvaluate({ template, setTemplate }) {
 
     return (
         <div className="space-y-6">
-            {/* Type */}
-            {template.id == null ?
-                <label className="flex flex-col text-sm">
-                    <span>ประเภทฟอร์ม</span>
-                    <select
-                        className={`border rounded-xl px-3 py-2 ${template.id !== null && "bg-gray-200 cursor-not-allowed"}`}
-                        value={template.templateType}
-                        onChange={(e) => updateField("templateType", e.target.value)}
-                        disabled={template.id !== null}
-                    >
-                        <option value="COMPANY">ประเมินกองร้อย</option>
-                        <option value="BATTALION">ประเมินกองพัน</option>
-                        <option value="SERVICE">ประเมินข้าราชการ</option>
-                    </select>
-                </label> :
-                <div className='flex gap-1 font-bold border-t border-gray-300 pt-2'>
-                    <p className=''>แบบฟอร์มประเมิน</p>
-                    <p className='text-blue-800'>
-                        {template.templateType === "BATTALION"
-                            ? "กองพัน"
-                            : template.templateType === "SERVICE"
-                                ? "ข้าราชการ"
-                                : "กองร้อย"}
-                    </p>
-                </div>
-            }
-
-            {/* Name / Description */}
-            <div className="grid grid-cols-1 gap-4">
-                <label className="flex flex-col text-sm">
-                    <span>ชื่อแบบฟอร์ม</span>
-                    <input
-                        className="border rounded-xl px-3 py-2"
-                        value={template.name ?? ""}
-                        onChange={(e) => updateField("name", e.target.value)}
-                    />
-                </label>
-
-                <label className="flex flex-col text-sm">
-                    <span>คำอธิบาย</span>
-                    <input
-                        className="border rounded-xl px-3 py-2"
-                        value={template.description ?? ""}
-                        onChange={(e) => updateField("description", e.target.value)}
-                    />
-                </label>
+            <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4 shadow-sm flex flex-wrap items-center gap-2 text-sm font-semibold text-blue-900">
+                <span className="px-3 py-1 rounded-full bg-white border border-blue-100 shadow-sm">
+                    {template.templateType === "BATTALION"
+                        ? "กองพัน"
+                        : template.templateType === "SERVICE"
+                            ? "ราชการ"
+                            : "กองร้อย"}
+                </span>
+                <span className="px-3 py-1 rounded-full bg-white border border-blue-100 shadow-sm">
+                    Sections: {template.sections.length}
+                </span>
+                <span className="px-3 py-1 rounded-full bg-white border border-blue-100 shadow-sm">
+                    Questions: {template.sections.reduce((s, sec) => s + (sec.questions?.length || 0), 0)}
+                </span>
             </div>
 
-            {/* ONLY BATTALION */}
-            {template.templateType === "BATTALION" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <label className="flex flex-col text-sm">
-                        <span>จำนวนกองพันที่ต้องการประเมิน</span>
+            <div className="grid lg:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4 space-y-3">
+                    <p className="text-sm font-semibold text-slate-800">ประเภทแบบฟอร์ม</p>
+                    {template.id == null ? (
+                        <select
+                            className="border rounded-xl px-3 py-2 w-full"
+                            value={template.templateType}
+                            onChange={(e) => updateField("templateType", e.target.value)}
+                            disabled={template.id !== null}
+                        >
+                            <option value="COMPANY">ประเมินกองร้อย</option>
+                            <option value="BATTALION">ประเมินกองพัน</option>
+                            <option value="SERVICE">ประเมินข้าราชการ</option>
+                        </select>
+                    ) : (
+                        <div className="flex gap-2 items-center font-semibold text-blue-800">
+                            <span className="text-slate-600">แบบฟอร์มประเมิน</span>
+                            <span>
+                                {template.templateType === "BATTALION"
+                                    ? "กองพัน"
+                                    : template.templateType === "SERVICE"
+                                        ? "ข้าราชการ"
+                                        : "กองร้อย"}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4 space-y-3">
+                    <label className="flex flex-col text-sm gap-1">
+                        <span className="text-slate-700">ชื่อแบบฟอร์ม</span>
                         <input
-                            type="number"
-                            min={1}
                             className="border rounded-xl px-3 py-2"
-                            value={template.battalionCount ?? 0}
-                            onChange={(e) => updateField("battalionCount", Number(e.target.value))}
+                            value={template.name ?? ""}
+                            onChange={(e) => updateField("name", e.target.value)}
+                            placeholder="ตั้งชื่อแบบฟอร์ม..."
                         />
                     </label>
+                    <label className="flex flex-col text-sm gap-1">
+                        <span className="text-slate-700">คำอธิบาย</span>
+                        <input
+                            className="border rounded-xl px-3 py-2"
+                            value={template.description ?? ""}
+                            onChange={(e) => updateField("description", e.target.value)}
+                            placeholder="อธิบายจุดประสงค์ของแบบฟอร์ม..."
+                        />
+                    </label>
+                </div>
+            </div>
 
-                    <label className="flex flex-col text-sm">
-                        <span>จำนวนครูผู้ประเมิน</span>
+            {template.templateType === "BATTALION" && (
+                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 shadow-sm grid grid-cols-1 gap-4">
+                    <label className="flex flex-col text-sm gap-1">
+                        <span className="text-amber-900">จำนวนครูผู้ประเมิน</span>
                         <input
                             type="number"
                             min={1}
                             className="border rounded-xl px-3 py-2"
-                            value={template.teacherEvaluatorCount ?? 0}
+                            value={template.teacherEvaluatorCount ?? ""}
                             onChange={(e) => { updateField("teacherEvaluatorCount", Number(e.target.value)) }}
+                            placeholder="กรอกจำนวนผู้ประเมิน"
                         />
                     </label>
                 </div>
             )}
 
-            {/* Add Section */}
-            <div className="w-full flex justify-start">
+            <div className="flex justify-between items-center">
+                <div className="text-sm text-slate-600">
+                    เพิ่มหมวดคำถามเพื่อกำหนดโครงสร้างแบบฟอร์ม
+                </div>
                 <button
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     onClick={addSection}
