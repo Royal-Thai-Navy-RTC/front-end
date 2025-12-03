@@ -165,6 +165,7 @@ export default function Nav({
         label: "ข้าราชการ", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
           { path: "/teacher-report", label: "แจ้งยอดนักเรียน", icon: ClipboardList, roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/teacher-leave", label: "แจ้งการลา", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"] },
+          { path: "/exam", label: "ส่งผลสอบ", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"] },
           
         ]
       },

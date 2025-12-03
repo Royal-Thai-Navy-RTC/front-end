@@ -26,6 +26,7 @@ import ManageSoldier from "./pages/ManageSoldier";
 import Message from "./pages/Message";
 import SoldierDashboard from "./pages/SoldierDashboard";
 import ServiceEvaluationSummary from "./pages/ServiceEvaluationSummary";
+import Exam from "./pages/Exam";
 
 const normalizeRole = (role = "") => role.toUpperCase();
 
@@ -138,6 +139,14 @@ const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "OWNER", "SUB_ADMIN", "TEACHER"]}>
                         <ServiceEvaluationSummary />
+                    </ProtectedRoute>
+                )
+            },
+            {
+                path: "exam",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER", "SUB_ADMIN", "TEACHER"]}>
+                        <Exam />
                     </ProtectedRoute>
                 )
             },
