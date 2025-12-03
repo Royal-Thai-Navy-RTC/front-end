@@ -146,17 +146,18 @@ export default function Nav({
       {
         label: "แอดมิน", icon: Settings2, roles: ["admin", "owner"], children: [
           { path: "/manage", label: "จัดการผู้ใช้", icon: Settings2, roles: ["admin", "owner"] },
-          { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", icon: User, roles: ["admin", "owner"] },
-          { path: "/listteacher", label: "ประเมินผู้สอน", icon: ClipboardList, roles: ["admin", "owner"] },
+
           // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ]
       },
       // { path: "/listevaluation", label: "ประเมิน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
       {
         label: "ประเมิน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
+          { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/listevaluation", label: "ประเมิน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
+          { path: "/listteacher", label: "ประเมินผู้สอน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/evaluation-dashboard", label: "ผลการประเมินนักเรียน", icon: CalendarClock, roles: ["admin", "owner", "sub_admin", "teacher"] },
           { path: "/service-evaluation-summary", label: "ผลประเมินราชการ", icon: ClipboardList, roles: ["admin", "owner", "sub_admin", "teacher"] },
         ]
@@ -166,7 +167,7 @@ export default function Nav({
           { path: "/teacher-report", label: "แจ้งยอดนักเรียน", icon: ClipboardList, roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/teacher-leave", label: "แจ้งการลา", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner"] },
           { path: "/exam", label: "ส่งผลสอบ", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"] },
-          
+
         ]
       },
     ],
