@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, redirect } from "react-router-dom";
 import { useEffect, useState } from "react";
+import axios from "axios";
 import './index.css';
 import LayoutMain from './layout/LayoutMain';
 import Home from './pages/Home';
@@ -27,6 +28,7 @@ import Message from "./pages/Message";
 import SoldierDashboard from "./pages/SoldierDashboard";
 import ServiceEvaluationSummary from "./pages/ServiceEvaluationSummary";
 import Exam from "./pages/Exam";
+import SoldierIntakeSettings from "./pages/SoldierIntakeSettings";
 
 const normalizeRole = (role = "") => role.toUpperCase();
 
@@ -56,6 +58,56 @@ function SoldierProfileLayoutSwitcher() {
 
     const isAdminOrOwner = ["ADMIN", "OWNER"].includes(role);
     return isAdminOrOwner ? <LayoutMain /> : <LayoutSoilder />;
+}
+
+function SoldierProfileAccess({ children }) {
+    const [statusAllowed, setStatusAllowed] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const role = getStoredRole();
+    const isPrivileged = ["ADMIN", "OWNER"].includes(role);
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+            setLoading(true);
+            setError("");
+            try {
+                const res = await axios.get("/api/public/soldier-intake/status");
+                const data = res.data?.status ?? res.data ?? {};
+                const enabled = typeof data === "boolean" ? data : Boolean(data.enabled ?? data.open ?? false);
+                setStatusAllowed(enabled || isPrivileged);
+            } catch (err) {
+                setError(err?.response?.data?.message || err?.message || "ไม่สามารถตรวจสอบสถานะการรับสมัครได้");
+                setStatusAllowed(isPrivileged);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStatus();
+    }, [isPrivileged]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12 text-gray-600">
+                กำลังตรวจสอบสถานะการรับสมัคร...
+            </div>
+        );
+    }
+
+    if (!statusAllowed) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="bg-white rounded-2xl shadow border border-gray-100 p-6 text-center space-y-3 max-w-md">
+                    <h2 className="text-lg font-bold text-gray-900">ปิดรับลงทะเบียนทหารใหม่</h2>
+                    <p className="text-sm text-gray-600">
+                        ขณะนี้ระบบลงทะเบียนทหารใหม่ถูกปิด หากต้องการเปิดใช้งาน โปรดให้ผู้ดูแลระบบดำเนินการ
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    return children;
 }
 
 const router = createBrowserRouter([
@@ -151,6 +203,14 @@ const router = createBrowserRouter([
                 )
             },
             {
+                path: "soldier-intake-settings",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
+                        <SoldierIntakeSettings />
+                    </ProtectedRoute>
+                )
+            },
+            {
                 path: "listevaluation",
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
@@ -201,7 +261,14 @@ const router = createBrowserRouter([
     },
     {
         path: "", element: <SoldierProfileLayoutSwitcher />, children: [
-            { path: "soilderprofile", element: <SoilderProfile /> },
+            {
+                path: "soilderprofile",
+                element: (
+                    <SoldierProfileAccess>
+                        <SoilderProfile />
+                    </SoldierProfileAccess>
+                ),
+            },
         ]
     }
 ]);
