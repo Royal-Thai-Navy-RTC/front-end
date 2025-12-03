@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import Swal from "sweetalert2";
+import * as XLSX from "xlsx";
 import ReactECharts from "echarts-for-react";
-import { Upload, FileUp, BarChart3, Loader2, Download } from "lucide-react";
+import { Upload, BarChart3, Loader2, Download, Trash2 } from "lucide-react";
 
 const SUMMARY_SCOPE = {
   BATTALION: "BATTALION",
@@ -8,6 +11,8 @@ const SUMMARY_SCOPE = {
 };
 
 const COMPANY_CODES = ["1", "2", "3", "4", "5"];
+const DEFAULT_BATTALION_CODES = ["1", "2", "3", "4"];
+const DEFAULT_COMPANY_CODES = [...COMPANY_CODES];
 
 const SAMPLE_RESULTS = [
   { id: 1, student: "Student 01", battalion: "1", company: "1", subject: "Marksmanship", score: 86 },
@@ -76,6 +81,61 @@ const parseCsv = (text) => {
   return payload;
 };
 
+const parseExcel = async (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheet = workbook.SheetNames?.[0];
+        if (!firstSheet) return resolve([]);
+        const csv = XLSX.utils.sheet_to_csv(workbook.Sheets[firstSheet] || {});
+        resolve(parseCsv(csv));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+const normalizeSummaryResponse = (payload = {}) => {
+  const source = payload?.data?.battalions || payload?.battalions || [];
+  if (!Array.isArray(source)) return [];
+  return source
+    .map((battalion) => ({
+      battalionCode: (battalion.battalionCode ?? battalion.battalion ?? "").toString(),
+      averageScore: Number(battalion.averageScore ?? battalion.average ?? 0),
+      total: Number(battalion.total ?? battalion.totalStudents ?? battalion.count ?? 0),
+      companies: Array.isArray(battalion.companies)
+        ? battalion.companies.map((company, index) => ({
+            battalionCode: (company.battalionCode ?? battalion.battalionCode ?? battalion.battalion ?? "").toString(),
+            companyCode: (company.companyCode ?? company.company ?? index + 1).toString(),
+            averageScore: Number(company.averageScore ?? company.average ?? 0),
+            total: Number(company.total ?? company.totalStudents ?? company.count ?? 0),
+          }))
+        : [],
+    }))
+    .filter((item) => item.battalionCode);
+};
+
+const buildRecordsFromSummary = (battalions = []) => {
+  if (!Array.isArray(battalions)) return [];
+  return battalions.flatMap((battalion) =>
+    (battalion.companies || []).map((company, index) => ({
+      id: `${battalion.battalionCode}-${company.companyCode || index}`,
+      student: `กองร้อย ${company.companyCode || "-"}`,
+      battalion: battalion.battalionCode || "-",
+      company: company.companyCode || "-",
+      subject: "คะแนนเฉลี่ยรวม",
+      score: Number(company.averageScore ?? 0),
+      total: Number(company.total ?? 0),
+    }))
+  );
+};
+
 const StatPill = ({ icon: Icon, label, value }) => (
   <div className="flex items-center gap-3 bg-white/70 backdrop-blur rounded-2xl border border-gray-100 px-4 py-3 shadow-sm">
     <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
@@ -90,17 +150,194 @@ const StatPill = ({ icon: Icon, label, value }) => (
 
 export default function Exam() {
   const [records, setRecords] = useState(SAMPLE_RESULTS);
+  const [summaryData, setSummaryData] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+  const [overview, setOverview] = useState({ total: 0, averageScore: 0, latest: null });
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState("");
+  const [latestResults, setLatestResults] = useState([]);
+  const [latestMeta, setLatestMeta] = useState({ page: 1, pageSize: 10, total: 0, totalPages: 0 });
+  const [latestLoading, setLatestLoading] = useState(false);
+  const [latestError, setLatestError] = useState("");
+  const [latestDeletingId, setLatestDeletingId] = useState(null);
+  const [latestFetched, setLatestFetched] = useState(false);
   const [summaryScope, setSummaryScope] = useState(SUMMARY_SCOPE.BATTALION);
   const [filters, setFilters] = useState({ battalion: SAMPLE_RESULTS[0].battalion, company: "ALL" });
   const [uploadStatus, setUploadStatus] = useState({ fileName: "", message: "", state: "" });
   const [uploading, setUploading] = useState(false);
 
   const battalionOptions = useMemo(() => {
+    if (summaryData?.length) {
+      return summaryData
+        .map((item) => item.battalionCode)
+        .filter(Boolean)
+        .sort();
+    }
     const uniq = Array.from(new Set(records.map((r) => r.battalion)));
     return uniq.sort();
-  }, [records]);
+  }, [records, summaryData]);
 
   const companyOptions = useMemo(() => ["ALL", ...COMPANY_CODES], []);
+
+  const fetchSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    setSummaryError("");
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("/api/exam-results/summary", {
+        params: {
+          battalionCodes: DEFAULT_BATTALION_CODES.join(","),
+          companyCodes: DEFAULT_COMPANY_CODES.join(","),
+        },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const normalized = normalizeSummaryResponse(response.data);
+      if (normalized.length === 0) {
+        setSummaryError("ไม่พบข้อมูลสรุปผลสอบจากระบบ ใช้ข้อมูลตัวอย่างแทน");
+        setSummaryData(null);
+        setRecords(SAMPLE_RESULTS);
+        return;
+      }
+      setSummaryData(normalized);
+      setRecords(buildRecordsFromSummary(normalized));
+      // setUploadStatus({ fileName: "ข้อมูลจากระบบ", message: "ดึงข้อมูลสรุปผลสอบจากระบบสำเร็จ", state: "success" });
+      setFilters((prev) => ({
+        ...prev,
+        battalion: prev.battalion || normalized[0].battalionCode || DEFAULT_BATTALION_CODES[0],
+        company: prev.company || "ALL",
+      }));
+    } catch (err) {
+      setSummaryError(err?.response?.data?.message || err?.message || "ไม่สามารถโหลดสรุปผลสอบได้");
+      setSummaryData(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
+
+  const fetchOverview = useCallback(async () => {
+    setOverviewLoading(true);
+    setOverviewError("");
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get("/api/exam-results/overview", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const source = res.data?.overview || res.data || {};
+      setOverview({
+        total: Number(source.total || 0),
+        averageScore: Number(source.averageScore || 0),
+        latest: source.latest || null,
+      });
+    } catch (err) {
+      setOverviewError(err?.response?.data?.message || err?.message || "ไม่สามารถโหลดสรุปภาพรวมได้");
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOverview();
+  }, [fetchOverview]);
+
+  const fetchLatestResults = useCallback(
+    async (pageOverride) => {
+      setLatestLoading(true);
+      setLatestError("");
+      const nextPage = pageOverride || latestMeta.page || 1;
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("/api/exam-results", {
+          params: {
+            page: nextPage,
+            pageSize: latestMeta.pageSize || 10,
+            sort: "-timestamp",
+          },
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = response.data || {};
+        const items = Array.isArray(data.items) ? data.items : [];
+        setLatestResults(items);
+        setLatestMeta({
+          page: data.page || nextPage,
+          pageSize: data.pageSize || latestMeta.pageSize || 10,
+          total: data.total || 0,
+          totalPages: data.totalPages || 0,
+        });
+        setLatestFetched(true);
+      } catch (err) {
+        setLatestError(err?.response?.data?.message || err?.message || "ไม่สามารถโหลดข้อมูลล่าสุดได้");
+      } finally {
+        setLatestLoading(false);
+      }
+    },
+    [latestMeta.page, latestMeta.pageSize]
+  );
+
+  useEffect(() => {
+    fetchLatestResults();
+  }, [fetchLatestResults]);
+
+  const handleDeleteResult = useCallback(
+    async (id) => {
+      if (!id) return;
+      const confirmation = await Swal.fire({
+        title: "ยืนยันลบรายการผลสอบ?",
+        text: "การลบจะไม่สามารถย้อนกลับได้",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "ลบ",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#dc2626",
+      });
+      if (!confirmation.isConfirmed) return;
+      setLatestDeletingId(id);
+      try {
+        const token = localStorage.getItem("token");
+        await axios.delete(`/api/exam-results/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        await fetchLatestResults();
+      } catch (err) {
+        setLatestError(err?.response?.data?.message || err?.message || "ลบรายการไม่สำเร็จ");
+      } finally {
+        setLatestDeletingId(null);
+      }
+    },
+    [fetchLatestResults]
+  );
+
+  const handleDeleteAllResults = useCallback(async () => {
+    const confirmation = await Swal.fire({
+      title: "ยืนยันลบผลสอบทั้งหมด?",
+      text: "การลบทั้งหมดจะลบทุกบันทึกและไม่สามารถย้อนกลับได้",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "ลบทั้งหมด",
+      cancelButtonText: "ยกเลิก",
+      confirmButtonColor: "#dc2626",
+    });
+    if (!confirmation.isConfirmed) return;
+    setLatestLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete("/api/exam-results", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setLatestResults([]);
+      setLatestFetched(true);
+      setLatestMeta((prev) => ({ ...prev, total: 0, totalPages: 0, page: 1 }));
+      await Promise.all([fetchLatestResults(1), fetchOverview()]);
+    } catch (err) {
+      setLatestError(err?.response?.data?.message || err?.message || "ลบผลสอบทั้งหมดไม่สำเร็จ");
+    } finally {
+      setLatestLoading(false);
+    }
+  }, [fetchLatestResults, fetchOverview]);
 
   useEffect(() => {
     if (!battalionOptions.includes(filters.battalion) && battalionOptions.length > 0) {
@@ -123,6 +360,14 @@ export default function Exam() {
   }, [filters.battalion, filters.company, records]);
 
   const companySummaryAllBattalions = useMemo(() => {
+    if (summaryData?.length) {
+      return summaryData.flatMap((battalion) =>
+        (battalion.companies || []).map((company) => ({
+          label: `พัน ${battalion.battalionCode} / ร้อย ${company.companyCode}`,
+          average: Number(company.averageScore || 0),
+        }))
+      );
+    }
     const battalionCodes = Array.from(new Set(records.map((r) => r.battalion))).sort();
     return battalionCodes.flatMap((bn) =>
       COMPANY_CODES.map((co) => {
@@ -134,10 +379,21 @@ export default function Exam() {
         };
       })
     );
-  }, [records]);
+  }, [records, summaryData]);
 
   const companySummarySelectedBattalion = useMemo(() => {
     const battalion = filters.battalion || battalionOptions[0] || "";
+    if (summaryData?.length) {
+      const target = summaryData.find((item) => `${item.battalionCode}` === `${battalion}`);
+      const companies = target?.companies || [];
+      return COMPANY_CODES.map((co) => {
+        const matched = companies.find((company) => `${company.companyCode}` === `${co}`);
+        return {
+          label: `กองร้อย ${co}`,
+          average: matched ? Number(matched.averageScore || 0) : 0,
+        };
+      });
+    }
     return COMPANY_CODES.map((co) => {
       const targeted = records.filter((r) => r.battalion === battalion && r.company === co);
       const totalScore = targeted.reduce((sum, rec) => sum + Number(rec.score || 0), 0);
@@ -146,9 +402,16 @@ export default function Exam() {
         average: targeted.length ? Number((totalScore / targeted.length).toFixed(2)) : 0,
       };
     });
-  }, [filters.battalion, records, battalionOptions]);
+  }, [filters.battalion, records, battalionOptions, summaryData]);
 
   const battalionSummary = useMemo(() => {
+    if (summaryData?.length) {
+      return summaryData.map((item) => ({
+        label: `กองพัน ${item.battalionCode}`,
+        average: Number(item.averageScore || 0),
+        total: Number(item.total || 0),
+      }));
+    }
     const map = new Map();
     records.forEach((rec) => {
       const current = map.get(rec.battalion) || { label: `กองพัน ${rec.battalion}`, totalScore: 0, count: 0 };
@@ -162,18 +425,70 @@ export default function Exam() {
       ...item,
       average: item.count ? Number((item.totalScore / item.count).toFixed(2)) : 0,
     }));
-  }, [records]);
+  }, [records, summaryData]);
 
   const summaryRows = summaryScope === SUMMARY_SCOPE.BATTALION ? battalionSummary : companySummaryAllBattalions;
 
   const overallSummary = useMemo(() => {
-    const totalStudents = filteredRecords.length;
+    if (summaryData?.length) {
+      const scopedBattalion = filters.battalion || summaryData[0]?.battalionCode || "";
+      const selectedCompanies =
+        filters.company && filters.company !== "ALL" ? [filters.company] : DEFAULT_COMPANY_CODES;
+
+      let totalStudents = 0;
+      let totalScoreSum = 0;
+      let maxAverage = 0;
+      let minAverage = Number.POSITIVE_INFINITY;
+      let maxLabel = "";
+
+      summaryData
+        .filter((b) => !scopedBattalion || `${b.battalionCode}` === `${scopedBattalion}`)
+        .forEach((battalion) => {
+          (battalion.companies || []).forEach((company) => {
+            if (!selectedCompanies.includes(`${company.companyCode}`)) return;
+            const averageScore = Number(company.averageScore || 0);
+            const count = Number(company.total || 0);
+            totalStudents += count;
+            totalScoreSum += averageScore * count;
+            maxAverage = Math.max(maxAverage, averageScore);
+            minAverage = Math.min(minAverage, averageScore);
+            if (averageScore >= maxAverage) {
+              maxLabel = `กองร้อย ${company.companyCode} / กองพัน ${battalion.battalionCode}`;
+            }
+          });
+        });
+
+      const average = totalStudents ? Number((totalScoreSum / totalStudents).toFixed(2)) : 0;
+      return {
+        totalStudents,
+        average,
+        maxScore: Number(maxAverage.toFixed(2)),
+        maxLabel,
+        minScore: Number((minAverage === Number.POSITIVE_INFINITY ? 0 : minAverage).toFixed(2)),
+      };
+    }
+    const totalStudents = filteredRecords.reduce((sum, rec) => sum + (Number(rec.total) || 1), 0);
     const totalScore = filteredRecords.reduce((sum, rec) => sum + Number(rec.score || 0), 0);
     const average = totalStudents ? Number((totalScore / totalStudents).toFixed(2)) : 0;
-    const maxScore = filteredRecords.reduce((max, rec) => Math.max(max, Number(rec.score || 0)), 0);
+    const maxRecord = filteredRecords.reduce(
+      (best, rec) => {
+        const score = Number(rec.score || 0);
+        if (score >= best.score) {
+          return { score, label: `กองพัน ${rec.battalion} / กองร้อย ${rec.company}` };
+        }
+        return best;
+      },
+      { score: 0, label: "" }
+    );
     const minScore = filteredRecords.reduce((min, rec) => Math.min(min, Number(rec.score || 100)), 100);
-    return { totalStudents, average, maxScore, minScore: minScore === 100 ? 0 : minScore };
-  }, [filteredRecords]);
+    return {
+      totalStudents,
+      average,
+      maxScore: maxRecord.score,
+      maxLabel: maxRecord.label,
+      minScore: minScore === 100 ? 0 : minScore,
+    };
+  }, [filteredRecords, filters.battalion, filters.company, summaryData]);
 
   const buildChartOption = (labels, values, { horizontal = false } = {}) => {
     return {
@@ -223,41 +538,84 @@ export default function Exam() {
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    const isExcel =
+      file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls");
+    if (!isExcel) {
+      setUploadStatus({
+        fileName: file.name,
+        message: "กรุณาอัปโหลดไฟล์ Excel (.xlsx หรือ .xls)",
+        state: "error",
+      });
+      return;
+    }
     setUploading(true);
-    setUploadStatus({ fileName: file.name, message: "กำลังอ่านไฟล์...", state: "loading" });
+    setUploadStatus({ fileName: file.name, message: "กำลังอัปโหลดไฟล์ไปยังระบบ...", state: "loading" });
+    setSummaryData(null);
+    setSummaryError("");
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const text = reader.result?.toString() || "";
-        const parsed = parseCsv(text);
-        if (parsed.length === 0) {
-          setUploadStatus({
-            fileName: file.name,
-            message: "ไฟล์ไม่มีข้อมูลคะแนน จะแสดงด้วยข้อมูลตัวอย่าง",
-            state: "warning",
-          });
-          setRecords(SAMPLE_RESULTS);
-        } else {
-          setUploadStatus({
-            fileName: file.name,
-            message: `นำเข้า ${parsed.length} แถวสำเร็จ`,
-            state: "success",
-          });
-          setRecords(parsed);
-        }
-      } catch (err) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("excel", file);
+    formData.append("upload", file);
+    formData.append("sheet", file);
+
+    const token = localStorage.getItem("token");
+    axios
+      .post("/api/exam-results/import", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+      .then(async (res) => {
+        const message =
+          res?.data?.message ||
+          res?.data?.data?.message ||
+          `อัปโหลดไฟล์ ${file.name} สำเร็จ`;
         setUploadStatus({
           fileName: file.name,
-          message: "ไม่สามารถอ่านไฟล์ กรุณาตรวจสอบรูปแบบ CSV",
+          message,
+          state: "success",
+        });
+        // refresh dashboard data
+        await Promise.all([fetchSummary(), fetchOverview(), fetchLatestResults(1)]);
+      })
+      .catch((err) => {
+        const msg = err?.response?.data?.message || err?.message || "อัปโหลดไฟล์ไม่สำเร็จ";
+        setUploadStatus({
+          fileName: file.name,
+          message: msg,
           state: "error",
         });
-        setRecords(SAMPLE_RESULTS);
-      } finally {
-        setUploading(false);
-      }
-    };
-    reader.readAsText(file, "utf-8");
+        // fallback to local parse so user still sees something
+        parseExcel(file)
+          .then((parsed) => {
+            if (parsed.length === 0) {
+              setUploadStatus({
+                fileName: file.name,
+                message: "ไฟล์ไม่มีข้อมูลคะแนน จะแสดงด้วยข้อมูลตัวอย่าง",
+                state: "warning",
+              });
+              setRecords(SAMPLE_RESULTS);
+            } else {
+              setUploadStatus({
+                fileName: file.name,
+                message: `นำเข้า ${parsed.length} แถวสำเร็จ (โหมดออฟไลน์)`,
+                state: "success",
+              });
+              setRecords(parsed);
+            }
+          })
+          .catch(() => {
+            setUploadStatus({
+              fileName: file.name,
+              message: msg,
+              state: "error",
+            });
+            setRecords(SAMPLE_RESULTS);
+          });
+      })
+      .finally(() => setUploading(false));
   };
 
   const handleExport = () => {
@@ -279,6 +637,8 @@ export default function Exam() {
 
   const sampleRows = useMemo(() => filteredRecords.slice(0, 8), [filteredRecords]);
 
+  const displayResults = latestFetched ? latestResults : sampleRows;
+
   return (
     <div className="w-full max-w-7xl mx-auto py-6 flex flex-col gap-6">
       <section className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-700 text-white rounded-3xl shadow-lg p-6 sm:p-8 flex flex-col gap-4">
@@ -288,16 +648,37 @@ export default function Exam() {
               <BarChart3 size={16} />
               สรุปผลสอบ
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold">สรุปผลการสอบและอัปโหลดไฟล์คะแนน</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold">รายงานผลสอบและอัปโหลดไฟล์คะแนน</h1>
             <p className="text-sm sm:text-base text-blue-100 max-w-2xl">
-              ส่งไฟล์ผลข้อสอบนักเรียน (CSV) แล้วดูกราฟสรุปคะแนน เลือกสรุปทั้งกองพันหรือเปรียบเทียบกองร้อยจากทุกกองพัน พร้อมดูกราฟเฉพาะกองพันที่เลือก
+              อัปโหลดไฟล์ผลสอบ (Excel) แล้วดูภาพรวมคะแนน เลือกสรุปตามกองพันหรือเทียบกองร้อยจากทุกกองพัน พร้อมกราฟเปรียบเทียบกองร้อยในกองพันที่เลือก
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:w-auto">
-            <StatPill icon={FileUp} label="ไฟล์ล่าสุด" value={uploadStatus.fileName || "ข้อมูลตัวอย่าง"} />
-            <StatPill icon={Upload} label="จำนวนผู้เข้าสอบ" value={`${overallSummary.totalStudents} คน`} />
+            <StatPill
+              icon={BarChart3}
+              label="จำนวนผู้เข้าสอบ (สรุป)"
+              value={
+                overviewLoading
+                  ? "กำลังโหลด..."
+                  : `${(overview.total || overallSummary.totalStudents || 0).toLocaleString()} คน`
+              }
+            />
+            <StatPill
+              icon={Upload}
+              label="คะแนนเฉลี่ยรวม (สรุป)"
+              value={
+                overviewLoading
+                  ? "กำลังโหลด..."
+                  : `${overview.averageScore || overallSummary.average || 0}`
+              }
+            />
           </div>
         </div>
+        {overviewError && (
+          <div className="text-xs text-red-100 bg-white/10 border border-red-200/40 rounded-lg px-3 py-2">
+            {overviewError}
+          </div>
+        )}
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -316,9 +697,14 @@ export default function Exam() {
             </div>
             <div className="text-center">
               <p className="text-sm font-semibold text-gray-900">เลือกไฟล์ผลข้อสอบ</p>
-              <p className="text-xs text-gray-500">รองรับไฟล์ .csv (คอลัมน์: battalion, company, student, score)</p>
+              <p className="text-xs text-gray-500">รองรับไฟล์ Excel (.xlsx, .xls)</p>
             </div>
-            <input type="file" accept=".csv,text/csv" onChange={handleFileChange} className="hidden" />
+            <input
+              type="file"
+              accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              onChange={handleFileChange}
+              className="hidden"
+            />
           </label>
 
           {uploadStatus.message && (
@@ -345,15 +731,16 @@ export default function Exam() {
             <div className="rounded-xl border border-gray-100 p-3 bg-gray-50/60">
               <p className="text-xs text-gray-500">คะแนนสูงสุด</p>
               <p className="text-2xl font-bold text-gray-900">{overallSummary.maxScore}</p>
+              {overallSummary.maxLabel && <p className="text-xs text-gray-500">{overallSummary.maxLabel}</p>}
             </div>
             <div className="rounded-xl border border-gray-100 p-3 bg-gray-50/60">
               <p className="text-xs text-gray-500">คะแนนต่ำสุด</p>
               <p className="text-2xl font-bold text-gray-900">{overallSummary.minScore}</p>
             </div>
-            <div className="rounded-xl border border-gray-100 p-3 bg-gray-50/60">
+            {/* <div className="rounded-xl border border-gray-100 p-3 bg-gray-50/60">
               <p className="text-xs text-gray-500">จำนวนรายการ</p>
               <p className="text-2xl font-bold text-gray-900">{filteredRecords.length}</p>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -412,6 +799,15 @@ export default function Exam() {
               )}
               <button
                 type="button"
+                onClick={fetchSummary}
+                disabled={summaryLoading}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 disabled:opacity-60"
+              >
+                {summaryLoading ? <Loader2 className="animate-spin" size={14} /> : <BarChart3 size={14} />}
+                ดึงสรุปจากระบบ
+              </button>
+              <button
+                type="button"
                 onClick={handleExport}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-50"
               >
@@ -420,6 +816,17 @@ export default function Exam() {
               </button>
             </div>
           </div>
+
+          {summaryError && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {summaryError}
+            </div>
+          )}
+          {summaryLoading && !summaryError && (
+            <div className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              กำลังโหลดสรุปผลสอบจากระบบ...
+            </div>
+          )}
 
           <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-3">
             {summaryRows.length > 0 ? (
@@ -450,40 +857,104 @@ export default function Exam() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-blue-600 uppercase tracking-[0.2em]">ข้อมูลล่าสุด</p>
-            <h3 className="text-lg font-bold text-gray-900">ตัวอย่างรายการคะแนนจากไฟล์</h3>
+            <h3 className="text-lg font-bold text-gray-900">รายการผลสอบล่าสุดจากระบบ</h3>
           </div>
-          <span className="text-xs text-gray-500">แสดง {sampleRows.length} รายการแรกจาก {filteredRecords.length}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">
+              แสดง {displayResults.length} รายการ (หน้า {latestMeta.page}/{Math.max(latestMeta.totalPages, 1)})
+            </span>
+            <button
+              type="button"
+              onClick={() => fetchLatestResults()}
+              disabled={latestLoading}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {latestLoading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+              รีเฟรช
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteAllResults}
+              disabled={latestLoading || latestResults.length === 0}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+            >
+              <Trash2 size={14} />
+              ลบทั้งหมด
+            </button>
+          </div>
         </div>
+        {latestError && <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{latestError}</div>}
         <div className="overflow-x-auto border border-gray-100 rounded-xl">
           <table className="min-w-full text-sm text-gray-700">
             <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-4 py-2 text-left">ผู้เข้าสอบ</th>
-                <th className="px-4 py-2 text-left">กองพัน</th>
-                <th className="px-4 py-2 text-left">กองร้อย</th>
-                <th className="px-4 py-2 text-left">วิชา</th>
-                <th className="px-4 py-2 text-right">คะแนน</th>
+                <th className="px-4 py-2 text-left">หมายเลขทหารเรือ</th>
+                <th className="px-4 py-2 text-left">หน่วย</th>
+                <th className="px-4 py-2 text-left">คะแนน</th>
+                <th className="px-4 py-2 text-left">เวลาสอบ</th>
+                <th className="px-4 py-2 text-left">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {sampleRows.map((row) => (
-                <tr key={`${row.battalion}-${row.company}-${row.student}`} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 font-semibold text-gray-900">{row.student}</td>
-                  <td className="px-4 py-2">{row.battalion}</td>
-                  <td className="px-4 py-2">{row.company}</td>
-                  <td className="px-4 py-2">{row.subject}</td>
-                  <td className="px-4 py-2 text-right font-semibold">{row.score}</td>
-                </tr>
-              ))}
-              {sampleRows.length === 0 && (
+              {displayResults.map((row) => {
+                const dateText = row.timestamp ? new Date(row.timestamp).toLocaleString("th-TH") : "-";
+                const scoreText = row.scoreText || `${row.scoreValue ?? "-"}${row.scoreTotal ? ` / ${row.scoreTotal}` : ""}`;
+                return (
+                  <tr key={row.id || `${row.battalion}-${row.company}-${row.student}`} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 font-semibold text-gray-900">{row.fullName || row.student || "-"}</td>
+                    <td className="px-4 py-2">{row.navyNumber || "-"}</td>
+                    <td className="px-4 py-2">{row.unit || `${row.battalion ? `พัน.${row.battalion}` : ""} ${row.company ? `ร้อย.${row.company}` : ""}`.trim() || "-"}</td>
+                    <td className="px-4 py-2 text-left font-semibold">{scoreText}</td>
+                    <td className="px-4 py-2">{dateText}</td>
+                    <td className="px-4 py-2">
+                      {row.id ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteResult(row.id)}
+                          disabled={latestDeletingId === row.id}
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded-lg border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {latestDeletingId === row.id ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                          ลบ
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {displayResults.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400 text-sm">
+                  <td colSpan={6} className="px-4 py-6 text-center text-gray-400 text-sm">
                     ยังไม่มีข้อมูลให้แสดง
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center justify-between text-xs text-gray-600">
+          <span>รวม {latestMeta.total || displayResults.length} รายการ</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fetchLatestResults(Math.max(1, latestMeta.page - 1))}
+              disabled={latestLoading || latestMeta.page <= 1}
+              className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+            >
+              ก่อนหน้า
+            </button>
+            <button
+              type="button"
+              onClick={() => fetchLatestResults(Math.min(latestMeta.totalPages || latestMeta.page + 1, (latestMeta.page || 1) + 1))}
+              disabled={latestLoading || (latestMeta.totalPages && latestMeta.page >= latestMeta.totalPages)}
+              className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+            >
+              ถัดไป
+            </button>
+          </div>
         </div>
       </section>
     </div>
