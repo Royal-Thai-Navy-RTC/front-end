@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
+import ReactECharts from "echarts-for-react";
 
 const LEAVE_TYPES = [
   { value: "PERSONAL", label: "ลากิจ" },
@@ -343,12 +344,93 @@ export default function TeacherLeave() {
   const [currentActiveLeaves, setCurrentActiveLeaves] = useState([]);
   const [currentLeavesLoading, setCurrentLeavesLoading] = useState(false);
   const [currentLeavesError, setCurrentLeavesError] = useState("");
+  const [availabilityChartInstance, setAvailabilityChartInstance] = useState(null);
+  const availabilityChartContainerRef = useRef(null);
   // const [typeBreakdown, setTypeBreakdown] = useState([]);
 
   const headers = useMemo(() => {
     const token = localStorage.getItem("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, []);
+
+  const availabilityChartOptions = useMemo(() => {
+    if (!isAdminDashboard) return null;
+    const teacherAvailableRaw = toFiniteNumber(summary?.availableTeachers);
+    const teacherTotal = toFiniteNumber(summary?.totalTeachers);
+    const teacherOnLeave = toFiniteNumber(summary?.onLeave);
+    const teacherAvailable =
+      teacherAvailableRaw ?? (teacherTotal !== null && teacherOnLeave !== null ? Math.max(teacherTotal - teacherOnLeave, 0) : null);
+
+    const officialDuty = summary?.officialDuty || {};
+    const commanderAvailableRaw = toFiniteNumber(
+      officialDuty.available ?? officialDuty.ready ?? officialDuty.readyToSupport ?? officialDuty.supporting
+    );
+    const commanderCurrent = toFiniteNumber(officialDuty.current);
+    const commanderTotal = toFiniteNumber(
+      officialDuty.total ?? officialDuty.all ?? officialDuty.count ?? officialDuty.totalTeachers
+    );
+    const commanderAvailable =
+      commanderAvailableRaw ??
+      (commanderTotal !== null && commanderCurrent !== null ? Math.max(commanderTotal - commanderCurrent, 0) : null);
+
+    const totalReady = (teacherAvailable ?? 0) + (commanderAvailable ?? 0);
+
+    const labels = ["ครูพร้อมปฏิบัติงาน", "ผู้บังคับบัญชาพร้อมปฏิบัติงาน", "กำลังพลพร้อมปฏิบัติงานทั้งหมด"];
+    const data = [
+      { value: teacherAvailable ?? 0, itemStyle: { color: "#2563eb" } },
+      { value: commanderAvailable ?? 0, itemStyle: { color: "#f59e0b" } },
+      { value: totalReady, itemStyle: { color: "#22c55e" } },
+    ];
+
+    if (data.every((item) => item.value === 0)) return null;
+
+    return {
+      grid: { left: 28, right: 12, top: 32, bottom: 32 },
+      tooltip: { trigger: "item" },
+      xAxis: {
+        type: "category",
+        data: labels,
+        axisTick: { show: false },
+        axisLabel: { color: "#475569", fontWeight: 600 },
+        axisLine: { lineStyle: { color: "#cbd5e1" } },
+      },
+      yAxis: {
+        type: "value",
+        name: "จำนวน (คน)",
+        nameTextStyle: { color: "#475569", padding: [0, 0, 0, 12] },
+        axisLine: { lineStyle: { color: "#cbd5e1" } },
+        axisLabel: { color: "#475569" },
+        splitLine: { lineStyle: { color: "#e2e8f0" } },
+      },
+      series: [
+        {
+          name: "พร้อมปฏิบัติงาน",
+          type: "bar",
+          data,
+          barWidth: "55%",
+          label: { show: true, position: "top", color: "#0f172a", fontWeight: 700 },
+          itemStyle: { borderRadius: [10, 10, 6, 6] },
+        },
+      ],
+      animationDuration: 600,
+    };
+  }, [isAdminDashboard, summary]);
+
+  useEffect(() => {
+    if (!availabilityChartInstance) return undefined;
+    const handleResize = () => availabilityChartInstance.resize();
+
+    const observer = new ResizeObserver(handleResize);
+    if (availabilityChartContainerRef.current) {
+      observer.observe(availabilityChartContainerRef.current);
+    }
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [availabilityChartInstance]);
 
   const fetchLeaves = useCallback(async () => {
     if (isAdminDashboard) return;
@@ -683,22 +765,28 @@ export default function TeacherLeave() {
           <p className="text-sm text-gray-600">สรุปจำนวนครูทั้งหมด ผู้ที่กำลังลาปัจจุบัน และรายละเอียดคำขอลาแบบล่าสุด</p>
         </header>
 
-        <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm text-blue-600 font-semibold uppercase tracking-[0.3em]">ภาพรวมกำลังพล</p>
-              <p className="text-xl font-semibold text-gray-900">ข้อมูลอัปเดตจากระบบแจ้งลา</p>
+        <section className="bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-100 shadow-lg p-6 lg:p-8 flex flex-col gap-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-blue-500" /> แดชบอร์ดกำลังพล
+              </div>
+              <p className="text-2xl lg:text-3xl font-bold text-slate-900 leading-tight">ข้อมูลอัปเดตจากระบบแจ้งลา</p>
+              <p className="text-sm text-slate-500">ดูภาพรวมครูที่ลา ผู้บังคับบัญชาไปราชการ และความพร้อมของกำลังพล ณ ขณะนี้</p>
             </div>
-            <div className="flex flex-wrap gap-2 items-center">
-              <select
-                value={adminFilter}
-                onChange={(event) => setAdminFilter(event.target.value)}
-                className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              >
-                <option value="PENDING">สถานะ: รออนุมัติ</option>
-                <option value="APPROVED">อนุมัติแล้ว</option>
-                <option value="REJECTED">ไม่อนุมัติ</option>
-              </select>
+            <div className="flex flex-wrap gap-3 items-center bg-white/80 border border-slate-100 shadow-sm rounded-xl px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">ตัวกรองสถานะ</span>
+                <select
+                  value={adminFilter}
+                  onChange={(event) => setAdminFilter(event.target.value)}
+                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+                >
+                  <option value="PENDING">รออนุมัติ</option>
+                  <option value="APPROVED">อนุมัติแล้ว</option>
+                  <option value="REJECTED">ไม่อนุมัติ</option>
+                </select>
+              </div>
               <button
                 onClick={() => {
                   fetchSummary();
@@ -706,90 +794,74 @@ export default function TeacherLeave() {
                   fetchCurrentLeaves();
                 }}
                 disabled={refreshDisabled}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-60"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 text-white text-sm font-semibold shadow hover:bg-blue-800 disabled:opacity-60"
               >
+                <span className="w-2 h-2 rounded-full bg-white/80 animate-pulse" aria-hidden />
                 {refreshDisabled ? "กำลังโหลด..." : "รีเฟรชข้อมูล"}
               </button>
+              <span className="text-xs text-slate-500 bg-slate-100 rounded-full px-3 py-1 font-semibold">
+                แสดง: {adminFilterLabel}
+              </span>
             </div>
           </div>
 
           {summaryError && <div className="text-center py-4 text-red-500">{summaryError}</div>}
 
           {!summaryError && (
-            <>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <AdminLeaveStatCard label="ครูทั้งหมด" value={totalTeachers.toLocaleString("th-TH")} accent="from-slate-700 to-slate-500" />
-                <AdminLeaveStatCard
-                  label="ครูที่กำลังลา"
-                  value={activeLeaveCount.toLocaleString("th-TH")}
-                  accent="from-rose-500 to-amber-500"
-                />
-                <AdminLeaveStatCard label="ครูที่พร้อมสอน" value={available.toLocaleString("th-TH")} accent="from-emerald-600 to-emerald-400" />
+            <div className="flex flex-col gap-5">
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="rounded-2xl bg-white/80 border border-slate-100 shadow-sm p-4 flex flex-col gap-3">
+                  <p className="text-xs font-semibold text-slate-500 tracking-[0.2em] uppercase">ครู</p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <AdminLeaveStatCard label="ครูทั้งหมด" value={totalTeachers.toLocaleString("th-TH")} accent="from-slate-700 to-slate-500" />
+                    <AdminLeaveStatCard label="กำลังลา" value={activeLeaveCount.toLocaleString("th-TH")} accent="from-rose-500 to-amber-500" />
+                    <AdminLeaveStatCard label="พร้อมสอน" value={available.toLocaleString("th-TH")} accent="from-emerald-600 to-emerald-400" />
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-white/80 border border-slate-100 shadow-sm p-4 flex flex-col gap-3">
+                  <p className="text-xs font-semibold text-slate-500 tracking-[0.2em] uppercase">ราชการ</p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <AdminLeaveStatCard label="ทั้งหมด" value={officialDutyOverall.toLocaleString("th-TH")} accent="from-orange-600 to-amber-500" />
+                    <AdminLeaveStatCard label="กำลังลา" value={officialDutyCurrent.toLocaleString("th-TH")} accent="from-amber-500 to-orange-400" />
+                    <AdminLeaveStatCard label="พร้อมสนับสนุน" value={officialDutyReady.toLocaleString("th-TH")} accent="from-emerald-500 to-teal-400" />
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-white/80 border border-slate-100 shadow-sm p-4 flex flex-col gap-3">
+                  <p className="text-xs font-semibold text-slate-500 tracking-[0.2em] uppercase">คำขอ</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <AdminLeaveStatCard label="คำขอลาทั้งหมด" value={totalRequests.toLocaleString("th-TH")} accent="from-indigo-600 to-indigo-400" />
+                    <AdminLeaveStatCard label={`ไปราชการ (${adminFilterLabel})`} value={officialDutyInView.toLocaleString("th-TH")} accent="from-sky-600 to-blue-500" />
+                  </div>
+                </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <AdminLeaveStatCard
-                  label="ราชการ ทั้งหมด"
-                  value={officialDutyOverall.toLocaleString("th-TH")}
-                  accent="from-orange-600 to-amber-500"
-                />
-                <AdminLeaveStatCard
-                  label="ราชการ ที่กำลังลา"
-                  value={officialDutyCurrent.toLocaleString("th-TH")}
-                  accent="from-amber-500 to-orange-400"
-                />
-                <AdminLeaveStatCard
-                  label="ราชการ ที่พร้อมสนับสนุนการสอน"
-                  value={officialDutyReady.toLocaleString("th-TH")}
-                  accent="from-emerald-500 to-teal-400"
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <AdminLeaveStatCard label="คำขอลาทั้งหมด" value={totalRequests.toLocaleString("th-TH")} accent="from-indigo-600 to-indigo-400" />
-                <AdminLeaveStatCard
-                  label={`คำขอไปราชการ (${adminFilterLabel})`}
-                  value={officialDutyInView.toLocaleString("th-TH")}
-                  accent="from-sky-600 to-blue-500"
-                />
-                <div className="border border-gray-100 rounded-2xl p-4 flex flex-col gap-2 md:col-span-2">
-                  <p className="text-sm text-gray-500">กำลังลาปัจจุบัน (ยังไม่หมดลา)</p>
-                  {currentLeavesBusy ? (
-                    <p className="text-sm text-gray-400">กำลังโหลดข้อมูล...</p>
-                  ) : currentLeavesErrorMessage ? (
-                    <p className="text-sm text-red-500">{currentLeavesErrorMessage}</p>
-                  ) : activeLeaves.length === 0 ? (
-                    <p className="text-sm text-gray-400">ไม่มีครูที่กำลังลา</p>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {activeLeaves.map((leave) => (
-                        <div
-                          key={leave.id || `${leave.teacherId}-${leave.startDate}`}
-                          className="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl px-3 py-2"
-                        >
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">
-                              {getTeacherDisplayName(leave)} · {getLeaveTypeLabel(leave.leaveType)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {formatDateRange(leave.startDate, leave.endDate)} · จุดหมาย {leave.destination || "-"}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isOfficialDutyLeave(leave.leaveType) && (
-                              <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">
-                                ลาไปราชการ
-                              </span>
-                            )}
-                            <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">
-                              {getStatusLabel(leave.status)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="rounded-2xl bg-white/80 border border-slate-100 shadow-sm p-4 flex flex-col gap-3 lg:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">ภาพรวมกำลังพลพร้อมปฏิบัติงาน</p>
+                      <p className="text-xs text-gray-500">ครู/ผู้บังคับบัญชา และยอดรวมที่พร้อมปฏิบัติงาน</p>
                     </div>
+                  </div>
+                  {summaryLoading ? (
+                    <p className="text-sm text-gray-400 text-center py-6">กำลังโหลดข้อมูล...</p>
+                  ) : availabilityChartOptions ? (
+                    <div ref={availabilityChartContainerRef} className="w-full h-[280px] md:h-[320px]">
+                      <ReactECharts
+                        option={availabilityChartOptions}
+                        notMerge
+                        lazyUpdate
+                        style={{ width: "100%", height: "100%" }}
+                        onChartReady={(chart) => setAvailabilityChartInstance(chart)}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 text-center py-6">ยังไม่มีข้อมูลสำหรับแสดงผล</p>
                   )}
                 </div>
-                <div className="border border-gray-100 rounded-2xl p-4 flex flex-col gap-2 md:col-span-2">
-                  <p className="text-sm text-gray-500">คำขอลาที่อนุมัติแล้ว (ล่าสุด)</p>
+
+                <div className="rounded-2xl bg-white/80 border border-slate-100 shadow-sm p-4 flex flex-col gap-2">
+                  <p className="text-sm font-semibold text-gray-800">คำขอลาที่อนุมัติแล้ว (ล่าสุด)</p>
                   {summaryLoading ? (
                     <p className="text-sm text-gray-400">กำลังโหลดข้อมูล...</p>
                   ) : recentApprovedLeaves.length === 0 ? (
@@ -825,7 +897,46 @@ export default function TeacherLeave() {
                   )}
                 </div>
               </div>
-            </>
+
+              <div className="rounded-2xl bg-white/80 border border-slate-100 shadow-sm p-4 flex flex-col gap-2">
+                <p className="text-sm font-semibold text-gray-800">กำลังลาปัจจุบัน (ยังไม่หมดลา)</p>
+                {currentLeavesBusy ? (
+                  <p className="text-sm text-gray-400">กำลังโหลดข้อมูล...</p>
+                ) : currentLeavesErrorMessage ? (
+                  <p className="text-sm text-red-500">{currentLeavesErrorMessage}</p>
+                ) : activeLeaves.length === 0 ? (
+                  <p className="text-sm text-gray-400">ไม่มีครูที่กำลังลา</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {activeLeaves.map((leave) => (
+                      <div
+                        key={leave.id || `${leave.teacherId}-${leave.startDate}`}
+                        className="flex flex-wrap items-center justify-between gap-2 border border-gray-100 rounded-xl px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {getTeacherDisplayName(leave)} · {getLeaveTypeLabel(leave.leaveType)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formatDateRange(leave.startDate, leave.endDate)} · จุดหมาย {leave.destination || "-"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isOfficialDutyLeave(leave.leaveType) && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">
+                              ลาไปราชการ
+                            </span>
+                          )}
+                          <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold">
+                            {getStatusLabel(leave.status)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </section>
 
