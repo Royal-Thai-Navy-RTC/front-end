@@ -162,6 +162,7 @@ export default function Exam() {
   const [latestError, setLatestError] = useState("");
   const [latestDeletingId, setLatestDeletingId] = useState(null);
   const [latestFetched, setLatestFetched] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [summaryScope, setSummaryScope] = useState(SUMMARY_SCOPE.BATTALION);
   const [filters, setFilters] = useState({ battalion: SAMPLE_RESULTS[0].battalion, company: "ALL" });
   const [uploadStatus, setUploadStatus] = useState({ fileName: "", message: "", state: "" });
@@ -618,21 +619,28 @@ export default function Exam() {
       .finally(() => setUploading(false));
   };
 
-  const handleExport = () => {
-    const header = ["student", "battalion", "company", "subject", "score"];
-    const lines = filteredRecords.map((r) =>
-      [r.student, r.battalion, r.company, r.subject || "Exam", r.score]
-        .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
-        .join(",")
-    );
-    const csv = [header.join(","), ...lines].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "exam-results.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get("/api/exam-results/export", {
+        responseType: "blob",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const blob = new Blob([res.data], { type: res.data?.type || "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const disposition = res.headers?.["content-disposition"] || res.headers?.get?.("content-disposition");
+      const fileNameMatch = disposition && disposition.match(/filename="?([^"]+)"?/i);
+      link.href = url;
+      link.download = fileNameMatch?.[1] || "exam-results.xlsx";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setSummaryError(err?.response?.data?.message || err?.message || "ส่งออกไฟล์ไม่สำเร็จ");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const sampleRows = useMemo(() => filteredRecords.slice(0, 8), [filteredRecords]);
@@ -809,10 +817,11 @@ export default function Exam() {
               <button
                 type="button"
                 onClick={handleExport}
+                disabled={exporting}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-50"
               >
-                <Download size={14} />
-                ส่งออก CSV
+                {exporting ? <Loader2 className="animate-spin" size={14} /> : <Download size={14} />}
+                ส่งออกไฟล์
               </button>
             </div>
           </div>
