@@ -146,9 +146,9 @@ function HeroSection() {
         การประเมินผลครบวงจร และข้อมูลที่ตอบโจทย์ทุกภารกิจ
       </p>
       <div className="grid sm:grid-cols-3 gap-4 text-center">
-        <HeroMetric label="หลักสูตรที่เปิดสอน" value="15+" />
-        <HeroMetric label="ครูฝึกประจำการ" value="450+" />
-        <HeroMetric label="นักเรียนต่อปี" value="3,000+" />
+        <HeroMetric label="วิชาเรียน" value="5+" />
+        <HeroMetric label="ครูฝึกประจำการ" value="70+" />
+        <HeroMetric label="นักเรียนต่อปี" value="10,000+" />
       </div>
     </section>
   );
