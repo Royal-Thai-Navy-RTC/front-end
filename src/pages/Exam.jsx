@@ -3,7 +3,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import ReactECharts from "echarts-for-react";
-import { Upload, BarChart3, Loader2, Download, Trash2 } from "lucide-react";
+import { BarChart3, Loader2, Download, Trash2, RotateCcw, Upload } from "lucide-react";
 
 const SUMMARY_SCOPE = {
   BATTALION: "BATTALION",
@@ -854,15 +854,6 @@ export default function Exam() {
                 {summaryLoading ? <Loader2 className="animate-spin" size={14} /> : <BarChart3 size={14} />}
                 ดึงสรุปจากระบบ
               </button>
-              <button
-                type="button"
-                onClick={handleExport}
-                disabled={exporting}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-50"
-              >
-                {exporting ? <Loader2 className="animate-spin" size={14} /> : <Download size={14} />}
-                ส่งออกไฟล์
-              </button>
             </div>
           </div>
 
@@ -918,8 +909,17 @@ export default function Exam() {
               disabled={latestLoading}
               className="inline-flex items-center gap-1 px-3 py-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
             >
-              {latestLoading ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+              {latestLoading ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
               รีเฟรช
+            </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg border border-blue-200 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60"
+            >
+              {exporting ? <Loader2 className="animate-spin" size={14} /> : <Download size={14} />}
+              ส่งออกไฟล์
             </button>
             <button
               type="button"
