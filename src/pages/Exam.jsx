@@ -123,45 +123,36 @@ export default function Exam() {
   }, [filters.battalion, filters.company, records]);
 
   const summaryRows = useMemo(() => {
-    if (summaryScope === SUMMARY_SCOPE.BATTALION) {
-      const map = new Map();
-      records.forEach((rec) => {
-        const current = map.get(rec.battalion) || { label: `กองพัน ${rec.battalion}`, totalScore: 0, count: 0 };
-        map.set(rec.battalion, {
-          ...current,
-          totalScore: current.totalScore + Number(rec.score || 0),
-          count: current.count + 1,
-        });
+    if (summaryScope === SUMMARY_SCOPE.COMPANY) {
+      const battalionCodes = Array.from(new Set(records.map((r) => r.battalion))).sort();
+      return battalionCodes.flatMap((bn) =>
+        COMPANY_CODES.map((co) => {
+          const targeted = records.filter((r) => r.battalion === bn && r.company === co);
+          const totalScore = targeted.reduce((sum, rec) => sum + Number(rec.score || 0), 0);
+          return {
+            label: `พัน ${bn} / ร้อย ${co}`,
+            totalScore,
+            count: targeted.length,
+            average: targeted.length ? Number((totalScore / targeted.length).toFixed(2)) : 0,
+          };
+        })
+      );
+    }
+
+    const map = new Map();
+    records.forEach((rec) => {
+      const current = map.get(rec.battalion) || { label: `กองพัน ${rec.battalion}`, totalScore: 0, count: 0 };
+      map.set(rec.battalion, {
+        ...current,
+        totalScore: current.totalScore + Number(rec.score || 0),
+        count: current.count + 1,
       });
-      return Array.from(map.values()).map((item) => ({
-        ...item,
-        average: item.count ? Number((item.totalScore / item.count).toFixed(2)) : 0,
-      }));
-    }
-
-    if (filters.company && filters.company !== "ALL") {
-      const totalScore = filteredRecords.reduce((sum, rec) => sum + Number(rec.score || 0), 0);
-      return [
-        {
-          label: `กองร้อย ${filters.company}`,
-          totalScore,
-          count: filteredRecords.length,
-          average: filteredRecords.length ? Number((totalScore / filteredRecords.length).toFixed(2)) : 0,
-        },
-      ];
-    }
-
-    return COMPANY_CODES.map((code) => {
-      const targeted = filteredRecords.filter((r) => r.company === code);
-      const totalScore = targeted.reduce((sum, rec) => sum + Number(rec.score || 0), 0);
-      return {
-        label: `กองร้อย ${code}`,
-        totalScore,
-        count: targeted.length,
-        average: targeted.length ? Number((totalScore / targeted.length).toFixed(2)) : 0,
-      };
     });
-  }, [filteredRecords, filters.company, records, summaryScope]);
+    return Array.from(map.values()).map((item) => ({
+      ...item,
+      average: item.count ? Number((item.totalScore / item.count).toFixed(2)) : 0,
+    }));
+  }, [records, summaryScope]);
 
   const overallSummary = useMemo(() => {
     const totalStudents = filteredRecords.length;
@@ -185,33 +176,52 @@ export default function Exam() {
           return `${item.name}<br/>คะแนนเฉลี่ย: ${item.data}`;
         },
       },
-      grid: { left: 50, right: 20, top: 30, bottom: 60 },
-      xAxis: {
-        type: "category",
-        data: categories,
-        axisLabel: { rotate: -10, color: "#475569" },
-        axisLine: { lineStyle: { color: "#e2e8f0" } },
-      },
-      yAxis: {
-        type: "value",
-        name: "คะแนนเฉลี่ย",
-        axisLabel: { color: "#475569" },
-        splitLine: { lineStyle: { color: "#e2e8f0" } },
-      },
+      grid:
+        summaryScope === SUMMARY_SCOPE.COMPANY
+          ? { left: 140, right: 30, top: 20, bottom: 20 }
+          : { left: 50, right: 20, top: 30, bottom: 60 },
+      xAxis:
+        summaryScope === SUMMARY_SCOPE.COMPANY
+          ? {
+              type: "value",
+              axisLabel: { color: "#475569" },
+              splitLine: { lineStyle: { color: "#e2e8f0" } },
+              name: "คะแนนเฉลี่ย",
+            }
+          : {
+              type: "category",
+              data: categories,
+              axisLabel: { rotate: -10, color: "#475569" },
+              axisLine: { lineStyle: { color: "#e2e8f0" } },
+            },
+      yAxis:
+        summaryScope === SUMMARY_SCOPE.COMPANY
+          ? {
+              type: "category",
+              data: categories,
+              axisLabel: { color: "#475569" },
+              axisLine: { lineStyle: { color: "#e2e8f0" } },
+            }
+          : {
+              type: "value",
+              name: "คะแนนเฉลี่ย",
+              axisLabel: { color: "#475569" },
+              splitLine: { lineStyle: { color: "#e2e8f0" } },
+            },
       series: [
         {
           type: "bar",
-          barWidth: 32,
+          barWidth: summaryScope === SUMMARY_SCOPE.COMPANY ? 16 : 32,
           data: values,
           itemStyle: {
             color: "#2563eb",
-            borderRadius: [10, 10, 0, 0],
+            borderRadius: summaryScope === SUMMARY_SCOPE.COMPANY ? [0, 10, 10, 0] : [10, 10, 0, 0],
           },
         },
       ],
       color: ["#2563eb"],
     };
-  }, [summaryRows]);
+  }, [summaryRows, summaryScope]);
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -283,7 +293,7 @@ export default function Exam() {
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold">สรุปผลการสอบและอัปโหลดไฟล์คะแนน</h1>
             <p className="text-sm sm:text-base text-blue-100 max-w-2xl">
-              ส่งไฟล์ผลข้อสอบนักเรียน (CSV) แล้วดูกราฟสรุปคะแนน เลือกสรุปทั้งกองพันหรือเฉพาะกองร้อยภายในกองพันนั้น
+              ส่งไฟล์ผลข้อสอบนักเรียน (CSV) แล้วดูกราฟสรุปคะแนน เลือกสรุปทั้งกองพันหรือเปรียบเทียบทุกกองร้อยจากทุกกองพัน
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:w-auto">
@@ -354,7 +364,9 @@ export default function Exam() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <p className="text-xs font-semibold text-blue-600 uppercase tracking-[0.2em]">แผนภูมิ</p>
-              <h3 className="text-lg font-bold text-gray-900">กราฟแท่งสรุปผลการสอบ</h3>
+              <h3 className="text-lg font-bold text-gray-900">
+                {summaryScope === SUMMARY_SCOPE.COMPANY ? "เปรียบเทียบ 20 กองร้อย (ทุกกองพัน)" : "กราฟแท่งสรุปผลการสอบ"}
+              </h3>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center bg-gray-100 rounded-xl p-1">
@@ -374,13 +386,14 @@ export default function Exam() {
                     summaryScope === SUMMARY_SCOPE.COMPANY ? "bg-blue-600 text-white shadow" : "text-gray-600"
                   }`}
                 >
-                  เลือกกองร้อย
+                  เทียบทุกกองร้อย
                 </button>
               </div>
               <select
                 value={filters.battalion}
                 onChange={(e) => setFilters((prev) => ({ ...prev, battalion: e.target.value }))}
-                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+                disabled={summaryScope === SUMMARY_SCOPE.COMPANY}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white disabled:text-gray-400"
               >
                 {battalionOptions.map((bn) => (
                   <option key={bn} value={bn}>
@@ -388,7 +401,7 @@ export default function Exam() {
                   </option>
                 ))}
               </select>
-              {summaryScope === SUMMARY_SCOPE.COMPANY && (
+              {summaryScope === SUMMARY_SCOPE.BATTALION && (
                 <select
                   value={filters.company}
                   onChange={(e) => setFilters((prev) => ({ ...prev, company: e.target.value }))}
@@ -414,7 +427,7 @@ export default function Exam() {
 
           <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-3">
             {summaryRows.length > 0 ? (
-              <ReactECharts option={chartOption} notMerge lazyUpdate style={{ height: 320, width: "100%" }} />
+              <ReactECharts option={chartOption} notMerge lazyUpdate style={{ height: summaryScope === SUMMARY_SCOPE.COMPANY ? 520 : 320, width: "100%" }} />
             ) : (
               <p className="text-sm text-gray-500 text-center py-8">ยังไม่มีข้อมูลสำหรับสรุปผล</p>
             )}
