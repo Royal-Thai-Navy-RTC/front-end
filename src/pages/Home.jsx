@@ -26,7 +26,7 @@ const NAV_GROUPS = [
     title: "แอดมิน",
     items: [
       { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
-      { path: "/form-evaluate-student", label: "สร้างฟอร์มการประเมิน", roles: ["admin", "owner"] },
+      { path: "/form-evaluate", label: "สร้างฟอร์มการประเมิน", roles: ["admin", "owner"] },
       { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", roles: ["admin", "owner"] },
       { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", roles: ["admin", "owner"] },
     ],
@@ -59,7 +59,7 @@ const pictureMap = {
   "/evaluation-dashboard": windowpic,
   "/service-evaluation-summary": windowpic,
   "/manage": profile,
-  "/form-evaluate-student": exam,
+  "/form-evaluate": exam,
   "/teacher-report": navy_team,
   "/teacher-leave": hand,
   "/soilderprofile": teacher,
@@ -77,7 +77,7 @@ const descriptionMap = {
   "/evaluation-dashboard": "สรุปผลการประเมินทั้งหมด",
   "/service-evaluation-summary": "สรุปผลการประเมินราชการ",
   "/manage": "บริหารจัดการผู้ใช้",
-  "/form-evaluate-student": "สร้าง/แก้ไขฟอร์มประเมินนักเรียน",
+  "/form-evaluate": "สร้าง/แก้ไขฟอร์มประเมินนักเรียน",
   "/teacher-report": "แจ้งยอดนักเรียนประจำวัน",
   "/teacher-leave": "แจ้งการลา",
 };

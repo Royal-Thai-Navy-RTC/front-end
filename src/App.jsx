@@ -15,7 +15,7 @@ import TeacherRollCall from "./pages/TeacherRollCall";
 import TeacherLeave from "./pages/TeacherLeave";
 import Evaluate from "./pages/Evaluate";
 import ListEvaluate from "./pages/ListEvaluate";
-import FormEvaluateStudent from "./pages/FormEvaluateStudent";
+import FormEvaluate from "./pages/FormEvaluate";
 import SoilderProfile from "./pages/SoldierProfile";
 import LayoutSoilder from "./layout/LayoutSoilder";
 import TeachingSchedules from "./pages/TeachingSchedules";
@@ -159,10 +159,10 @@ const router = createBrowserRouter([
                 )
             },
             {
-                path: "form-evaluate-student",
+                path: "form-evaluate",
                 element: (
                     <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
-                        <FormEvaluateStudent />
+                        <FormEvaluate />
                     </ProtectedRoute>
                 )
             },
