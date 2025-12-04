@@ -85,9 +85,9 @@ export default function CreateTasks() {
           <p className="text-sm uppercase tracking-[0.2em] text-blue-100">Task Dispatch</p>
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div className="space-y-2">
-              <h1 className="text-3xl sm:text-4xl font-bold">ออกแบบงานและส่งมอบให้ทีม</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold">ส่งมอบงาน</h1>
               <p className="text-blue-100">
-                ระบุชื่องาน รายละเอียด และระยะเวลาที่ต้องทำ เพื่อให้ผู้รับมอบงานเห็นความคาดหวังชัดเจน
+                ระบุชื่องาน รายละเอียด และระยะเวลาที่ต้องทำ
               </p>
             </div>
             <div className="flex gap-3">
@@ -286,7 +286,7 @@ export default function CreateTasks() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Preview</p>
-                <h3 className="text-lg font-semibold text-gray-900">ตัวอย่างงานที่จะส่ง</h3>
+                <h3 className="text-lg font-semibold text-gray-900">ตัวอย่างงานที่จะสั่ง</h3>
               </div>
               <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${priorityBadge(form.priority)}`}>
                 {form.priority === "high" ? "ความสำคัญสูง" : form.priority === "low" ? "ความสำคัญต่ำ" : "ความสำคัญกลาง"}
