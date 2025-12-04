@@ -829,73 +829,117 @@ export default function SoldierDashboard() {
                 Swal.fire({ icon: "info", title: "ไม่มีข้อมูล", text: "ไม่พบข้อมูลทหารใหม่สำหรับส่งออก" });
                 return;
             }
+
+            // ✅ หัวตารางใหม่ (ไม่มี updatedAt)
             const header = [
                 "ชื่อ",
                 "นามสกุล",
                 "เลขบัตรประชาชน",
-                "เบอร์โทร",
-                "อีเมล",
+                "วันเกิด",
+                "อายุ (ปี)",
+                "น้ำหนัก (กก.)",
+                "ส่วนสูง (ซม.)",
                 "การศึกษา",
-                "ศาสนา",
                 "อาชีพก่อนเป็นทหาร",
-                "อายุราชการ(เดือน)",
+                "ศาสนา",
+                "กรุ๊ปเลือด",
+                "ว่ายน้ำได้",
+                "อายุราชการ (ปี)",
+                "อายุราชการ (เดือน)",
+                "ที่อยู่",
                 "จังหวัด",
                 "อำเภอ",
                 "ตำบล",
-                "ที่อยู่",
                 "รหัสไปรษณีย์",
+                "อีเมล",
+                "เบอร์โทร",
                 "ติดต่อฉุกเฉิน",
                 "เบอร์ติดต่อฉุกเฉิน",
-                "กรุ๊ปเลือด",
-                "ว่ายน้ำได้",
-                "วันที่สร้าง",
+                "โรคประจำตัว",
+                "แพ้อาหาร",
+                "แพ้ยา",
+                "หมายเหตุแพทย์",
+                "วันที่สร้าง"
             ];
+
             const rows = filtered.map((item) => {
                 const months = getServiceMonths(item);
+                const years =
+                    item.serviceYears !== undefined && item.serviceYears !== null
+                        ? item.serviceYears
+                        : months !== null && months !== undefined
+                            ? (months / 12).toFixed(1)
+                            : "";
+
+                const age = calcAgeYears(item.birthDate);
                 const { provinceName, districtName, subdistrictName } = resolveLocationNames(item);
+
+                const chronicText = Array.isArray(item.chronicDiseases) ? item.chronicDiseases.join(", ") : "";
+                const foodText = Array.isArray(item.foodAllergies) ? item.foodAllAllergies?.join(", ") : (item.foodAllergies?.join(", ") || "");
+                const drugText = Array.isArray(item.drugAllergies) ? item.drugAllergies.join(", ") : "";
+
                 return [
                     item.firstName || "",
                     item.lastName || "",
                     protectExcelText(item.citizenId || ""),
-                    item.phone || "",
-                    item.email || "",
+                    item.birthDate ? new Date(item.birthDate).toLocaleDateString("th-TH") : "",
+                    age ?? "",
+                    item.weightKg ?? "",
+                    item.heightCm ?? "",
                     item.education || "",
-                    item.religion || "",
                     item.previousJob || "",
+                    item.religion || "",
+                    item.bloodGroup || "",
+                    item.canSwim ? "ใช่" : "ไม่ใช่",
+                    years,
                     months ?? "",
+                    item.addressLine || "",
                     provinceName || item.province || "",
                     districtName || item.district || "",
                     subdistrictName || item.subdistrict || "",
-                    item.addressLine || "",
                     item.postalCode || "",
+                    item.email || "",
+                    item.phone || "",
                     item.emergencyName || "",
                     item.emergencyPhone || "",
-                    item.bloodGroup || "",
-                    item.canSwim ? "ใช่" : "ไม่ใช่",
-                    item.createdAt ? new Date(item.createdAt).toLocaleString("th-TH") : "",
+                    chronicText,
+                    foodText,
+                    drugText,
+                    item.medicalNotes || "",
+                    item.createdAt ? new Date(item.createdAt).toLocaleString("th-TH") : ""
                 ];
             });
+
             const csvContent = "\uFEFF" + buildCsv([header, ...rows]);
             const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
+
             const link = document.createElement("a");
             link.href = url;
             link.download = `soldier-intakes-${new Date().toISOString().slice(0, 10)}.csv`;
+
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+
             URL.revokeObjectURL(url);
-            Swal.fire({ icon: "success", title: "ส่งออกสำเร็จ", text: `จำนวน ${filtered.length} รายการ` });
+
+            Swal.fire({
+                icon: "success",
+                title: "ส่งออกสำเร็จ",
+                text: `จำนวน ${filtered.length} รายการ`,
+            });
         } catch (error) {
             Swal.fire({
                 icon: "error",
                 title: "ส่งออกไม่สำเร็จ",
-                text: error?.response?.data?.message || error?.message || "เกิดข้อผิดพลาด",
+                text: error?.response?.data?.message || error.message || "เกิดข้อผิดพลาด",
             });
         } finally {
             setExporting(false);
         }
     };
+
 
     const handleExportPdf = async () => {
         setExportingPdf(true);
@@ -910,87 +954,130 @@ export default function SoldierDashboard() {
                 .map((item, idx) => {
                     const { provinceName, districtName, subdistrictName } = resolveLocationNames(item);
                     const months = getServiceMonths(item);
-                    const created = item.createdAt ? new Date(item.createdAt).toLocaleString("th-TH") : "-";
+                    const years =
+                        item.serviceYears ?? (months ? (months / 12).toFixed(1) : "");
+
+                    const chronicText = Array.isArray(item.chronicDiseases) ? item.chronicDiseases.join(", ") : "-";
+                    const foodText = Array.isArray(item.foodAllergies) ? item.foodAllergies.join(", ") : "-";
+                    const drugText = Array.isArray(item.drugAllergies) ? item.drugAllergies.join(", ") : "-";
+
+                    const birthDateText = item.birthDate
+                        ? new Date(item.birthDate).toLocaleDateString("th-TH")
+                        : "-";
+                    const age = calcAgeYears(item.birthDate);
+                    const created = item.createdAt
+                        ? new Date(item.createdAt).toLocaleString("th-TH")
+                        : "-";
+
                     return `
-                        <tr>
-                            <td>${idx + 1}</td>
-                            <td>${(item.firstName || "") + " " + (item.lastName || "")}</td>
-                            <td>${item.citizenId || "-"}</td>
-                            <td>${item.phone || "-"}</td>
-                            <td>${item.education || "-"}</td>
-                            <td>${item.religion || "-"}</td>
-                            <td>${months ?? "-"}</td>
-                            <td>${provinceName || item.province || "-"}</td>
-                            <td>${districtName || item.district || "-"}</td>
-                            <td>${subdistrictName || item.subdistrict || "-"}</td>
-                            <td>${item.emergencyName || "-"}</td>
-                            <td>${item.emergencyPhone || "-"}</td>
-                            <td>${created}</td>
-                        </tr>
-                    `;
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>${item.firstName || ""} ${item.lastName || ""}</td>
+                        <td>${item.citizenId || "-"}</td>
+                        <td>${birthDateText}</td>
+                        <td>${age ?? "-"}</td>
+                        <td>${item.weightKg ?? "-"}</td>
+                        <td>${item.heightCm ?? "-"}</td>
+                        <td>${item.education || "-"}</td>
+                        <td>${item.previousJob || "-"}</td>
+                        <td>${item.religion || "-"}</td>
+                        <td>${item.bloodGroup || "-"}</td>
+                        <td>${item.canSwim ? "ใช่" : "ไม่ใช่"}</td>
+                        <td>${years || "-"}</td>
+                        <td>${months ?? "-"}</td>
+                        <td>${item.addressLine || "-"}</td>
+                        <td>${provinceName || item.province || "-"}</td>
+                        <td>${districtName || item.district || "-"}</td>
+                        <td>${subdistrictName || item.subdistrict || "-"}</td>
+                        <td>${item.postalCode || "-"}</td>
+                        <td>${item.email || "-"}</td>
+                        <td>${item.phone || "-"}</td>
+                        <td>${item.emergencyName || "-"}</td>
+                        <td>${item.emergencyPhone || "-"}</td>
+                        <td>${chronicText}</td>
+                        <td>${foodText}</td>
+                        <td>${drugText}</td>
+                        <td>${item.medicalNotes || "-"}</td>
+                        <td>${created}</td>
+                    </tr>
+                `;
                 })
                 .join("");
 
             const html = `
-                <html>
-                    <head>
-                        <meta charSet="utf-8" />
-                        <title>Export PDF</title>
-                        <style>
-                            body { font-family: "Sarabun", "Noto Sans Thai", sans-serif; padding: 16px; color: #0f172a; }
-                            h1 { margin-bottom: 12px; }
-                            table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                            th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
-                            th { background: #e2e8f0; }
-                            tr:nth-child(even) td { background: #f8fafc; }
-                        </style>
-                    </head>
-                    <body>
-                        <h1>ข้อมูลทหารใหม่</h1>
-                        <p>รวม ${filtered.length} รายการ | สร้างเมื่อ ${new Date().toLocaleString("th-TH")}</p>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>ชื่อ-สกุล</th>
-                                    <th>เลขบัตรประชาชน</th>
-                                    <th>เบอร์โทร</th>
-                                    <th>การศึกษา</th>
-                                    <th>ศาสนา</th>
-                                    <th>อายุราชการ(เดือน)</th>
-                                    <th>จังหวัด</th>
-                                    <th>อำเภอ</th>
-                                    <th>ตำบล</th>
-                                    <th>ติดต่อฉุกเฉิน</th>
-                                    <th>เบอร์ติดต่อฉุกเฉิน</th>
-                                    <th>วันที่สร้าง</th>
-                                </tr>
-                            </thead>
-                            <tbody>${rowsHtml}</tbody>
-                        </table>
-                    </body>
-                </html>
-            `;
+            <html>
+                <head>
+                    <meta charSet="utf-8" />
+                    <title>Export PDF</title>
+                    <style>
+                        body { font-family: "Sarabun", "Noto Sans Thai", sans-serif; padding: 16px; color: #0f172a; }
+                        h1 { margin-bottom: 12px; }
+                        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                        th, td { border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; }
+                        th { background: #e2e8f0; }
+                        tr:nth-child(even) td { background: #f8fafc; }
+                    </style>
+                </head>
+                <body>
+                    <h1>ข้อมูลทหารใหม่</h1>
+                    <p>รวม ${filtered.length} รายการ | พิมพ์เมื่อ ${new Date().toLocaleString("th-TH")}</p>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>ชื่อ-สกุล</th>
+                                <th>เลขบัตรประชาชน</th>
+                                <th>วันเกิด</th>
+                                <th>อายุ (ปี)</th>
+                                <th>น้ำหนัก</th>
+                                <th>ส่วนสูง</th>
+                                <th>การศึกษา</th>
+                                <th>อาชีพก่อนทหาร</th>
+                                <th>ศาสนา</th>
+                                <th>กรุ๊ปเลือด</th>
+                                <th>ว่ายน้ำ</th>
+                                <th>อายุราชการ (ปี)</th>
+                                <th>อายุราชการ (เดือน)</th>
+                                <th>ที่อยู่</th>
+                                <th>จังหวัด</th>
+                                <th>อำเภอ</th>
+                                <th>ตำบล</th>
+                                <th>ไปรษณีย์</th>
+                                <th>อีเมล</th>
+                                <th>โทร</th>
+                                <th>ผู้ติดต่อฉุกเฉิน</th>
+                                <th>เบอร์ติดต่อฉุกเฉิน</th>
+                                <th>โรคประจำตัว</th>
+                                <th>แพ้อาหาร</th>
+                                <th>แพ้ยา</th>
+                                <th>หมายเหตุแพทย์</th>
+                                <th>วันที่สร้าง</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </body>
+            </html>
+        `;
 
             const pdfWindow = window.open("", "_blank");
-            if (!pdfWindow) {
-                Swal.fire({ icon: "error", title: "Failed to open PDF tab", text: "Please allow pop-ups in your browser and try again." });
-                return;
-            }
             pdfWindow.document.open();
             pdfWindow.document.write(html);
             pdfWindow.document.close();
             pdfWindow.focus();
+
         } catch (error) {
             Swal.fire({
                 icon: "error",
                 title: "ส่งออก PDF ไม่สำเร็จ",
-                text: error?.response?.data?.message || error?.message || "เกิดข้อผิดพลาด",
+                text: error?.response?.data?.message || error.message || "เกิดข้อผิดพลาด",
             });
         } finally {
             setExportingPdf(false);
         }
     };
+
 
     const handleEditChange = (e) => {
         const { name, value } = e.target;
