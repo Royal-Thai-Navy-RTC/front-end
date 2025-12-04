@@ -849,7 +849,7 @@ export default function TeacherLeave() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-gray-800">ภาพรวมกำลังพลพร้อมปฏิบัติงาน</p>
-                      <p className="text-xs text-gray-500">ครู/ผู้บังคับบัญชา และยอดรวมที่พร้อมปฏิบัติงาน</p>
+                      <p className="text-xs text-gray-500">ครู/ข้าราขการ และยอดรวมที่พร้อมปฏิบัติงาน</p>
                     </div>
                   </div>
                   {summaryLoading ? (
