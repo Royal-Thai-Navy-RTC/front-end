@@ -375,7 +375,7 @@ export default function TeacherLeave() {
 
     const totalReady = (teacherAvailable ?? 0) + (commanderAvailable ?? 0);
 
-    const labels = ["ครูพร้อมปฏิบัติงาน", "ผู้บังคับบัญชาพร้อมปฏิบัติงาน", "กำลังพลพร้อมปฏิบัติงานทั้งหมด"];
+    const labels = ["ครูพร้อมปฏิบัติงาน", "ข้าราชการพร้อมปฏิบัติงาน", "กำลังพลพร้อมปฏิบัติงานทั้งหมด"];
     const data = [
       { value: teacherAvailable ?? 0, itemStyle: { color: "#2563eb" } },
       { value: commanderAvailable ?? 0, itemStyle: { color: "#f59e0b" } },
@@ -849,7 +849,7 @@ export default function TeacherLeave() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-gray-800">ภาพรวมกำลังพลพร้อมปฏิบัติงาน</p>
-                      <p className="text-xs text-gray-500">ครู/ผู้บังคับบัญชา และยอดรวมที่พร้อมปฏิบัติงาน</p>
+                      <p className="text-xs text-gray-500">ครู/ข้าราชการ และยอดรวมที่พร้อมปฏิบัติงาน</p>
                     </div>
                   </div>
                   {summaryLoading ? (

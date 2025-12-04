@@ -185,10 +185,11 @@ export default function LayoutMain() {
   const fetchMessage = useCallback(async () => {
     const token = localStorage.getItem("token");
 
-    // อนุญาตเฉพาะ OWNER และ TEACHER เท่านั้น
-    if (!["OWNER", "TEACHER"].includes(user.role)) return;
+    // อนุญาตเฉพาะ OWNER, TEACHER, SCHEDULE_ADMIN
+    if (!["OWNER", "TEACHER", "SCHEDULE_ADMIN"].includes(user.role)) return;
 
-    const apiPath = `${user.role.toLowerCase()}/notifications?page=1&pageSize=10`;
+    const apiPath =
+      user.role === "OWNER" ? "owner/notifications?page=1&pageSize=10" : "teacher/notifications?page=1&pageSize=10";
 
     try {
       const response = await axios.get(`/api/${apiPath}`, {

@@ -30,6 +30,8 @@ import ServiceEvaluationSummary from "./pages/ServiceEvaluationSummary";
 import Exam from "./pages/Exam";
 import CreateTasks from "./pages/CreateTasks";
 import SoldierIntakeSettings from "./pages/SoldierIntakeSettings";
+import TaskSubmission from "./pages/TaskSubmission";
+import ErrorPage from "./pages/ErrorPage";
 
 const normalizeRole = (role = "") => role.toUpperCase();
 
@@ -116,6 +118,7 @@ const router = createBrowserRouter([
     {
         path: "",
         element: <LayoutMain />,
+        errorElement: <ErrorPage />,
         children: [
             { path: "login", element: <Login /> },
             { path: "register", element: <Register /> },
@@ -158,7 +161,7 @@ const router = createBrowserRouter([
             {
                 path: "teacher-leave",
                 element: (
-                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN", "SCHEDULE_ADMIN"]}>
                         <TeacherLeave />
                     </ProtectedRoute>
                 )
@@ -230,7 +233,7 @@ const router = createBrowserRouter([
             {
                 path: "teaching-schedules",
                 element: (
-                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER", "SCHEDULE_ADMIN"]}>
                         <TeachingSchedules />
                     </ProtectedRoute>)
             },
@@ -253,7 +256,7 @@ const router = createBrowserRouter([
             {
                 path: "message",
                 element: (
-                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "STUDENT", "OWNER", "SUB_ADMIN"]}>
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "STUDENT", "OWNER", "SUB_ADMIN", "SCHEDULE_ADMIN"]}>
                         <Message />
                     </ProtectedRoute>
                 )
@@ -265,11 +268,22 @@ const router = createBrowserRouter([
                         <CreateTasks />
                     </ProtectedRoute>
                 )
+            },
+            {
+                path: "task-submit",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER", "SUB_ADMIN", "TEACHER", "SCHEDULE_ADMIN"]}>
+                        <TaskSubmission />
+                    </ProtectedRoute>
+                )
             }
         ]
     },
     {
-        path: "", element: <SoldierProfileLayoutSwitcher />, children: [
+        path: "",
+        element: <SoldierProfileLayoutSwitcher />,
+        errorElement: <ErrorPage />,
+        children: [
             {
                 path: "soilderprofile",
                 element: (
@@ -279,6 +293,10 @@ const router = createBrowserRouter([
                 ),
             },
         ]
+    },
+    {
+        path: "*",
+        element: <ErrorPage />
     }
 ]);
 
