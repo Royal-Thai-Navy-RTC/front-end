@@ -170,6 +170,7 @@ export default function Nav({
           { path: "/teacher-report", label: "แจ้งยอดนักเรียน", icon: ClipboardList, roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/teacher-leave", label: "แจ้งการลา", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner", "schedule_admin"] },
           { path: "/exam", label: "ส่งผลสอบ", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"] },
+          { path: "/task-submit", label: "ส่งงานที่ได้รับมอบหมาย", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner", "schedule_admin"] },
 
         ]
       },
