@@ -253,7 +253,7 @@ export default function TeachingSchedules() {
               MANAGEMENT
             </span>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">การจัดการตารางสอน</h1>
-            <p className="text-sm text-gray-500">สำหรับผู้ดูแลระบบและผู้บังคับบัญชา</p>
+            <p className="text-sm text-gray-500">สำหรับผู้ดูแลระบบ ผู้บังคับบัญชา และผู้ดูแลตารางสอน</p>
           </div>
         </div>
       </section>

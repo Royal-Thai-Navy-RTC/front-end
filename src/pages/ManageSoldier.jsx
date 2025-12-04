@@ -8,6 +8,7 @@ import navy from "../assets/navy.png";
 const ROLE_FILTERS = [
     { label: "ทั้งหมด", value: "ALL" },
     { label: "ผู้ดูแลระบบ", value: "ADMIN" },
+    { label: "ผู้ดูแลตารางสอน", value: "SCHEDULE_ADMIN" },
     { label: "ครูผู้สอน", value: "TEACHER" },
     { label: "นักเรียน", value: "STUDENT" },
     { label: "หัวหน้าหมวดวิชา", value: "SUB_ADMIN" },
@@ -16,6 +17,7 @@ const ROLE_FILTERS = [
 const ROLE_LABELS = {
     ADMIN: "ผู้ดูแลระบบ",
     OWNER: "ผู้บังคับบัญชา",
+    SCHEDULE_ADMIN: "ผู้ดูแลตารางสอน",
     SUB_ADMIN: "หัวหน้าหมวดวิชา",
     TEACHER: "ครูผู้สอน",
     STUDENT: "นักเรียน",
@@ -29,6 +31,7 @@ const ROLE_FILTER_LABELS = {
 const ROLE_BADGE_STYLES = {
     ADMIN: "bg-purple-50 text-purple-700 border-purple-200",
     OWNER: "bg-amber-50 text-amber-700 border-amber-200",
+    SCHEDULE_ADMIN: "bg-indigo-50 text-indigo-700 border-indigo-200",
     SUB_ADMIN: "bg-sky-50 text-sky-700 border-sky-200",
     TEACHER: "bg-emerald-50 text-emerald-700 border-emerald-200",
     STUDENT: "bg-blue-50 text-blue-700 border-blue-200",
@@ -414,6 +417,7 @@ export default function ManageSoldier() {
             (acc, user) => {
                 const role = (user.role || "").toUpperCase();
                 if (role === "ADMIN") acc.admin += 1;
+                else if (role === "SCHEDULE_ADMIN") acc.scheduleAdmin += 1;
                 else if (role === "SUB_ADMIN") acc.subAdmin += 1;
                 else if (role === "TEACHER") acc.teacher += 1;
                 else if (role === "STUDENT") acc.student += 1;
@@ -421,7 +425,7 @@ export default function ManageSoldier() {
                 acc.total += 1;
                 return acc;
             },
-            { total: 0, admin: 0, teacher: 0, subAdmin: 0, student: 0, others: 0 }
+            { total: 0, admin: 0, scheduleAdmin: 0, teacher: 0, subAdmin: 0, student: 0, others: 0 }
         );
     }, [users]);
 
@@ -861,6 +865,7 @@ export default function ManageSoldier() {
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <SummaryCard label="กำลังพลทั้งหมด" value={stats.total} accent="from-blue-500 to-blue-700" />
                 <SummaryCard label="ผู้ดูแลระบบ" value={stats.admin} accent="from-purple-500 to-purple-700" />
+                <SummaryCard label="ผู้ดูแลตารางสอน" value={stats.scheduleAdmin} accent="from-indigo-500 to-blue-700" />
                 <SummaryCard label="ครูผู้สอน" value={stats.teacher} accent="from-green-500 to-emerald-600" />
                 <SummaryCard label="หัวหน้าหมวดวิชา" value={stats.subAdmin} accent="from-cyan-500 to-sky-600" />
                 <SummaryCard label="นักเรียน/นายทหารฝึก" value={stats.student} accent="from-amber-500 to-yellow-500" />
@@ -1355,15 +1360,16 @@ export default function ManageSoldier() {
                                         <select
                                             name="role"
                                             value={createForm.role}
-                                            onChange={handleCreateChange}
-                                            className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                        >
-                                            <option value="ADMIN">ADMIN</option>
-                                            <option value="TEACHER">TEACHER</option>
-                                            <option value="STUDENT">STUDENT</option>
-                                            <option value="SUB_ADMIN">SUB_ADMIN</option>
-                                        </select>
-                                    </label>
+                                        onChange={handleCreateChange}
+                                        className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    >
+                                        <option value="ADMIN">ADMIN</option>
+                                        <option value="SCHEDULE_ADMIN">SCHEDULE_ADMIN</option>
+                                        <option value="TEACHER">TEACHER</option>
+                                        <option value="STUDENT">STUDENT</option>
+                                        <option value="SUB_ADMIN">SUB_ADMIN</option>
+                                    </select>
+                                </label>
                                 </div>
                                 <div className="grid sm:grid-cols-2 gap-3">
                                     <label className="flex flex-col gap-1 text-sm">
@@ -1559,6 +1565,7 @@ export default function ManageSoldier() {
                                         className="border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                     >
                                         <option value="ADMIN">ADMIN</option>
+                                        <option value="SCHEDULE_ADMIN">SCHEDULE_ADMIN</option>
                                         <option value="TEACHER">TEACHER</option>
                                         <option value="STUDENT">STUDENT</option>
                                         <option value="SUB_ADMIN">SUB_ADMIN</option>
