@@ -830,19 +830,53 @@ export default function SoldierDashboard() {
         importFileInputRef.current?.click();
     };
 
-    const handleImportFile = async (e) => {
-        const file = e.target.files?.[0];
+    const handleImportFile = async () => {
+        const file = importFileInputRef.current?.files?.[0];
         if (!file) return;
+
         setImporting(true);
+
         try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const url = `/api/admin/soldier-intakes/import`;
+
+            const res = await axios.post(url, formData, {
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                },
+            });
+
+            const message =
+                res.data?.message ||
+                `นำเข้าข้อมูลสำเร็จ (${file.name})`;
+
             await Swal.fire({
-                icon: "info",
-                title: "Import กำลังพัฒนา",
-                text: `ยังไม่ได้เชื่อม API นำเข้าข้อมูล (ไฟล์ที่เลือก: ${file.name})`,
+                icon: "success",
+                title: "นำเข้าข้อมูลสำเร็จ",
+                text: message,
+            });
+
+            // TODO: ถ้าคุณมีฟังก์ชันโหลดรายชื่อใหม่ เช่น fetchSoldiers();
+            // fetchSoldiers();
+        } catch (err) {
+            console.error(err);
+            const message =
+                err?.response?.data?.message ||
+                err?.message ||
+                "เกิดข้อผิดพลาดในการนำเข้าข้อมูล";
+
+            await Swal.fire({
+                icon: "error",
+                title: "นำเข้าข้อมูลไม่สำเร็จ",
+                text: message,
             });
         } finally {
-            e.target.value = "";
             setImporting(false);
+            if (importFileInputRef.current) {
+                importFileInputRef.current.value = "";
+            }
         }
     };
 
