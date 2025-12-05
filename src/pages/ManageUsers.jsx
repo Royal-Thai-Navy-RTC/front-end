@@ -13,6 +13,7 @@ const ROLE_FILTERS = [
     { label: "ผู้ดูแลระบบ", value: "ADMIN" },
     { label: "ผู้ดูแลตารางสอน", value: "SCHEDULE_ADMIN" },
     { label: "ผู้สร้างฟอร์มประเมิน", value: "FORM_CREATOR" },
+    { label: "ผู้อัปโหลดผลสอบ", value: "EXAM_UPLOADER" },
     { label: "ครูผู้สอน", value: "TEACHER" },
     { label: "นักเรียน", value: "STUDENT" },
     { label: "หัวหน้าหมวดวิชา", value: "SUB_ADMIN" },
@@ -23,6 +24,7 @@ const ROLE_LABELS = {
     OWNER: "ผู้บังคับบัญชา",
     SCHEDULE_ADMIN: "ผู้ดูแลตารางสอน",
     FORM_CREATOR: "ผู้สร้างฟอร์มประเมิน",
+    EXAM_UPLOADER: "ผู้อัปโหลดผลสอบ",
     SUB_ADMIN: "หัวหน้าหมวดวิชา",
     TEACHER: "ครูผู้สอน",
     STUDENT: "นักเรียน",
@@ -38,6 +40,7 @@ const ROLE_BADGE_STYLES = {
     OWNER: "bg-amber-50 text-amber-700 border-amber-200",
     SCHEDULE_ADMIN: "bg-indigo-50 text-indigo-700 border-indigo-200",
     FORM_CREATOR: "bg-orange-50 text-orange-700 border-orange-200",
+    EXAM_UPLOADER: "bg-amber-50 text-amber-700 border-amber-200",
     SUB_ADMIN: "bg-sky-50 text-sky-700 border-sky-200",
     TEACHER: "bg-emerald-50 text-emerald-700 border-emerald-200",
     STUDENT: "bg-blue-50 text-blue-700 border-blue-200",
@@ -384,6 +387,7 @@ export default function ManageUsers() {
                 if (role === "ADMIN") acc.admin += 1;
                 else if (role === "SCHEDULE_ADMIN") acc.scheduleAdmin += 1;
                 else if (role === "FORM_CREATOR") acc.formCreator += 1;
+                else if (role === "EXAM_UPLOADER") acc.examUploader += 1;
                 else if (role === "SUB_ADMIN") acc.subAdmin += 1;
                 else if (role === "TEACHER") acc.teacher += 1;
                 else if (role === "STUDENT") acc.student += 1;
@@ -391,7 +395,7 @@ export default function ManageUsers() {
                 acc.total += 1;
                 return acc;
             },
-            { total: 0, admin: 0, scheduleAdmin: 0, formCreator: 0, teacher: 0, subAdmin: 0, student: 0, others: 0 }
+            { total: 0, admin: 0, scheduleAdmin: 0, formCreator: 0, examUploader: 0, teacher: 0, subAdmin: 0, student: 0, others: 0 }
         );
     }, [users]);
 
@@ -867,11 +871,12 @@ const mapUserToForm = (data = {}) => ({
                 </p>
             </header>
 
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
                 <SummaryCard label="ผู้ใช้ทั้งหมด" value={stats.total} accent="from-blue-500 to-blue-700" />
                 <SummaryCard label="ผู้ดูแลระบบ" value={stats.admin} accent="from-purple-500 to-purple-700" />
                 <SummaryCard label="ผู้ดูแลตารางสอน" value={stats.scheduleAdmin} accent="from-indigo-500 to-blue-700" />
                 <SummaryCard label="ผู้สร้างฟอร์มประเมิน" value={stats.formCreator} accent="from-orange-500 to-amber-500" />
+                <SummaryCard label="ผู้อัปโหลดผลสอบ" value={stats.examUploader} accent="from-yellow-500 to-amber-600" />
                 <SummaryCard label="ครูผู้สอน" value={stats.teacher} accent="from-green-500 to-emerald-600" />
                 <SummaryCard label="หัวหน้าหมวดวิชา" value={stats.subAdmin} accent="from-cyan-500 to-sky-600" />
                 <SummaryCard label="นักเรียน" value={stats.student} accent="from-amber-500 to-yellow-500" />
@@ -1084,6 +1089,7 @@ const mapUserToForm = (data = {}) => ({
                                 <option value="ADMIN">ADMIN</option>
                                 <option value="SCHEDULE_ADMIN">SCHEDULE_ADMIN</option>
                                 <option value="FORM_CREATOR">FORM_CREATOR</option>
+                                <option value="EXAM_UPLOADER">EXAM_UPLOADER</option>
                                 <option value="TEACHER">TEACHER</option>
                                 <option value="STUDENT">STUDENT</option>
                                 <option value="SUB_ADMIN">SUB_ADMIN</option>
@@ -1311,6 +1317,7 @@ const mapUserToForm = (data = {}) => ({
                                         <option value="ADMIN">ADMIN</option>
                                         <option value="SCHEDULE_ADMIN">SCHEDULE_ADMIN</option>
                                         <option value="FORM_CREATOR">FORM_CREATOR</option>
+                                        <option value="EXAM_UPLOADER">EXAM_UPLOADER</option>
                                         <option value="TEACHER">TEACHER</option>
                                         <option value="STUDENT">STUDENT</option>
                                         <option value="SUB_ADMIN">SUB_ADMIN</option>

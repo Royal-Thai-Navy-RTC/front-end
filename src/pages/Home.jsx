@@ -16,10 +16,10 @@ const NAV_GROUPS = [
   {
     title: "ทั่วไป",
     items: [
-      { path: "/library", label: "ห้องสมุด", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator"] },
-      { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator"] },
+      { path: "/library", label: "ห้องสมุด", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator", "exam_uploader"] },
+      { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator", "exam_uploader"] },
       // { path: "/teaching-schedules", label: "จัดการตารางสอน", roles: ["admin", "owner", "guest"] },
-      { path: "/public-teaching-schedules", label: "ตารางสอน", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator"] },
+      { path: "/public-teaching-schedules", label: "ตารางสอน", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator", "exam_uploader"] },
     ],
   },
   {
@@ -43,7 +43,8 @@ const NAV_GROUPS = [
     title: "ข้าราชการ",
     items: [
       { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
-      { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner", "form_creator"] },
+      { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner", "form_creator", "exam_uploader"] },
+      { path: "/exam", label: "ส่งผลสอบ", roles: ["admin", "owner", "sub_admin", "teacher", "exam_uploader"] },
       { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", roles: ["admin", "owner", "sub_admin", "teacher"] },
       { path: "/service-evaluation-summary", label: "สรุปผลประเมินราชการ", roles: ["admin", "owner", "sub_admin", "teacher"] },
     ],
@@ -61,6 +62,7 @@ const pictureMap = {
   "/service-evaluation-summary": windowpic,
   "/manage": profile,
   "/form-evaluate": exam,
+  "/exam": exam,
   "/teacher-report": navy_team,
   "/teacher-leave": hand,
   "/soilderprofile": teacher,
@@ -82,6 +84,7 @@ const descriptionMap = {
   "/form-evaluate": "สร้าง/แก้ไขฟอร์มประเมินนักเรียน",
   "/teacher-report": "แจ้งยอดนักเรียนประจำวัน",
   "/teacher-leave": "แจ้งการลา",
+  "/exam": "ส่งผลคะแนนสอบ",
   "/soldier-intake-settings": "เปิด/ปิดฟอร์มลงทะเบียนทหารใหม่",
 };
 
