@@ -33,6 +33,13 @@ import SoldierIntakeSettings from "./pages/SoldierIntakeSettings";
 import TaskSubmission from "./pages/TaskSubmission";
 import ErrorPage from "./pages/ErrorPage";
 
+const COMPANY_ROLES = [
+  "BAT1_COM1", "BAT1_COM2", "BAT1_COM3", "BAT1_COM4", "BAT1_COM5",
+  "BAT2_COM1", "BAT2_COM2", "BAT2_COM3", "BAT2_COM4", "BAT2_COM5",
+  "BAT3_COM1", "BAT3_COM2", "BAT3_COM3", "BAT3_COM4", "BAT3_COM5",
+  "BAT4_COM1", "BAT4_COM2", "BAT4_COM3", "BAT4_COM4", "BAT4_COM5",
+];
+
 const normalizeRole = (role = "") => role.toUpperCase();
 
 const getStoredRole = () => {
@@ -248,7 +255,7 @@ const router = createBrowserRouter([
             {
                 path: "soldiers",
                 element: (
-                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER", ...COMPANY_ROLES]}>
                         <SoldierDashboard />
                     </ProtectedRoute>
                 )
