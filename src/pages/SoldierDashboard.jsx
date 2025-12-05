@@ -12,6 +12,7 @@ import {
     RefreshCw,
     Search,
     ShieldCheck,
+    Upload,
     UserRound,
     Users,
     X,
@@ -334,16 +335,19 @@ export default function SoldierDashboard() {
         newDrug: "",
     });
     const imageInputRef = useRef(null);
+    const importFileInputRef = useRef(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
     const [exporting, setExporting] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
+    const [importing, setImporting] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);
 
     const addressList = useMemo(() => (Array.isArray(rawAddressData) ? rawAddressData : []), []);
     const token = useMemo(() => localStorage.getItem("token"), []);
     const currentRole = (user?.role || "").toString().toUpperCase();
+    const canImportData = currentRole === "OWNER" || currentRole === "ADMIN";
 
     const subdistrictMap = useMemo(() => {
         const map = new Map();
@@ -819,6 +823,27 @@ export default function SoldierDashboard() {
             if (!provinceFilter) return true;
             return `${item.province ?? ""}` === `${provinceFilter}`;
         });
+    };
+
+    const handleImportClick = () => {
+        if (!canImportData) return;
+        importFileInputRef.current?.click();
+    };
+
+    const handleImportFile = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setImporting(true);
+        try {
+            await Swal.fire({
+                icon: "info",
+                title: "Import กำลังพัฒนา",
+                text: `ยังไม่ได้เชื่อม API นำเข้าข้อมูล (ไฟล์ที่เลือก: ${file.name})`,
+            });
+        } finally {
+            e.target.value = "";
+            setImporting(false);
+        }
     };
 
     const handleExport = async () => {
@@ -1388,8 +1413,8 @@ export default function SoldierDashboard() {
                     </section>
 
                     <div className="bg-white/90 backdrop-blur rounded-3xl shadow-xl p-5 space-y-4 border border-blue-50">
-                        <div className="grid gap-3 lg:grid-cols-4">
-                            <div className="lg:col-span-2 flex items-center gap-2 rounded-2xl border border-blue-100 px-3 py-2 bg-blue-50/60 shadow-[0_10px_30px_-18px_rgba(32,64,128,0.7)]">
+                        <div className="grid gap-3 xl:grid-cols-8 lg:grid-cols-6">
+                            <div className="lg:col-span-2 xl:col-span-2 flex items-center gap-2 rounded-2xl border border-blue-100 px-3 py-2 bg-blue-50/60 shadow-[0_10px_30px_-18px_rgba(32,64,128,0.7)]">
                                 <Search className="w-4 h-4 text-blue-600" />
                                 <input
                                     value={search}
@@ -1413,6 +1438,17 @@ export default function SoldierDashboard() {
                                     </option>
                                 ))}
                             </select>
+                            {canImportData && (
+                                <button
+                                    type="button"
+                                    onClick={handleImportClick}
+                                    disabled={importing || loading}
+                                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-60"
+                                >
+                                    <Upload className={`w-4 h-4 ${importing ? "animate-bounce" : ""}`} />
+                                    {importing ? "กำลังนำเข้า..." : "นำเข้าข้อมูล"}
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 onClick={handleExport}
@@ -1431,8 +1467,16 @@ export default function SoldierDashboard() {
                                 <Download className={`w-4 h-4 ${exportingPdf ? "animate-bounce" : ""}`} />
                                 {exportingPdf ? "กำลังส่งออก..." : "ส่งออก PDF"}
                             </button>
+                            {canImportData && (
+                                <input
+                                    ref={importFileInputRef}
+                                    type="file"
+                                    accept=".xlsx,.xls,.csv"
+                                    className="hidden"
+                                    onChange={handleImportFile}
+                                />
+                            )}
                         </div>
-
                         <div className="rounded-2xl border border-blue-100 bg-white/90 p-3 flex flex-wrap items-center gap-2 shadow-sm">
                             <span className="text-sm font-semibold text-blue-900">ตัวกรอง:</span>
                             {activeFilterChips.length ? (
