@@ -126,6 +126,10 @@ const normalizeIntake = (raw = {}) => {
         avatar: raw.avatar || raw.file || raw.idCardImageUrl,
         idCardImageUrl: raw.idCardImageUrl || raw.avatar || raw.file,
         bloodGroup: raw.bloodGroup || raw.blood_type || raw.bloodType,
+        sequenceNumber: raw.sequenceNumber,
+        platoonCode: raw.platoonCode,
+        companyCode: raw.companyCode,
+        battalionCode: raw.battalionCode,
     };
 };
 
@@ -240,6 +244,10 @@ const mapIntakeToForm = (intake = {}) => ({
     emergencyName: intake.emergencyName || "",
     emergencyPhone: intake.emergencyPhone || "",
     bloodGroup: intake.bloodGroup || "",
+    sequenceNumber: intake.sequenceNumber,
+    platoonCode: intake.platoonCode,
+    companyCode: intake.companyCode,
+    battalionCode: intake.battalionCode,
 });
 
 const splitList = (value) =>
@@ -1247,6 +1255,7 @@ export default function SoldierDashboard() {
         setEditPreview(URL.createObjectURL(file));
     };
 
+
     const triggerImageUpload = () => {
         imageInputRef.current?.click();
     };
@@ -1758,11 +1767,6 @@ export default function SoldierDashboard() {
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-2 text-right text-blue-100">
-                                        {/* <div className="flex gap-2 flex-wrap justify-end">
-                                        <span className="rounded-full bg-white/15 px-3 py-1 border border-white/20 text-xs font-semibold">ระยะรับราชการ {formatServiceDuration(getServiceMonths(selected))}</span>
-                                        <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 text-xs font-semibold">กรุ๊ปเลือด {selected.bloodGroup || "-"}</span>
-                                        {ageYears !== null && <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 text-xs font-semibold">อายุ {ageYears} ปี</span>}
-                                    </div> */}
                                         <div className="flex flex-wrap gap-2 justify-end">
                                             <button onClick={() => setEditing((v) => !v)} className="rounded-xl border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold hover:bg-white/20" disabled={saving || deleting}>
                                                 {editing ? "ยกเลิก" : "แก้ไข"}
@@ -1875,8 +1879,28 @@ export default function SoldierDashboard() {
                                     </div>
 
                                     <div className="flex flex-col gap-3 lg:col-span-3">
-                                        {editing ? (
-                                            <div className="grid sm:grid-cols-2 gap-3">
+                                        {editing ? (<>
+                                            <div className="grid sm:grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                                                <p className="sm:col-span-2 text-start">สังกัด</p>
+                                                <div className="flex flex-col gap-1 rounded-xl px-3 py-2">
+                                                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-100">กองพัน</span>
+                                                    <input name="battalionCode" value={editForm.battalionCode || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="กองพัน" />
+                                                </div>
+                                                <div className="flex flex-col gap-1 rounded-xl px-3 py-2">
+                                                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-100">กองพัน</span>
+                                                    <input name="companyCode" value={editForm.companyCode || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="กองร้อย" />
+                                                </div>
+                                                <div className="flex flex-col gap-1 rounded-xl px-3 py-2">
+                                                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-100">กองพัน</span>
+                                                    <input name="platoonCode" value={editForm.platoonCode || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="กองหมวด" />
+                                                </div>
+                                                <div className="flex flex-col gap-1 rounded-xl px-3 py-2">
+                                                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-100">กองพัน</span>
+                                                    <input name="sequenceNumber" value={editForm.sequenceNumber || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="เลขประจำตัว" />
+                                                </div>
+                                            </div>
+                                            <div className="grid sm:grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                                                <p className="sm:col-span-2 text-start">ข้อมูลส่วนตัว</p>
                                                 <input name="firstName" value={editForm.firstName || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="ชื่อ" />
                                                 <input name="lastName" value={editForm.lastName || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="นามสกุล" />
                                                 <input name="citizenId" value={editForm.citizenId || ""} onChange={handleEditChange} className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-blue-100/80" placeholder="หมายเลขบัตรประชาชน" />
@@ -2029,9 +2053,17 @@ export default function SoldierDashboard() {
                                                     </button>
                                                 </div>
                                             </div>
-                                        ) : (
+                                        </>) : (
                                             <div className="grid gap-3">
                                                 <div className="rounded-2xl border border-white/10 bg-white/5 p-3 grid sm:grid-cols-2 gap-3">
+                                                    <p className="sm:col-span-2 text-start">สังกัด</p>
+                                                    <DetailField label="กองพัน" value={selected.battalionCode} />
+                                                    <DetailField label="กองร้อย" value={selected.companyCode} />
+                                                    <DetailField label="หมวด" value={selected.platoonCode} />
+                                                    <DetailField label="เลขประจำตัว" value={selected.sequenceNumber} />
+                                                </div>
+                                                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 grid sm:grid-cols-2 gap-3">
+                                                    <p className="sm:col-span-2 text-start">ข้อมูลส่วนตัว</p>
                                                     <DetailField label="หมายเลขบัตรประชาชน" value={selected.citizenId} />
                                                     <DetailField label="วันเกิด" value={formatDate(editForm.birthDate || selected.birthDate)} />
                                                     <DetailField label="น้ำหนัก (กก.)" value={selected.weightKg || "-"} />
