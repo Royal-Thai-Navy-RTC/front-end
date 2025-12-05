@@ -16,17 +16,17 @@ const NAV_GROUPS = [
   {
     title: "ทั่วไป",
     items: [
-      { path: "/library", label: "ห้องสมุด", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
-      { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
+      { path: "/library", label: "ห้องสมุด", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator"] },
+      { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator"] },
       // { path: "/teaching-schedules", label: "จัดการตารางสอน", roles: ["admin", "owner", "guest"] },
-      { path: "/public-teaching-schedules", label: "ตารางสอน", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
+      { path: "/public-teaching-schedules", label: "ตารางสอน", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator"] },
     ],
   },
   {
     title: "แอดมิน",
     items: [
       { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
-      { path: "/form-evaluate", label: "สร้างฟอร์มการประเมิน", roles: ["admin", "owner"] },
+      { path: "/form-evaluate", label: "สร้างฟอร์มการประเมิน", roles: ["admin", "owner", "form_creator"] },
       { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", roles: ["admin", "owner"] },
       { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", roles: ["admin", "owner"] },
       { path: "/soldier-intake-settings", label: "ตั้งค่ารับสมัครทหารใหม่", roles: ["admin", "owner"] },
@@ -43,7 +43,7 @@ const NAV_GROUPS = [
     title: "ข้าราชการ",
     items: [
       { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
-      { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner"] },
+      { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner", "form_creator"] },
       { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", roles: ["admin", "owner", "sub_admin", "teacher"] },
       { path: "/service-evaluation-summary", label: "สรุปผลประเมินราชการ", roles: ["admin", "owner", "sub_admin", "teacher"] },
     ],

@@ -32,6 +32,7 @@ const ROLE_LABELS = {
   owner: "ผู้บังคับบัญชา",
   sub_admin: "หัวหน้าหมวดวิชา",
   schedule_admin: "ผู้ดูแลตารางสอน",
+  form_creator: "ผู้สร้างฟอร์มประเมิน",
   teacher: "ครูผู้สอน",
   student: "นักเรียน",
 };
@@ -136,11 +137,11 @@ export default function Nav({
   /* --- PAGES (WITH DROPDOWN SUPPORT) --- */
   const pages = useMemo(
     () => [
-      { path: "/home", label: "หน้าหลัก", icon: Home, roles: ["admin", "sub_admin", "teacher", "student", "owner", "schedule_admin"] },
+      { path: "/home", label: "หน้าหลัก", icon: Home, roles: ["admin", "sub_admin", "teacher", "student", "owner", "schedule_admin", "form_creator"] },
       {
-        label: "ทั่วไป", icon: CircleSmall, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "schedule_admin"], children: [
-          { path: "/library", label: "ห้องสมุด", icon: BookOpen, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest"] },
-          { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner"] },
+        label: "ทั่วไป", icon: CircleSmall, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "schedule_admin", "form_creator"], children: [
+          { path: "/library", label: "ห้องสมุด", icon: BookOpen, roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator"] },
+          { path: "/history", label: "ประวัติ", icon: Clock3, roles: ["admin", "sub_admin", "teacher", "student", "owner", "form_creator"] },
           { path: "/teaching-schedules", label: "จัดการตารางสอน", icon: CalendarClock, roles: ["admin", "owner", "schedule_admin"] },
         ]
       },
@@ -157,8 +158,8 @@ export default function Nav({
       },
       // { path: "/listevaluation", label: "ประเมิน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
       {
-        label: "ประเมิน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"], children: [
-          { path: "/form-evaluate", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner"] },
+        label: "ประเมิน", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner", "form_creator"], children: [
+          { path: "/form-evaluate", label: "สร้างฟอร์มการประเมิน", icon: ClipboardList, roles: ["admin", "owner", "form_creator"] },
           { path: "/listevaluation", label: "ประเมิน", icon: GraduationCap, roles: ["admin", "owner", "teacher", "sub_admin"] },
           { path: "/listteacher", label: "ประเมินผู้สอน", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/evaluation-dashboard", label: "ผลการประเมินนักเรียน", icon: CalendarClock, roles: ["admin", "owner", "sub_admin", "teacher"] },
@@ -166,9 +167,9 @@ export default function Nav({
         ]
       },
       {
-        label: "ข้าราชการ", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner", "schedule_admin"], children: [
+        label: "ข้าราชการ", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner", "schedule_admin", "form_creator"], children: [
           { path: "/teacher-report", label: "แจ้งยอดนักเรียน", icon: ClipboardList, roles: ["admin", "owner", "teacher", "sub_admin"] },
-          { path: "/teacher-leave", label: "แจ้งการลา", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner", "schedule_admin"] },
+          { path: "/teacher-leave", label: "แจ้งการลา", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner", "schedule_admin", "form_creator"] },
           { path: "/exam", label: "ส่งผลสอบ", icon: GraduationCap, roles: ["teacher", "admin", "sub_admin", "owner"] },
           { path: "/task-submit", label: "ส่งงานที่ได้รับมอบหมาย", icon: ClipboardList, roles: ["teacher", "admin", "sub_admin", "owner", "schedule_admin"] },
 

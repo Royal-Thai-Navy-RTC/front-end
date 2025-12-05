@@ -161,7 +161,7 @@ const router = createBrowserRouter([
             {
                 path: "teacher-leave",
                 element: (
-                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN", "SCHEDULE_ADMIN"]}>
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN", "SCHEDULE_ADMIN", "FORM_CREATOR"]}>
                         <TeacherLeave />
                     </ProtectedRoute>
                 )
@@ -225,7 +225,7 @@ const router = createBrowserRouter([
             {
                 path: "form-evaluate",
                 element: (
-                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN"]}>
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "OWNER", "SUB_ADMIN", "FORM_CREATOR"]}>
                         <FormEvaluate />
                     </ProtectedRoute>
                 )
@@ -256,7 +256,7 @@ const router = createBrowserRouter([
             {
                 path: "message",
                 element: (
-                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "STUDENT", "OWNER", "SUB_ADMIN", "SCHEDULE_ADMIN"]}>
+                    <ProtectedRoute allowedRoles={["ADMIN", "TEACHER", "STUDENT", "OWNER", "SUB_ADMIN", "SCHEDULE_ADMIN", "FORM_CREATOR"]}>
                         <Message />
                     </ProtectedRoute>
                 )
