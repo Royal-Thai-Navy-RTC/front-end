@@ -10,6 +10,7 @@ import { SearchResultsSection } from "../components/manage/SearchResultsSection"
 
 const ROLE_FILTERS = [
     { label: "ทั้งหมด", value: "ALL" },
+
     { label: "ผู้ดูแลระบบ", value: "ADMIN" },
     { label: "ผู้ดูแลตารางสอน", value: "SCHEDULE_ADMIN" },
     { label: "ผู้สร้างฟอร์มประเมิน", value: "FORM_CREATOR" },
@@ -17,6 +18,34 @@ const ROLE_FILTERS = [
     { label: "ครูผู้สอน", value: "TEACHER" },
     { label: "นักเรียน", value: "STUDENT" },
     { label: "หัวหน้าหมวดวิชา", value: "SUB_ADMIN" },
+
+    // ---------- Battalion 1 ----------
+    { label: "กองพัน 1 กองร้อย 1", value: "BAT1_COM1" },
+    { label: "กองพัน 1 กองร้อย 2", value: "BAT1_COM2" },
+    { label: "กองพัน 1 กองร้อย 3", value: "BAT1_COM3" },
+    { label: "กองพัน 1 กองร้อย 4", value: "BAT1_COM4" },
+    { label: "กองพัน 1 กองร้อย 5", value: "BAT1_COM5" },
+
+    // ---------- Battalion 2 ----------
+    { label: "กองพัน 2 กองร้อย 1", value: "BAT2_COM1" },
+    { label: "กองพัน 2 กองร้อย 2", value: "BAT2_COM2" },
+    { label: "กองพัน 2 กองร้อย 3", value: "BAT2_COM3" },
+    { label: "กองพัน 2 กองร้อย 4", value: "BAT2_COM4" },
+    { label: "กองพัน 2 กองร้อย 5", value: "BAT2_COM5" },
+
+    // ---------- Battalion 3 ----------
+    { label: "กองพัน 3 กองร้อย 1", value: "BAT3_COM1" },
+    { label: "กองพัน 3 กองร้อย 2", value: "BAT3_COM2" },
+    { label: "กองพัน 3 กองร้อย 3", value: "BAT3_COM3" },
+    { label: "กองพัน 3 กองร้อย 4", value: "BAT3_COM4" },
+    { label: "กองพัน 3 กองร้อย 5", value: "BAT3_COM5" },
+
+    // ---------- Battalion 4 ----------
+    { label: "กองพัน 4 กองร้อย 1", value: "BAT4_COM1" },
+    { label: "กองพัน 4 กองร้อย 2", value: "BAT4_COM2" },
+    { label: "กองพัน 4 กองร้อย 3", value: "BAT4_COM3" },
+    { label: "กองพัน 4 กองร้อย 4", value: "BAT4_COM4" },
+    { label: "กองพัน 4 กองร้อย 5", value: "BAT4_COM5" },
 ];
 
 const ROLE_LABELS = {
@@ -28,6 +57,34 @@ const ROLE_LABELS = {
     SUB_ADMIN: "หัวหน้าหมวดวิชา",
     TEACHER: "ครูผู้สอน",
     STUDENT: "นักเรียน",
+
+    // ----------- Battalion 1 -----------
+    BAT1_COM1: "กองพัน 1 กองร้อย 1",
+    BAT1_COM2: "กองพัน 1 กองร้อย 2",
+    BAT1_COM3: "กองพัน 1 กองร้อย 3",
+    BAT1_COM4: "กองพัน 1 กองร้อย 4",
+    BAT1_COM5: "กองพัน 1 กองร้อย 5",
+
+    // ----------- Battalion 2 -----------
+    BAT2_COM1: "กองพัน 2 กองร้อย 1",
+    BAT2_COM2: "กองพัน 2 กองร้อย 2",
+    BAT2_COM3: "กองพัน 2 กองร้อย 3",
+    BAT2_COM4: "กองพัน 2 กองร้อย 4",
+    BAT2_COM5: "กองพัน 2 กองร้อย 5",
+
+    // ----------- Battalion 3 -----------
+    BAT3_COM1: "กองพัน 3 กองร้อย 1",
+    BAT3_COM2: "กองพัน 3 กองร้อย 2",
+    BAT3_COM3: "กองพัน 3 กองร้อย 3",
+    BAT3_COM4: "กองพัน 3 กองร้อย 4",
+    BAT3_COM5: "กองพัน 3 กองร้อย 5",
+
+    // ----------- Battalion 4 -----------
+    BAT4_COM1: "กองพัน 4 กองร้อย 1",
+    BAT4_COM2: "กองพัน 4 กองร้อย 2",
+    BAT4_COM3: "กองพัน 4 กองร้อย 3",
+    BAT4_COM4: "กองพัน 4 กองร้อย 4",
+    BAT4_COM5: "กองพัน 4 กองร้อย 5",
 };
 
 const ROLE_FILTER_LABELS = {
@@ -44,7 +101,36 @@ const ROLE_BADGE_STYLES = {
     SUB_ADMIN: "bg-sky-50 text-sky-700 border-sky-200",
     TEACHER: "bg-emerald-50 text-emerald-700 border-emerald-200",
     STUDENT: "bg-blue-50 text-blue-700 border-blue-200",
+
+    // ---------- Battalion 1 (Green) ----------
+    BAT1_COM1: "bg-green-50 text-green-700 border-green-200",
+    BAT1_COM2: "bg-green-50 text-green-700 border-green-200",
+    BAT1_COM3: "bg-green-50 text-green-700 border-green-200",
+    BAT1_COM4: "bg-green-50 text-green-700 border-green-200",
+    BAT1_COM5: "bg-green-50 text-green-700 border-green-200",
+
+    // ---------- Battalion 2 (Sky) ----------
+    BAT2_COM1: "bg-sky-50 text-sky-700 border-sky-200",
+    BAT2_COM2: "bg-sky-50 text-sky-700 border-sky-200",
+    BAT2_COM3: "bg-sky-50 text-sky-700 border-sky-200",
+    BAT2_COM4: "bg-sky-50 text-sky-700 border-sky-200",
+    BAT2_COM5: "bg-sky-50 text-sky-700 border-sky-200",
+
+    // ---------- Battalion 3 (Amber/Yellow) ----------
+    BAT3_COM1: "bg-amber-50 text-amber-700 border-amber-200",
+    BAT3_COM2: "bg-amber-50 text-amber-700 border-amber-200",
+    BAT3_COM3: "bg-amber-50 text-amber-700 border-amber-200",
+    BAT3_COM4: "bg-amber-50 text-amber-700 border-amber-200",
+    BAT3_COM5: "bg-amber-50 text-amber-700 border-amber-200",
+
+    // ---------- Battalion 4 (Red) ----------
+    BAT4_COM1: "bg-red-50 text-red-700 border-red-200",
+    BAT4_COM2: "bg-red-50 text-red-700 border-red-200",
+    BAT4_COM3: "bg-red-50 text-red-700 border-red-200",
+    BAT4_COM4: "bg-red-50 text-red-700 border-red-200",
+    BAT4_COM5: "bg-red-50 text-red-700 border-red-200",
 };
+
 
 const RANK_OPTIONS = [
     { value: "ADMIRAL", label: "พลเรือเอก" },
@@ -1093,6 +1179,31 @@ const mapUserToForm = (data = {}) => ({
                                 <option value="TEACHER">TEACHER</option>
                                 <option value="STUDENT">STUDENT</option>
                                 <option value="SUB_ADMIN">SUB_ADMIN</option>
+
+                                <option value="BAT1_COM1">BAT1_COM1</option>
+                                <option value="BAT1_COM2">BAT1_COM2</option>
+                                <option value="BAT1_COM3">BAT1_COM3</option>
+                                <option value="BAT1_COM4">BAT1_COM4</option>
+                                <option value="BAT1_COM5">BAT1_COM5</option>
+
+                                <option value="BAT2_COM1">BAT2_COM1</option>
+                                <option value="BAT2_COM2">BAT2_COM2</option>
+                                <option value="BAT2_COM3">BAT2_COM3</option>
+                                <option value="BAT2_COM4">BAT2_COM4</option>
+                                <option value="BAT2_COM5">BAT2_COM5</option>
+
+                                <option value="BAT3_COM1">BAT3_COM1</option>
+                                <option value="BAT3_COM2">BAT3_COM2</option>
+                                <option value="BAT3_COM3">BAT3_COM3</option>
+                                <option value="BAT3_COM4">BAT3_COM4</option>
+                                <option value="BAT3_COM5">BAT3_COM5</option>
+
+                                <option value="BAT4_COM1">BAT4_COM1</option>
+                                <option value="BAT4_COM2">BAT4_COM2</option>
+                                <option value="BAT4_COM3">BAT4_COM3</option>
+                                <option value="BAT4_COM4">BAT4_COM4</option>
+                                <option value="BAT4_COM5">BAT4_COM5</option>
+
                             </select>
                         </label>
                                 </div>
@@ -1321,6 +1432,30 @@ const mapUserToForm = (data = {}) => ({
                                         <option value="TEACHER">TEACHER</option>
                                         <option value="STUDENT">STUDENT</option>
                                         <option value="SUB_ADMIN">SUB_ADMIN</option>
+
+                                        <option value="BAT1_COM1">BAT1_COM1</option>
+                                        <option value="BAT1_COM2">BAT1_COM2</option>
+                                        <option value="BAT1_COM3">BAT1_COM3</option>
+                                        <option value="BAT1_COM4">BAT1_COM4</option>
+                                        <option value="BAT1_COM5">BAT1_COM5</option>
+
+                                        <option value="BAT2_COM1">BAT2_COM1</option>
+                                        <option value="BAT2_COM2">BAT2_COM2</option>
+                                        <option value="BAT2_COM3">BAT2_COM3</option>
+                                        <option value="BAT2_COM4">BAT2_COM4</option>
+                                        <option value="BAT2_COM5">BAT2_COM5</option>
+
+                                        <option value="BAT3_COM1">BAT3_COM1</option>
+                                        <option value="BAT3_COM2">BAT3_COM2</option>
+                                        <option value="BAT3_COM3">BAT3_COM3</option>
+                                        <option value="BAT3_COM4">BAT3_COM4</option>
+                                        <option value="BAT3_COM5">BAT3_COM5</option>
+
+                                        <option value="BAT4_COM1">BAT4_COM1</option>
+                                        <option value="BAT4_COM2">BAT4_COM2</option>
+                                        <option value="BAT4_COM3">BAT4_COM3</option>
+                                        <option value="BAT4_COM4">BAT4_COM4</option>
+                                        <option value="BAT4_COM5">BAT4_COM5</option>
                                     </select>
                                 </label>
                                 <label className="flex flex-col gap-1 text-sm">
