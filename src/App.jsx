@@ -32,6 +32,7 @@ import CreateTasks from "./pages/CreateTasks";
 import SoldierIntakeSettings from "./pages/SoldierIntakeSettings";
 import TaskSubmission from "./pages/TaskSubmission";
 import ErrorPage from "./pages/ErrorPage";
+import NewsCreate from "./pages/NewsCreate";
 
 const normalizeRole = (role = "") => role.toUpperCase();
 
@@ -276,7 +277,15 @@ const router = createBrowserRouter([
                         <TaskSubmission />
                     </ProtectedRoute>
                 )
-            }
+            },
+            {
+                path: "newscreate",
+                element: (
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER"]}>
+                        <NewsCreate />
+                    </ProtectedRoute>
+                )
+            },
         ]
     },
     {

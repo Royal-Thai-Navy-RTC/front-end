@@ -356,6 +356,7 @@ export default function SoldierDashboard() {
     const token = useMemo(() => localStorage.getItem("token"), []);
     const currentRole = (user?.role || "").toString().toUpperCase();
     const canImportData = currentRole === "OWNER" || currentRole === "ADMIN";
+    const isCompany = currentRole === "COMPANY";
 
     const subdistrictMap = useMemo(() => {
         const map = new Map();
@@ -396,7 +397,7 @@ export default function SoldierDashboard() {
     const fetchIntakes = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await axios.get("/api/admin/soldier-intakes", {
+            const res = await axios.get("/api/admihttp://localhost:5173/api/adminn/soldier-intakes", {
                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                 params: {
                     page,
@@ -441,7 +442,8 @@ export default function SoldierDashboard() {
     useEffect(() => {
         const fetchSummary = async () => {
             try {
-                const res = await axios.get("/api/admin/soldier-intakes-summary", {
+                const pathfilter = isCompany ? "/api/admin/soldier-intakes-summary?battalionCode=1&companyCode=3" : "/api/admin/soldier-intakes-summary";
+                const res = await axios.get(pathfilter, {
                     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                 });
                 const data = res.data?.data || res.data || {};
@@ -1880,7 +1882,7 @@ export default function SoldierDashboard() {
 
                                     <div className="flex flex-col gap-3 lg:col-span-3">
                                         {editing ? (<>
-                                            <div className="grid sm:grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                                            <div className="grid sm:grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-white/5 p-3">
                                                 <p className="sm:col-span-2 text-start">สังกัด</p>
                                                 <div className="flex flex-col gap-1 rounded-xl px-3 py-2">
                                                     <span className="text-xs font-semibold uppercase tracking-wide text-blue-100">กองพัน</span>

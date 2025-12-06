@@ -218,16 +218,18 @@ function FeatureCard({ title, path, description, picture }) {
 function UpdatesPanel() {
   const updates = [
     {
-      title: "เปิดหลักสูตรฝึกยุทธวิธีรุ่น 15",
-      detail: "เริ่มรับสมัคร 12 - 30 ม.ค. 2568",
+      id: 1,
+      title: "ประกาศผลการคัดเลือกทหารใหม่ รุ่นที่ 3",
+      detail: "ตรวจสอบรายชื่อได้ที่เว็บไซต์อย่างเป็นทางการของกองทัพเรือ...",
+      imageUrl: "https://example.com/news-cover-1.jpg",   // ไม่มีก็ได้
+      externalLink: "https://www.navy.mi.th/news/12345",  // ไม่มีก็ได้
     },
     {
-      title: "ระบบประเมินครูฝึกเวอร์ชันใหม่",
-      detail: "รองรับการอัปโหลดไฟล์และบันทึกผลแบบเรียลไทม์",
-    },
-    {
-      title: "ประกาศผลสอบหลักสูตรภาคทฤษฎี",
-      detail: "ตรวจสอบผลผ่านระบบสอบออนไลน์ได้แล้ววันนี้",
+      id: 2,
+      title: "ประชาสัมพันธ์กำหนดการฝึกภาคสนาม",
+      detail: "กำหนดการฝึกภาคสนามสำหรับรุ่นที่ 3 โปรดเตรียมตัวให้พร้อม...",
+      imageUrl: "",          // ไม่มีรูป → การ์ดจะเหลือแค่ตัวหนังสือ
+      externalLink: "",      // ไม่มีลิงก์ → เป็นข้อความเฉยๆ
     },
   ];
 
@@ -239,13 +241,70 @@ function UpdatesPanel() {
         </p>
         <h2 className="text-2xl font-bold text-blue-900 mt-1">ข่าวสารล่าสุด</h2>
       </div>
+
       <div className="flex flex-col gap-4">
-        {updates.map((item) => (
-          <div key={item.title} className="p-4 rounded-2xl border border-gray-100 hover:border-blue-200 transition">
-            <p className="text-sm text-blue-500 font-semibold">{item.title}</p>
-            <p className="text-sm text-gray-500 mt-1">{item.detail}</p>
-          </div>
-        ))}
+        {updates.map((item) =>
+          item.externalLink ? (
+            // ถ้ามีลิงก์ภายนอก → ใช้ <a> ทั้งการ์ด คลิกแล้วเปิดแท็บใหม่
+            <a
+              key={item.id || item.title}
+              href={item.externalLink}
+              target="_blank"
+              rel="noreferrer"
+              className="flex gap-3 p-4 rounded-2xl border border-gray-100 hover:border-blue-300 hover:bg-blue-50/40 transition group"
+            >
+              {/* รูปภาพข่าว (ถ้ามี) */}
+              {item.imageUrl && (
+                <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                  <img
+                    src={item.imageUrl}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              {/* เนื้อหาข่าว */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-blue-600 font-semibold line-clamp-1">
+                  {item.title}
+                </p>
+                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                  {item.detail}
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
+                  <span className="underline group-hover:no-underline">
+                    เปิดลิงก์ภายนอก
+                  </span>
+                  <span aria-hidden>↗</span>
+                </div>
+              </div>
+            </a>
+          ) : (
+            <div
+              key={item.id || item.title}
+              className="flex gap-3 p-4 rounded-2xl border border-gray-100 hover:border-blue-200 transition"
+            >
+              {item.imageUrl && (
+                <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                  <img
+                    src={item.imageUrl}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-blue-500 font-semibold line-clamp-1">
+                  {item.title}
+                </p>
+                <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                  {item.detail}
+                </p>
+              </div>
+            </div>
+          )
+        )}
       </div>
     </aside>
   );

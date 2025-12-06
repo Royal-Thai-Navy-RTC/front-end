@@ -49,6 +49,7 @@ const rankOptions = [
   { value: "จ่าตรี", label: "จ่าตรี" },
   { value: "จ่าตรีหญิง", label: "จ่าตรีหญิง" },
   { value: "พลฯ", label: "พลฯ" },
+  { value: "กองร้อย", label: "กองร้อย" },
 ];
 
 export const divisionOptions = [

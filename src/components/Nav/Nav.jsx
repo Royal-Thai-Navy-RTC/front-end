@@ -19,6 +19,7 @@ import {
   ClipboardList,
   GraduationCap,
   BookOpen,
+  Newspaper
 } from "lucide-react";
 import logo from "../../assets/logo.png";
 import navy from "../../assets/navy.png";
@@ -152,6 +153,7 @@ export default function Nav({
           { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", icon: ClipboardList, roles: ["admin", "owner"] },
           { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", icon: User, roles: ["admin", "owner"] },
           { path: "/createtask", label: "มอบหมายงาน", icon: ClipboardList, roles: ["admin", "owner"] },
+          { path: "/newscreate", label: "ข่าวสาร", icon: Newspaper, roles: ["admin", "owner"] },
           { path: "/soldier-intake-settings", label: "ตั้งค่ารับสมัครทหารใหม่", icon: Settings2, roles: ["admin", "owner"] },
 
           // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
