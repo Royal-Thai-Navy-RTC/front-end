@@ -11,7 +11,7 @@ export default defineConfig({
     allowedHosts: ["api.rtcas.in.th", "rtcas.in.th", "www.rtcas.in.th"],
     proxy: {
       "/api": {
-        // target: "http://localhost:3000/api/",
+        // target: "http://localhost:3000/api/", 
         target: "https://api.pargorn.com/api/",
         changeOrigin: true,
         secure: false,

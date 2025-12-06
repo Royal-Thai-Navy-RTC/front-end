@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import rawAddressData from "../assets/address-data.json";
+import html2pdf from "html2pdf.js";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://api.pargorn.com";
@@ -76,8 +77,8 @@ const normalizeIntake = (raw = {}) => {
 
   const numServiceYears =
     rawServiceYears !== undefined &&
-    rawServiceYears !== null &&
-    !Number.isNaN(Number(rawServiceYears))
+      rawServiceYears !== null &&
+      !Number.isNaN(Number(rawServiceYears))
       ? Number(rawServiceYears)
       : undefined;
 
@@ -99,8 +100,8 @@ const normalizeIntake = (raw = {}) => {
     numServiceYears !== undefined
       ? numServiceYears
       : serviceMonths !== undefined
-      ? serviceMonths / 12
-      : undefined;
+        ? serviceMonths / 12
+        : undefined;
 
   const canSwim = (() => {
     if (raw.canSwim === true || raw.canSwim === false) return raw.canSwim;
@@ -211,9 +212,8 @@ const Badge = ({ label, tone = "blue" }) => {
   };
   return (
     <span
-      className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-        toneMap[tone] || toneMap.blue
-      }`}
+      className={`px-3 py-1 rounded-full text-xs font-semibold border ${toneMap[tone] || toneMap.blue
+        }`}
     >
       {label}
     </span>
@@ -396,7 +396,10 @@ export default function SoldierDashboard() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [importing, setImporting] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [allIntakes, setAllIntakes] = useState([]);
+  const [useAllForList, setUseAllForList] = useState(false);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [readinessSort, setReadinessSort] = useState(null);
 
   const addressList = useMemo(
     () => (Array.isArray(rawAddressData) ? rawAddressData : []),
@@ -478,6 +481,23 @@ export default function SoldierDashboard() {
     }
   }, [page, pageSize, search, token]);
 
+  const loadAllIntakesForList = async () => {
+    setLoadingAll(true);
+    try {
+      const all = await fetchAllIntakes();
+
+      setAllIntakes(all);
+      setUseAllForList(true);
+      setPageMeta((prev) => ({
+        ...prev,
+        totalPages: 1,
+        total: all.length,
+      }));
+    } finally {
+      setLoadingAll(false);
+    }
+  };
+
   useEffect(() => {
     fetchIntakes();
   }, [fetchIntakes]);
@@ -555,15 +575,15 @@ export default function SoldierDashboard() {
     const allowed = ["O", "A", "B", "AB"];
     const mapped = bloodOptions.length
       ? bloodOptions.filter((b) =>
-          allowed.includes(String(b.value).toUpperCase())
-        )
+        allowed.includes(String(b.value).toUpperCase())
+      )
       : [];
     const fallback = allowed.map((b) => ({ value: b, label: b }));
     return mapped.length
       ? mapped.map((b) => ({
-          value: b.value.toUpperCase(),
-          label: b.label || b.value,
-        }))
+        value: b.value.toUpperCase(),
+        label: b.label || b.value,
+      }))
       : fallback;
   }, [bloodOptions]);
 
@@ -588,8 +608,85 @@ export default function SoldierDashboard() {
     return Number.isNaN(months) ? null : months;
   }, []);
 
+  const computeReadinessPercent = (item) => {
+    if (!item) return 0;
+
+    const chronicList = Array.isArray(item.chronicDiseases)
+      ? item.chronicDiseases.filter(isMeaningfulHealthValue)
+      : [];
+    const foodList = Array.isArray(item.foodAllergies)
+      ? item.foodAllergies.filter(isMeaningfulHealthValue)
+      : [];
+    const drugList = Array.isArray(item.drugAllergies)
+      ? item.drugAllergies.filter(isMeaningfulHealthValue)
+      : [];
+    const hasHealthNote = isMeaningfulHealthValue(item.medicalNotes);
+
+    // ① สุขภาพ: 100 -10 ต่อโรค -5 ถ้ามีหมายเหตุแพทย์
+    let healthScore = 100 - chronicList.length * 10 - (hasHealthNote ? 5 : 0);
+    healthScore = clampScore(healthScore, 0, 100);
+
+    // ② การศึกษา: ป.ตรีขึ้นไป 100, ปวส 80, ม.6 60, ม.3 40, default 20
+    const eduText = (item.education || "").toLowerCase();
+    let educationScore = 20;
+
+    if (
+      eduText.includes("phd") ||
+      eduText.includes("doctor") ||
+      eduText.includes("เอก") ||
+      eduText.includes("โท") ||
+      eduText.includes("master") ||
+      eduText.includes("ma") ||
+      eduText.includes("msc") ||
+      eduText.includes("ตรี") ||
+      eduText.includes("bachelor") ||
+      eduText.includes("ป.ตรี")
+    ) {
+      educationScore = 100;
+    } else if (eduText.includes("ปวส") || eduText.includes("diploma")) {
+      educationScore = 80;
+    } else if (
+      eduText.includes("ม.6") ||
+      eduText.includes("high school") ||
+      eduText.includes("มัธยมปลาย")
+    ) {
+      educationScore = 60;
+    } else if (eduText.includes("ม.3") || eduText.includes("มัธยมต้น")) {
+      educationScore = 40;
+    }
+    educationScore = clampScore(educationScore, 0, 100);
+
+    // ③ ทักษะ: ว่ายน้ำได้ +50, เคยมีอาชีพ +50
+    let abilityScore = 0;
+    if (item.canSwim) abilityScore += 50;
+    if (item.previousJob) abilityScore += 50;
+    abilityScore = clampScore(abilityScore, 0, 100);
+
+    // ④ สมรรถภาพ: BMI 22 = 100 ลด 5 / 1 deviation
+    const bmi = computeBmi(item.weightKg, item.heightCm);
+    let fitnessScore = 0;
+    if (bmi) {
+      const deviation = Math.abs(bmi - 22);
+      fitnessScore = 100 - deviation * 5;
+    }
+    fitnessScore = clampScore(fitnessScore, 0, 100);
+
+    // ⑤ ความปลอดภัยจากอาการแพ้: ลด 20 ต่อ 1 ปัญหา (อาหาร + ยา + โรค)
+    const totalIssues = foodList.length + drugList.length + chronicList.length;
+    let allergyScore = 100 - totalIssues * 20;
+    allergyScore = clampScore(allergyScore, 0, 100);
+
+    const total = healthScore + educationScore + abilityScore + fitnessScore + allergyScore;
+    const maxTotal = 5 * 100;
+
+    return maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
+  };
+
   const filteredIntakes = useMemo(() => {
-    return intakes.filter((item) => {
+    // ถ้าเปิดโหมดใช้ข้อมูลทั้งหมด → ใช้ allIntakes, ถ้าไม่ → ใช้ intakes ตามหน้า
+    const source = useAllForList ? allIntakes : intakes;
+
+    let result = source.filter((item) => {
       const matchesProvince =
         !provinceFilter || `${item.province ?? ""}` === `${provinceFilter}`;
       if (!matchesProvince) return false;
@@ -644,8 +741,22 @@ export default function SoldierDashboard() {
 
       return true;
     });
+
+    // 🔽 ถ้าเลือก sort ตาม readinessScore ให้เรียงตรงนี้
+    if (readinessSort) {
+      result = [...result].sort((a, b) => {
+        const pa = computeReadinessPercent(a);
+        const pb = computeReadinessPercent(b);
+        if (readinessSort === "asc") return pa - pb; // น้อย → มาก
+        return pb - pa; // มาก → น้อย
+      });
+    }
+
+    return result;
   }, [
     intakes,
+    allIntakes,
+    useAllForList,
     provinceFilter,
     specialSkillFilter,
     healthFilter,
@@ -653,7 +764,8 @@ export default function SoldierDashboard() {
     educationFilter,
     bloodFilter,
     serviceDurationFilter,
-    sortOrder,
+    readinessSort,
+    getServiceMonths,
   ]);
 
   const ageYears = useMemo(
@@ -684,8 +796,11 @@ export default function SoldierDashboard() {
     return { chronicText, foodText, drugText, notesText, hasIssues };
   }, [selected, getServiceMonths]);
 
+  // ---------------- RADER PROFILE (สูตรใหม่) ----------------
   const radarProfile = useMemo(() => {
     if (!selected) return null;
+
+    // เตรียมข้อมูลพื้นฐาน
     const chronicList = Array.isArray(selected?.chronicDiseases)
       ? selected.chronicDiseases.filter(isMeaningfulHealthValue)
       : [];
@@ -697,70 +812,62 @@ export default function SoldierDashboard() {
       : [];
     const hasHealthNote = isMeaningfulHealthValue(selected?.medicalNotes);
 
-    let healthScore = 80 - chronicList.length * 10;
-    if (hasHealthNote) healthScore -= 5;
-    healthScore = clampScore(healthScore);
+    // ① คะแนนสุขภาพ: เริ่ม 100 -10 ต่อโรค -5 ถ้ามีหมายเหตุแพทย์
+    let healthScore = 100 - chronicList.length * 10 - (hasHealthNote ? 5 : 0);
+    healthScore = clampScore(healthScore, 0, 100);
 
+    // ② คะแนนการศึกษา: ป.ตรีขึ้นไป 100 ที่เหลือลดทีละ 20
     const eduText = (selected.education || "").toLowerCase();
-    let educationScore = 40;
-    if (eduText) {
-      if (
-        eduText.includes("phd") ||
-        eduText.includes("doctor") ||
-        eduText.includes("เอก")
-      )
-        educationScore = 95;
-      else if (
-        eduText.includes("โท") ||
-        eduText.includes("master") ||
-        eduText.includes("ma") ||
-        eduText.includes("msc")
-      )
-        educationScore = 85;
-      else if (
-        eduText.includes("ตรี") ||
-        eduText.includes("bachelor") ||
-        eduText.includes("ป.ตรี")
-      )
-        educationScore = 75;
-      else if (eduText.includes("ปวส") || eduText.includes("diploma"))
-        educationScore = 65;
-      else if (
-        eduText.includes("ม.6") ||
-        eduText.includes("high school") ||
-        eduText.includes("มัธยมปลาย")
-      )
-        educationScore = 60;
-      else if (eduText.includes("ม.3") || eduText.includes("มัธยมต้น"))
-        educationScore = 55;
-      else educationScore = 50 + Math.min(10, eduText.length % 10);
+    let educationScore = 20; // default ต่ำสุด
+
+    if (
+      eduText.includes("phd") ||
+      eduText.includes("doctor") ||
+      eduText.includes("เอก") ||
+      eduText.includes("โท") ||
+      eduText.includes("master") ||
+      eduText.includes("ma") ||
+      eduText.includes("msc") ||
+      eduText.includes("ตรี") ||
+      eduText.includes("bachelor") ||
+      eduText.includes("ป.ตรี")
+    ) {
+      // ป.ตรี และสูงกว่า
+      educationScore = 100;
+    } else if (eduText.includes("ปวส") || eduText.includes("diploma")) {
+      educationScore = 80;
+    } else if (
+      eduText.includes("ม.6") ||
+      eduText.includes("high school") ||
+      eduText.includes("มัธยมปลาย")
+    ) {
+      educationScore = 60;
+    } else if (eduText.includes("ม.3") || eduText.includes("มัธยมต้น")) {
+      educationScore = 40;
     }
-    educationScore = clampScore(educationScore);
+    educationScore = clampScore(educationScore, 0, 100);
 
-    const skillsText = (selected.specialSkills || "").toString().trim();
-    let abilityScore = 40;
-    if (skillsText)
-      abilityScore += Math.min(40, 20 + skillsText.split(",").length * 5);
-    if (selected.canSwim) abilityScore += 5;
-    if (selected.previousJob) abilityScore += 5;
-    abilityScore = clampScore(abilityScore);
+    // ③ คะแนนทักษะ: ว่ายน้ำได้ +50, มีอาชีพก่อนรับราชการ +50
+    let abilityScore = 0;
+    if (selected.canSwim) abilityScore += 50;
+    if (selected.previousJob) abilityScore += 50;
+    abilityScore = clampScore(abilityScore, 0, 100);
 
+    // ④ คะแนนสมรรถภาพร่างกาย: จาก BMI = 22 ได้ 100 แล้วลดทีละ 5 ต่อ 1 deviation
     const bmi = computeBmi(selected.weightKg, selected.heightCm);
-    let fitnessScore = 60;
+    let fitnessScore = 0;
     if (bmi) {
-      const deviation = Math.abs(bmi - 22);
-      fitnessScore = clampScore(95 - deviation * 5);
+      const deviation = Math.abs(bmi - 22); // 22 = ค่าเหมาะสม
+      fitnessScore = 100 - deviation * 5;
     }
-    const serviceMonths = getServiceMonths(selected);
-    if (serviceMonths) {
-      fitnessScore = clampScore(fitnessScore + Math.min(10, serviceMonths / 6));
-    }
+    fitnessScore = clampScore(fitnessScore, 0, 100);
 
-    let allergyRisk = clampScore(
-      (foodList.length + drugList.length) * 25 +
-        chronicList.length * 10 +
-        (hasHealthNote ? 10 : 0)
-    );
+    // ⑤ คะแนนความปลอดภัยจากอาการแพ้:
+    // นับจำนวนปัญหา = อาหารแพ้ + ยาแพ้ + โรคประจำตัว
+    // ลด 20 คะแนนต่อ 1 ปัญหา
+    const totalIssues = foodList.length + drugList.length + chronicList.length;
+    let allergyScore = 100 - totalIssues * 20;
+    allergyScore = clampScore(allergyScore, 0, 100);
 
     return {
       indicators: [
@@ -770,22 +877,17 @@ export default function SoldierDashboard() {
         { name: "ร่างกาย", max: 100 },
         { name: "อาการแพ้", max: 100 },
       ],
-      values: [
-        healthScore,
-        educationScore,
-        abilityScore,
-        fitnessScore,
-        allergyRisk,
-      ],
+      values: [healthScore, educationScore, abilityScore, fitnessScore, allergyScore],
       breakdown: [
         { label: "สุขภาพ", score: healthScore },
         { label: "การศึกษา", score: educationScore },
         { label: "ทักษะ", score: abilityScore },
         { label: "ร่างกาย", score: fitnessScore },
-        { label: "อาการแพ้", score: allergyRisk },
+        { label: "อาการแพ้", score: allergyScore },
       ],
     };
   }, [selected]);
+
 
   const readinessScore = useMemo(() => {
     if (!radarProfile) return null;
@@ -807,18 +909,12 @@ export default function SoldierDashboard() {
     };
   }, [radarProfile]);
 
-  const toggleSort = () => {
-    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
-  };
-
-
   const activeFilterChips = useMemo(() => {
     const chips = [];
     if (specialSkillFilter)
       chips.push({
-        label: `ความสามารถพิเศษ: ${
-          specialSkillFilter === "HAS" ? "มี" : "ไม่มี"
-        }`,
+        label: `ความสามารถพิเศษ: ${specialSkillFilter === "HAS" ? "มี" : "ไม่มี"
+          }`,
       });
     if (healthFilter)
       chips.push({
@@ -843,10 +939,9 @@ export default function SoldierDashboard() {
     }
     if (provinceFilter)
       chips.push({
-        label: `จังหวัด: ${
-          provinceOptions.find((p) => `${p.value}` === `${provinceFilter}`)
-            ?.label || provinceFilter
-        }`,
+        label: `จังหวัด: ${provinceOptions.find((p) => `${p.value}` === `${provinceFilter}`)
+          ?.label || provinceFilter
+          }`,
       });
     return chips;
   }, [
@@ -1137,8 +1232,8 @@ export default function SoldierDashboard() {
           item.serviceYears !== undefined && item.serviceYears !== null
             ? item.serviceYears
             : months !== null && months !== undefined
-            ? (months / 12).toFixed(1)
-            : "";
+              ? (months / 12).toFixed(1)
+              : "";
 
         const age = calcAgeYears(item.birthDate);
         const { provinceName, districtName, subdistrictName } =
@@ -1263,117 +1358,127 @@ export default function SoldierDashboard() {
             : "-";
 
           return `
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td>${item.firstName || ""} ${item.lastName || ""}</td>
-                        <td>${item.citizenId || "-"}</td>
-                        <td>${birthDateText}</td>
-                        <td>${age ?? "-"}</td>
-                        <td>${item.weightKg ?? "-"}</td>
-                        <td>${item.heightCm ?? "-"}</td>
-                        <td>${item.education || "-"}</td>
-                        <td>${item.previousJob || "-"}</td>
-                        <td>${item.religion || "-"}</td>
-                        <td>${item.bloodGroup || "-"}</td>
-                        <td>${item.canSwim ? "ใช่" : "ไม่ใช่"}</td>
-                        <td>${years || "-"}</td>
-                        <td>${months ?? "-"}</td>
-                        <td>${item.addressLine || "-"}</td>
-                        <td>${provinceName || item.province || "-"}</td>
-                        <td>${districtName || item.district || "-"}</td>
-                        <td>${subdistrictName || item.subdistrict || "-"}</td>
-                        <td>${item.postalCode || "-"}</td>
-                        <td>${item.email || "-"}</td>
-                        <td>${item.phone || "-"}</td>
-                        <td>${item.emergencyName || "-"}</td>
-                        <td>${item.emergencyPhone || "-"}</td>
-                        <td>${chronicText}</td>
-                        <td>${foodText}</td>
-                        <td>${drugText}</td>
-                        <td>${item.medicalNotes || "-"}</td>
-                        <td>${created}</td>
-                    </tr>
-                `;
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${item.firstName || ""} ${item.lastName || ""}</td>
+            <td>${item.citizenId || "-"}</td>
+            <td>${birthDateText}</td>
+            <td>${age ?? "-"}</td>
+            <td>${item.weightKg ?? "-"}</td>
+            <td>${item.heightCm ?? "-"}</td>
+            <td>${item.education || "-"}</td>
+            <td>${item.previousJob || "-"}</td>
+            <td>${item.religion || "-"}</td>
+            <td>${item.bloodGroup || "-"}</td>
+            <td>${item.canSwim ? "ใช่" : "ไม่ใช่"}</td>
+            <td>${years || "-"}</td>
+            <td>${months ?? "-"}</td>
+            <td>${item.addressLine || "-"}</td>
+            <td>${provinceName || item.province || "-"}</td>
+            <td>${districtName || item.district || "-"}</td>
+            <td>${subdistrictName || item.subdistrict || "-"}</td>
+            <td>${item.postalCode || "-"}</td>
+            <td>${item.email || "-"}</td>
+            <td>${item.phone || "-"}</td>
+            <td>${item.emergencyName || "-"}</td>
+            <td>${item.emergencyPhone || "-"}</td>
+            <td>${chronicText}</td>
+            <td>${foodText}</td>
+            <td>${drugText}</td>
+            <td>${item.medicalNotes || "-"}</td>
+            <td>${created}</td>
+          </tr>
+        `;
         })
         .join("");
 
+      // ============= HTML ที่จะใช้ทำ PDF =============
       const html = `
-            <html>
-                <head>
-                    <meta charSet="utf-8" />
-                    <title>Export PDF</title>
-                    <style>
-                        body { font-family: "Sarabun", "Noto Sans Thai", sans-serif; padding: 16px; color: #0f172a; }
-                        h1 { margin-bottom: 12px; }
-                        table { width: 100%; border-collapse: collapse; font-size: 11px; }
-                        th, td { border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; }
-                        th { background: #e2e8f0; }
-                        tr:nth-child(even) td { background: #f8fafc; }
-                    </style>
-                </head>
-                <body>
-                    <h1>ข้อมูลทหารใหม่</h1>
-                    <p>รวม ${
-                      filtered.length
-                    } รายการ | พิมพ์เมื่อ ${new Date().toLocaleString(
-        "th-TH"
-      )}</p>
+      <div style="font-family: 'Sarabun', 'Noto Sans Thai', sans-serif;">
+        <style>
+          table { width: 100%; border-collapse: collapse; font-size: 9px; }
+          th, td { border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; }
+          th { background: #e2e8f0; }
+          tr:nth-child(even) td { background: #f8fafc; }
+          h1 { margin-bottom: 12px; }
+          p { margin-bottom: 8px; }
+        </style>
 
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>ชื่อ-สกุล</th>
-                                <th>เลขบัตรประชาชน</th>
-                                <th>วันเกิด</th>
-                                <th>อายุ (ปี)</th>
-                                <th>น้ำหนัก</th>
-                                <th>ส่วนสูง</th>
-                                <th>การศึกษา</th>
-                                <th>อาชีพก่อนทหาร</th>
-                                <th>ศาสนา</th>
-                                <th>กรุ๊ปเลือด</th>
-                                <th>ว่ายน้ำ</th>
-                                <th>อายุราชการ (ปี)</th>
-                                <th>อายุราชการ (เดือน)</th>
-                                <th>ที่อยู่</th>
-                                <th>จังหวัด</th>
-                                <th>อำเภอ</th>
-                                <th>ตำบล</th>
-                                <th>ไปรษณีย์</th>
-                                <th>อีเมล</th>
-                                <th>โทร</th>
-                                <th>ผู้ติดต่อฉุกเฉิน</th>
-                                <th>เบอร์ติดต่อฉุกเฉิน</th>
-                                <th>โรคประจำตัว</th>
-                                <th>แพ้อาหาร</th>
-                                <th>แพ้ยา</th>
-                                <th>หมายเหตุแพทย์</th>
-                                <th>วันที่สร้าง</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rowsHtml}</tbody>
-                    </table>
-                </body>
-            </html>
-        `;
+        <h1>ข้อมูลทหารใหม่</h1>
+        <p>
+          รวม ${filtered.length} รายการ
+          | พิมพ์เมื่อ ${new Date().toLocaleString("th-TH")}
+        </p>
 
-      const pdfWindow = window.open("", "_blank");
-      pdfWindow.document.open();
-      pdfWindow.document.write(html);
-      pdfWindow.document.close();
-      pdfWindow.focus();
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ชื่อ-สกุล</th>
+              <th>เลขบัตรประชาชน</th>
+              <th>วันเกิด</th>
+              <th>อายุ (ปี)</th>
+              <th>น้ำหนัก</th>
+              <th>ส่วนสูง</th>
+              <th>การศึกษา</th>
+              <th>อาชีพก่อนทหาร</th>
+              <th>ศาสนา</th>
+              <th>กรุ๊ปเลือด</th>
+              <th>ว่ายน้ำ</th>
+              <th>อายุราชการ (ปี)</th>
+              <th>อายุราชการ (เดือน)</th>
+              <th>ที่อยู่</th>
+              <th>จังหวัด</th>
+              <th>อำเภอ</th>
+              <th>ตำบล</th>
+              <th>ไปรษณีย์</th>
+              <th>อีเมล</th>
+              <th>โทร</th>
+              <th>ผู้ติดต่อฉุกเฉิน</th>
+              <th>เบอร์ติดต่อฉุกเฉิน</th>
+              <th>โรคประจำตัว</th>
+              <th>แพ้อาหาร</th>
+              <th>แพ้ยา</th>
+              <th>หมายเหตุแพทย์</th>
+              <th>วันที่สร้าง</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+      const opt = {
+        margin: [5, 5, 5, 5],
+        filename: `soldier-intakes-${new Date().toISOString().slice(0, 10)}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, scrollX: 0, scrollY: 0 },
+        jsPDF: {
+          unit: "mm",
+          format: "a3",       // ใช้ A3
+          orientation: "landscape", // แนวนอน
+        },
+      };
+
+      // จุดสำคัญ: ส่ง html เป็น string ตรง ๆ
+      await html2pdf().from(html).set(opt).save();
     } catch (error) {
+      console.error(error);
       Swal.fire({
         icon: "error",
         title: "ส่งออก PDF ไม่สำเร็จ",
         text:
-          error?.response?.data?.message || error.message || "เกิดข้อผิดพลาด",
+          error?.response?.data?.message ||
+          error.message ||
+          "เกิดข้อผิดพลาด",
       });
     } finally {
       setExportingPdf(false);
     }
   };
+
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
@@ -1712,22 +1817,20 @@ export default function SoldierDashboard() {
                     <button
                       type="button"
                       onClick={() => setChartMetric("education")}
-                      className={`px-3 py-1 rounded-full transition ${
-                        chartMetric === "education"
-                          ? "bg-white text-blue-800 shadow"
-                          : "text-white/80 hover:bg-white/10"
-                      }`}
+                      className={`px-3 py-1 rounded-full transition ${chartMetric === "education"
+                        ? "bg-white text-blue-800 shadow"
+                        : "text-white/80 hover:bg-white/10"
+                        }`}
                     >
                       การศึกษา
                     </button>
                     <button
                       type="button"
                       onClick={() => setChartMetric("religion")}
-                      className={`px-3 py-1 rounded-full transition ${
-                        chartMetric === "religion"
-                          ? "bg-white text-blue-800 shadow"
-                          : "text-white/80 hover:bg-white/10"
-                      }`}
+                      className={`px-3 py-1 rounded-full transition ${chartMetric === "religion"
+                        ? "bg-white text-blue-800 shadow"
+                        : "text-white/80 hover:bg-white/10"
+                        }`}
                     >
                       ศาสนา
                     </button>
@@ -1782,11 +1885,42 @@ export default function SoldierDashboard() {
               </select>
               {/* sorting ขีดสมรรถนะความพร้อมรบ */}
               <button
-                onClick={toggleSort}
-                className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+                type="button"
+                onClick={async () => {
+                  let next;
+                  if (readinessSort === "desc") next = "asc";
+                  else if (readinessSort === "asc") next = null;
+                  else next = "desc";
+
+                  setReadinessSort(next);
+
+                  if (next) {
+                    await loadAllIntakesForList();
+                  } else {
+                    setUseAllForList(false);
+                    setPage(1);
+                    fetchIntakes();
+                  }
+                }}
+                className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold flex flex-col items-center leading-tight"
               >
-                Sort: {sortOrder === "desc" ? "มาก → น้อย" : "น้อย → มาก"}
+                {/* บรรทัดที่ 1 */}
+                <span>ความพร้อมรบ</span>
+
+                {/* บรรทัดที่ 2 */}
+                <span className="text-xs text-blue-100">
+                  {readinessSort === "desc"
+                    ? "มาก → น้อย"
+                    : readinessSort === "asc"
+                      ? "น้อย → มาก"
+                      : "ไม่เรียง"}
+                </span>
               </button>
+
+
+              {loadingAll && (
+                <span className="text-xs text-blue-600 ml-1">กำลังโหลดข้อมูลทั้งหมด...</span>
+              )}
 
               {canImportData && (
                 <button
@@ -2023,11 +2157,10 @@ export default function SoldierDashboard() {
                             setSelected(item);
                             setShowDetailModal(true);
                           }}
-                          className={`w-full text-left px-4 py-3 flex flex-col gap-1 transition ${
-                            isActive
-                              ? "bg-blue-50 border-l-4 border-blue-500 shadow-inner"
-                              : "hover:bg-blue-50/60"
-                          }`}
+                          className={`w-full text-left px-4 py-3 flex flex-col gap-1 transition ${isActive
+                            ? "bg-blue-50 border-l-4 border-blue-500 shadow-inner"
+                            : "hover:bg-blue-50/60"
+                            }`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex flex-col">
@@ -2068,14 +2201,14 @@ export default function SoldierDashboard() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handlePageChange(page - 1)}
-                  disabled={page === 1 || loading}
+                  disabled={page === 1 || loading || useAllForList}
                   className="rounded-xl border border-blue-100 bg-white px-4 py-2 disabled:opacity-50 hover:bg-blue-50"
                 >
                   ก่อนหน้า
                 </button>
                 <button
                   onClick={() => handlePageChange(page + 1)}
-                  disabled={page === pageMeta.totalPages || loading}
+                  disabled={page === pageMeta.totalPages || loading || useAllForList}
                   className="rounded-xl border border-blue-100 bg-white px-4 py-2 disabled:opacity-50 hover:bg-blue-50"
                 >
                   ถัดไป
@@ -2159,16 +2292,16 @@ export default function SoldierDashboard() {
                   <div className="flex flex-col gap-3 lg:col-span-2">
                     <div className="rounded-2xl border border-white/15 bg-white/10 p-3 flex flex-col gap-3">
                       {editPreview ||
-                      selected.idCardImageUrl ||
-                      selected.avatar ? (
+                        selected.idCardImageUrl ||
+                        selected.avatar ? (
                         <button
                           type="button"
                           onClick={() =>
                             setPreviewImage(
                               editPreview ||
-                                resolveFileUrl(
-                                  selected.idCardImageUrl || selected.avatar
-                                )
+                              resolveFileUrl(
+                                selected.idCardImageUrl || selected.avatar
+                              )
                             )
                           }
                           className="rounded-xl overflow-hidden border border-white/20 bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/40"
@@ -2444,15 +2577,15 @@ export default function SoldierDashboard() {
                               !normalizedReligionOptions.some(
                                 (r) => `${r.value}` === `${editForm.religion}`
                               )) && (
-                              <input
-                                type="text"
-                                name="religion_other"
-                                value={editForm.religion_other || ""}
-                                onChange={handleEditChange}
-                                placeholder="ใส่ข้อมูลเพิ่มเติม"
-                                className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
-                              />
-                            )}
+                                <input
+                                  type="text"
+                                  name="religion_other"
+                                  value={editForm.religion_other || ""}
+                                  onChange={handleEditChange}
+                                  placeholder="ใส่ข้อมูลเพิ่มเติม"
+                                  className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white"
+                                />
+                              )}
                           </div>
                           <input
                             name="specialSkills"

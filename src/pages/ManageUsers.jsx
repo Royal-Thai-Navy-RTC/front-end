@@ -149,6 +149,7 @@ const RANK_OPTIONS = [
     { value: "LEADING_RATING", label: "จ่าโท" },
     { value: "ABLE_SEAMAN", label: "จ่าตรี" },
     { value: "SEAMAN_RECRUIT", label: "พลฯ" },
+    { value: "COMPANY", label: "กองร้อย" },
 ];
 
 const CREATE_USER_DEFAULT = {
