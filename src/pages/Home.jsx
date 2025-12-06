@@ -11,63 +11,224 @@ import profile from "../assets/profile.png";
 import windowpic from "../assets/window.png";
 import hand from "../assets/hand.png";
 import navy_team from "../assets/navy_team.png";
+import clipboard  from "../assets/clipboard.png";
+
+const COMPANY_ROLES = [
+  "bat1_com1",
+  "bat1_com2",
+  "bat1_com3",
+  "bat1_com4",
+  "bat1_com5",
+
+  "bat2_com1",
+  "bat2_com2",
+  "bat2_com3",
+  "bat2_com4",
+  "bat2_com5",
+
+  "bat3_com1",
+  "bat3_com2",
+  "bat3_com3",
+  "bat3_com4",
+  "bat3_com5",
+
+  "bat4_com1",
+  "bat4_com2",
+  "bat4_com3",
+  "bat4_com4",
+  "bat4_com5",
+];
 
 const NAV_GROUPS = [
   {
     title: "ทั่วไป",
     items: [
-      { path: "/library", label: "ห้องสมุด", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator", "exam_uploader"] },
-      { path: "/history", label: "ประวัติ", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator", "exam_uploader"] },
-      // { path: "/teaching-schedules", label: "จัดการตารางสอน", roles: ["admin", "owner", "guest"] },
-      { path: "/public-teaching-schedules", label: "ตารางสอน", roles: ["admin", "sub_admin", "teacher", "student", "owner", "guest", "form_creator", "exam_uploader"] },
+      {
+        path: "/soldiers",
+        label: "แดชบอร์ด ทหารใหม่",
+        roles: COMPANY_ROLES,
+      },
+      {
+        path: "/library",
+        label: "ห้องสมุด",
+        roles: [
+          "admin",
+          "sub_admin",
+          "teacher",
+          "student",
+          "owner",
+          "guest",
+          "form_creator",
+          "exam_uploader",
+          ...COMPANY_ROLES,
+        ],
+      },
+      {
+        path: "/history",
+        label: "ประวัติ",
+        roles: [
+          "admin",
+          "sub_admin",
+          "teacher",
+          "student",
+          "owner",
+          "form_creator",
+          "exam_uploader",
+          ...COMPANY_ROLES,
+        ],
+      },
+      {
+        path: "/teaching-schedules",
+        label: "จัดการตารางสอน",
+        roles: ["admin", "owner", "schedule_admin"],
+      },
+      {
+        path: "/teaching-schedules",
+        label: "ตารางสอน",
+        roles: ["admin", "owner", "schedule_admin",...COMPANY_ROLES,],
+      },
     ],
   },
+
+  // หน้า /soldiers ที่เป็นข้อมูลทหารประจำกองร้อย (COMPANY_ROLES)
+  // {
+  //   title: "กองร้อย",
+  //   items: [
+  //     {
+  //       path: "/soldiers",
+  //       label: "ข้อมูลทหารประจำกองร้อย",
+  //       roles: [...COMPANY_ROLES],
+  //     },
+  //   ],
+  // },
+
   {
     title: "แอดมิน",
     items: [
-      { path: "/manage", label: "จัดการผู้ใช้", roles: ["admin", "owner"] },
-      { path: "/form-evaluate", label: "สร้างฟอร์มการประเมิน", roles: ["admin", "owner", "form_creator"] },
-      { path: "/soldiers", label: "แดชบอร์ด ทหารใหม่", roles: ["admin", "owner"] },
-      { path: "/soilderprofile", label: "ลงทะเบียนทหารใหม่", roles: ["admin", "owner"] },
-      { path: "/soldier-intake-settings", label: "ตั้งค่ารับสมัครทหารใหม่", roles: ["admin", "owner"] },
+      {
+        path: "/manage",
+        label: "จัดการผู้ใช้",
+        roles: ["admin", "owner"],
+      },
+      {
+        path: "/soldiers",
+        label: "แดชบอร์ด ทหารใหม่",
+        roles: ["admin", "owner"],
+      },
+      {
+        path: "/soilderprofile",
+        label: "ลงทะเบียนทหารใหม่",
+        roles: ["admin", "owner"],
+      },
+      {
+        path: "/createtask",
+        label: "มอบหมายงาน",
+        roles: ["admin", "owner"],
+      },
+      {
+        path: "/soldier-intake-settings",
+        label: "ตั้งค่ารับสมัครทหารใหม่",
+        roles: ["admin", "owner"],
+      },
     ],
   },
+
   {
-    title: "นักเรียน",
+    title: "ประเมิน",
     items: [
-      { path: "/listteacher", label: "ประเมินผู้สอน", roles: ["admin", "owner"] },
-      { path: "/listevaluation", label: "ประเมินนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
+      {
+        path: "/form-evaluate",
+        label: "สร้างฟอร์มการประเมิน",
+        roles: ["admin", "owner", "form_creator"],
+      },
+      {
+        path: "/listevaluation",
+        label: "ประเมิน",
+        roles: ["admin", "owner", "teacher", "sub_admin"],
+      },
+      {
+        path: "/listteacher",
+        label: "ประเมินผู้สอน",
+        roles: ["admin", "owner"],
+      },
+      {
+        path: "/evaluation-dashboard",
+        label: "ผลการประเมินนักเรียน",
+        roles: ["admin", "owner", "sub_admin", "teacher"],
+      },
+      {
+        path: "/service-evaluation-summary",
+        label: "ผลประเมินราชการ",
+        roles: ["admin", "owner", "sub_admin", "teacher"],
+      },
     ],
   },
+
   {
     title: "ข้าราชการ",
     items: [
-      { path: "/teacher-report", label: "แจ้งยอดนักเรียน", roles: ["admin", "owner", "teacher", "sub_admin"] },
-      { path: "/teacher-leave", label: "แจ้งการลา", roles: ["teacher", "admin", "sub_admin", "owner", "form_creator", "exam_uploader"] },
-      { path: "/exam", label: "ส่งผลสอบ", roles: ["admin", "owner", "sub_admin", "teacher", "exam_uploader"] },
-      { path: "/evaluation-dashboard", label: "สรุปผลการประเมิน", roles: ["admin", "owner", "sub_admin", "teacher"] },
-      { path: "/service-evaluation-summary", label: "สรุปผลประเมินราชการ", roles: ["admin", "owner", "sub_admin", "teacher"] },
+      {
+        path: "/teacher-report",
+        label: "แจ้งยอดนักเรียน",
+        roles: ["admin", "owner", "teacher", "sub_admin"],
+      },
+      {
+        path: "/teacher-leave",
+        label: "แจ้งการลา",
+        roles: [
+          "teacher",
+          "admin",
+          "sub_admin",
+          "owner",
+          "schedule_admin",
+          "form_creator",
+          "exam_uploader",
+        ],
+      },
+      {
+        path: "/exam",
+        label: "ส่งผลสอบ",
+        roles: ["teacher", "admin", "sub_admin", "owner", "exam_uploader"],
+      },
+      {
+        path: "/task-submit",
+        label: "ส่งงานที่ได้รับมอบหมาย",
+        roles: ["teacher", "admin", "sub_admin", "owner", "schedule_admin"],
+      },
     ],
   },
 ];
 
+
 const pictureMap = {
   "/library": book,
   "/history": history,
+
+  // ตารางสอน
   "/teaching-schedules": calendar,
   "/public-teaching-schedules": calendar,
+
+  // ประเมิน
   "/listevaluation": student,
   "/listteacher": teacher2,
+  "/form-evaluate": exam,
   "/evaluation-dashboard": windowpic,
   "/service-evaluation-summary": windowpic,
+
+  // ผู้ใช้ / ทหารใหม่
   "/manage": profile,
-  "/form-evaluate": exam,
-  "/exam": exam,
+  "/soldiers": windowpic,
+  "/soilderprofile": teacher,
+  "/soldier-intake-settings": windowpic,
+
+  // งานมอบหมาย
+  "/createtask": clipboard,
+  "/task-submit": clipboard,
+
+  // ครู / การลา / การสอบ
   "/teacher-report": navy_team,
   "/teacher-leave": hand,
-  "/soilderprofile": teacher,
-  "/soldiers": windowpic,
-  "/soldier-intake-settings": windowpic,
+  "/exam": exam,
 };
 
 const descriptionMap = {

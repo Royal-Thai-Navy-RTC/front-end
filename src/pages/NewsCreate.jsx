@@ -33,7 +33,7 @@ export default function NewsCreate() {
       detail:
         "จัดขึ้นเพื่อแสดงความพร้อมและวินัยของทหารใหม่ต่อผู้บังคับบัญชา...",
       imageUrl:
-        "https://images.pexels.com/photos/113757/pexels-photo-113757.jpeg",
+        "https://www.matichon.co.th/wp-content/uploads/2017/11/%E0%B8%9E%E0%B8%B2%E0%B9%80%E0%B8%AB%E0%B8%A3%E0%B8%94.jpg",
       externalLink: "https://www.navy.mi.th",
       createdAt: "2025-12-01",
     },
@@ -43,7 +43,7 @@ export default function NewsCreate() {
       detail:
         "แจ้งกำหนดการฝึกภาคสนามสำหรับทหารใหม่รุ่นที่ 3 โปรดตรวจสอบรายละเอียด...",
       imageUrl:
-        "https://images.pexels.com/photos/60225/pexels-photo-60225.jpeg",
+        "https://static.thairath.co.th/media/dFQROr7oWzulq5Fa5B23Nh7DJsdh3admUr351DRzq8F4GHMqCOdP97rgR056YWTbUjX.jpg",
       externalLink: "",
       createdAt: "2025-12-03",
     },

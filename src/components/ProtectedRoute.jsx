@@ -1,35 +1,37 @@
+// ProtectedRoute.jsx
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import Swal from "sweetalert2";
-import { useOutletContext } from "react-router-dom";
 
 const normalizeRole = (role) => (role || "").toUpperCase();
+
 const requiredFields = [
   "rank",
   "firstName",
   "lastName",
   "username",
   "birthDate",
-  // "fullAddress",
   "email",
   "phone",
   "emergencyContactName",
   "emergencyContactPhone",
-  // "medicalHistory",
   "position",
-  "education"
-  // "password",
-  // "confirmPassword",
+  "education",
 ];
 
-export default function ProtectedRoute({ children, allowedRoles = [] }) {
+export default function ProtectedRoute({
+  children,
+  allowedRoles = [],
+  bypassMissingFieldsRoles = [], // 👈 เพิ่มตรงนี้
+}) {
   const navigate = useNavigate();
-  const { user, onProfileUpdated } = useOutletContext();
+  const { user } = useOutletContext();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const role = normalizeRole(localStorage.getItem("role"));
+    const roleFromStorage = normalizeRole(localStorage.getItem("role"));
+    const userRole = normalizeRole(user?.role);
 
     if (!token) {
       Swal.fire({
@@ -42,15 +44,23 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
       return;
     }
 
-    const missingFields = requiredFields.filter((field) => !`${user[field] ?? ""}`.trim());
+    // ----------------- เช็ก profile ไม่ครบ -----------------
+    const missingFields = requiredFields.filter(
+      (field) => !`${user?.[field] ?? ""}`.trim()
+    );
 
-    if (missingFields.length && !["ADMIN", "OWNER"].includes((user.role || "").toUpperCase())) {
-      const listHtml = missingFields .map(f => `${f}`) .join(", ");
+    const bypassRolesNormalized = bypassMissingFieldsRoles.map(normalizeRole);
 
+    const canBypassMissingFields =
+      ["ADMIN", "OWNER"].includes(userRole) || // แอดมิน/โอวเนอร์ ข้ามเหมือนเดิม
+      bypassRolesNormalized.includes(userRole); // 👈 ROLE ที่กำหนดให้ข้าม
+
+    if (missingFields.length && !canBypassMissingFields) {
+      const listHtml = missingFields.join(", ");
       Swal.fire({
         icon: "warning",
         title: "ข้อมูลยังไม่ครบ",
-        html: ` กรุณากรอกข้อมูลต่อไปนี้ก่อนเข้าใช้งาน : ${listHtml} `,
+        html: `กรุณากรอกข้อมูลต่อไปนี้ก่อนเข้าใช้งาน: ${listHtml}`,
         timer: 3000,
         showConfirmButton: false,
       });
@@ -59,8 +69,13 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
       return;
     }
 
+    // ----------------- เช็กสิทธิ์เข้า route -----------------
+    const allowedNormalized = allowedRoles.map(normalizeRole);
 
-    if (allowedRoles.length && !allowedRoles.includes(role)) {
+    if (
+      allowedNormalized.length &&
+      !allowedNormalized.includes(roleFromStorage)
+    ) {
       Swal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์เข้าถึง",
@@ -72,9 +87,8 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
     }
 
     setIsAuthorized(true);
-  }, [allowedRoles, navigate]);
+  }, [allowedRoles, bypassMissingFieldsRoles, navigate, user]);
 
   if (!isAuthorized) return null;
-
   return children;
 }

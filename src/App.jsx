@@ -256,7 +256,7 @@ const router = createBrowserRouter([
             {
                 path: "soldiers",
                 element: (
-                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER", ...COMPANY_ROLES]}>
+                    <ProtectedRoute allowedRoles={["ADMIN", "OWNER", ...COMPANY_ROLES]} bypassMissingFieldsRoles={COMPANY_ROLES}>
                         <SoldierDashboard />
                     </ProtectedRoute>
                 )

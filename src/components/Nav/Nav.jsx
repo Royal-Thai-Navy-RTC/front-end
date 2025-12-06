@@ -67,7 +67,7 @@ const getErrorMessage = (error, fallback = "เกิดข้อผิดพล
 export default function Nav({
   user = { role: "guest" },
   messages = [],
-  onProfileUpdated = () => {},
+  onProfileUpdated = () => { },
   rankOptions,
   categoryOptions,
   religionOptions,
@@ -220,6 +220,7 @@ export default function Nav({
           "schedule_admin",
           "form_creator",
           "exam_uploader",
+          ...COMPANY_ROLES
         ],
       },
       {
@@ -235,6 +236,7 @@ export default function Nav({
           "schedule_admin",
           "form_creator",
           "exam_uploader",
+          ...COMPANY_ROLES
         ],
         children: [
           {
@@ -250,6 +252,7 @@ export default function Nav({
               "guest",
               "form_creator",
               "exam_uploader",
+              ...COMPANY_ROLES
             ],
           },
           {
@@ -264,6 +267,7 @@ export default function Nav({
               "owner",
               "form_creator",
               "exam_uploader",
+              ...COMPANY_ROLES
             ],
           },
           {
@@ -275,9 +279,15 @@ export default function Nav({
         ],
       },
       {
+        path: "/soldiers",
+        label: "ข้อมูลทหารประจำกองร้อย",
+        icon: User,
+        roles: COMPANY_ROLES,
+      },
+      {
         label: "แอดมิน",
         icon: Settings2,
-        roles: ["admin", "owner", ...COMPANY_ROLES],
+        roles: ["admin", "owner"],
         children: [
           {
             path: "/manage",
@@ -289,7 +299,7 @@ export default function Nav({
             path: "/soldiers",
             label: "แดชบอร์ด ทหารใหม่",
             icon: ClipboardList,
-            roles: ["admin", "owner", ...COMPANY_ROLES],
+            roles: ["admin", "owner"],
           },
           {
             path: "/soilderprofile",
@@ -309,7 +319,12 @@ export default function Nav({
             icon: Settings2,
             roles: ["admin", "owner"],
           },
-
+          {
+            path: "/newscreate",
+            label: "จัดการข่าวสาร",
+            icon: Mail,
+            roles: ["admin", "owner"],
+          },
           // { path: "/managesailor", label: "พลทหาร", icon: Settings2, roles: ["admin", "owner", "sub_admin"] },
         ],
       },
@@ -411,11 +426,11 @@ export default function Nav({
       .map((item) =>
         item.children
           ? {
-              ...item,
-              children: item.children.filter(
-                (c) => !c.roles || c.roles.includes(role)
-              ),
-            }
+            ...item,
+            children: item.children.filter(
+              (c) => !c.roles || c.roles.includes(role)
+            ),
+          }
           : item
       );
   }, [role, isAuthenticated, pages]);
@@ -488,9 +503,8 @@ export default function Nav({
         key={item.label}
         to={item.path}
         aria-label={item.label}
-        className={`text-sm font-medium transition-colors flex items-center gap-2 ${
-          isActive ? "text-blue-800" : "text-gray-600 hover:text-blue-700"
-        }`}
+        className={`text-sm font-medium transition-colors flex items-center gap-2 ${isActive ? "text-blue-800" : "text-gray-600 hover:text-blue-700"
+          }`}
       >
         {Icon && <Icon size={18} />}
         <span className="hidden lg:inline">{item.label}</span>
@@ -648,11 +662,10 @@ export default function Nav({
           <div
             className={`md:hidden transition-all duration-500 flex flex-col items-center gap-3 
             bg-white/95 backdrop-blur border border-blue-100 shadow-lg rounded-2xl 
-            ${
-              menuOpen
+            ${menuOpen
                 ? "max-h-[70vh] py-4 mt-3 overflow-y-auto overscroll-contain"
                 : "max-h-0 py-0 overflow-hidden"
-            }`}
+              }`}
           >
             {visibleItems.map((item) =>
               !item.children ? (
